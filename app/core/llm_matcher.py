@@ -110,7 +110,8 @@ def recommend(data: AppData, type_code: str, wish_examples: list[str], wish_text
         if not matches and not unmatched:
             raise ValueError("고른 프로그램이 없음")
     except Exception as err:  # 어떤 실패든 사용자에게는 실패 A로 알린다
-        on_error(type(err).__name__)
+        code = getattr(err, "code", None)   # API 오류면 상태 코드(예: 429)를 함께 남긴다
+        on_error(type(err).__name__ + (f":{code}" if code else ""))
         return Recommendation("A", programs=default)
 
     programs = [by_id[m["id"]] for m in matches]
@@ -142,3 +143,45 @@ def make_anthropic_caller(api_key: str, model: str, effort: str, timeout: float)
         return next(block.text for block in response.content if block.type == "text")
 
     return call
+
+
+def make_gemini_caller(api_key: str, model: str, timeout: float) -> Callable[[str], str]:
+    """Google Gemini API를 부르는 함수를 만든다. 답은 JSON 형식으로 강제한다."""
+    from google import genai
+    from google.genai import types
+
+    client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=int(timeout * 1000)))
+    schema = {
+        "type": "object",
+        "properties": {
+            "matches": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {"id": {"type": "string"}, "reason": {"type": "string"}},
+                    "required": ["id", "reason"],
+                },
+            },
+            "unmatched": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["matches", "unmatched"],
+    }
+
+    def call(prompt: str) -> str:
+        response = client.models.generate_content(
+            model=model,
+            contents=prompt,
+            config={"response_mime_type": "application/json", "response_json_schema": schema},
+        )
+        if not response.text:
+            raise RuntimeError("빈 답")
+        return response.text
+
+    return call
+
+
+def make_caller(provider: str, api_key: str, model: str, effort: str, timeout: float) -> Callable[[str], str]:
+    """settings.yaml의 llm.provider에 맞는 호출 함수를 만든다."""
+    if provider == "gemini":
+        return make_gemini_caller(api_key, model, timeout)
+    return make_anthropic_caller(api_key, model, effort, timeout)

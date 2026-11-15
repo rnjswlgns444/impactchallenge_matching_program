@@ -16,7 +16,7 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.core import loader, logger  # noqa: E402
-from app.core.llm_matcher import make_anthropic_caller, recommend  # noqa: E402
+from app.core.llm_matcher import make_caller, recommend  # noqa: E402
 from app.core.rules_engine import active_questions, decide_type, next_question, pole_label  # noqa: E402
 from app.ui import components as ui  # noqa: E402
 from app.ui import style  # noqa: E402
@@ -33,17 +33,21 @@ def load_data() -> loader.AppData:
         st.stop()
 
 
-def get_api_key() -> str:
+KEY_NAMES = {"gemini": "GEMINI_API_KEY", "anthropic": "ANTHROPIC_API_KEY"}
+
+
+def get_api_key(provider: str) -> str:
+    name = KEY_NAMES.get(provider, "ANTHROPIC_API_KEY")
     try:
-        key = st.secrets.get("ANTHROPIC_API_KEY", "")
+        key = st.secrets.get(name, "")
     except Exception:  # secrets.toml 파일이 없을 때
         key = ""
-    return key or os.environ.get("ANTHROPIC_API_KEY", "")
+    return key or os.environ.get(name, "")
 
 
 @st.cache_resource
-def get_llm_caller(api_key: str, model: str, effort: str, timeout: float):
-    return make_anthropic_caller(api_key, model, effort, timeout)
+def get_llm_caller(provider: str, api_key: str, model: str, effort: str, timeout: float):
+    return make_caller(provider, api_key, model, effort, timeout)
 
 
 def init_state() -> None:
@@ -156,10 +160,11 @@ def find_programs(data, text, decided):
     """추천을 계산하고 익명 기록을 남긴다. 주관식 원문은 기록하지 않는다."""
     state = st.session_state
     llm = data.settings.get("llm", {})
-    api_key = get_api_key()
+    provider = llm.get("provider", "gemini")
+    api_key = get_api_key(provider)
     caller = None
     if api_key:
-        caller = get_llm_caller(api_key, llm.get("model", "claude-opus-5-5"), llm.get("effort", "low"),
+        caller = get_llm_caller(provider, api_key, llm["model"], llm.get("effort", "low"),
                                 float(llm.get("timeout_seconds", 30)))
     with st.spinner(text["loading"]):
         result = recommend(data, decided["code"], state.wishes, state.wish_saved, state.unsure,

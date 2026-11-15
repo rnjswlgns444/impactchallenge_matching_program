@@ -19,13 +19,20 @@
 
 ## AI 매칭 켜기
 
-`.streamlit/secrets.toml` 파일을 만들고 아래 한 줄을 넣는다. 이 파일은 git에 올라가지 않는다.
+지금은 구글 Gemini API의 무료 구간을 쓴다(`data/settings.yaml`의 `llm.provider: gemini`).
+키는 https://aistudio.google.com/apikey 에서 발급받는다.
+
+- PC에서 실행할 때: `.streamlit/secrets.toml` 파일을 만들고 아래 한 줄을 넣는다. 이 파일은 git에 올라가지 않는다.
+- 배포된 앱: Streamlit Cloud의 앱 Settings → Secrets에 같은 한 줄을 넣는다.
 
 ```
-ANTHROPIC_API_KEY = "여기에 키"
+GEMINI_API_KEY = "여기에 키"
 ```
 
 키가 없으면 결과 화면에 "맞춤 찾기를 하지 못했어요" 안내가 나오고, 유형만으로 찾은 프로그램을 보여준다.
+
+무료 구간에서는 보낸 내용을 구글이 서비스 개선에 쓸 수 있다. 그래서 주관식 입력칸 위 안내 문구에 이 사실을 적었고, 전화번호·이메일 형태는 보내기 전에 지운다.
+Claude로 바꾸려면 `llm.provider: anthropic`, `llm.model: claude-opus-5-5`로 고치고 `ANTHROPIC_API_KEY`를 넣는다.
 
 ## 내용을 고치는 법 (코드 수정 없음)
 
