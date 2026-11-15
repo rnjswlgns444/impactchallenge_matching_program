@@ -8,8 +8,8 @@ show_error_kind: true         # AI 호출이 실패하면 원인 종류를 화�
 llm:
   provider: gemini            # gemini(구글, 무료 구간 사용) 또는 anthropic
   model: gemini-3.8-flash     # 사용할 AI 모델. anthropic이면 claude-opus-5-5 등
-  effort: low                 # anthropic일 때만 쓰는 값 (low / medium / high)
-  timeout_seconds: 30         # 이 시간 안에 답이 없으면 실패로 처리
+  effort: low                 # 생각하는 깊이 (low / medium / high). 낮을수록 빨리 답합니다.
+  timeout_seconds: 60         # 이 시간 안에 답이 없으면 실패로 처리
 
 text:
   start_intro: "몇 가지 질문에 답하면, 나에게 맞는 안산의 프로그램을 찾아 드려요."

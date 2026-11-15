@@ -150,7 +150,7 @@ def make_anthropic_caller(api_key: str, model: str, effort: str, timeout: float)
     return call
 
 
-def make_gemini_caller(api_key: str, model: str, timeout: float) -> Callable[[str], str]:
+def make_gemini_caller(api_key: str, model: str, effort: str, timeout: float) -> Callable[[str], str]:
     """Google Gemini API를 부르는 함수를 만든다. 답은 JSON 형식으로 강제한다."""
     from google import genai
     from google.genai import types
@@ -176,7 +176,12 @@ def make_gemini_caller(api_key: str, model: str, timeout: float) -> Callable[[st
         response = client.models.generate_content(
             model=model,
             contents=prompt,
-            config={"response_mime_type": "application/json", "response_json_schema": schema},
+            config={
+                "response_mime_type": "application/json",
+                "response_json_schema": schema,
+                # 생각하는 깊이. 기본값(medium)은 답이 늦어 시간 초과가 났다
+                "thinking_config": {"thinking_level": effort},
+            },
         )
         if not response.text:
             raise RuntimeError("빈 답")
@@ -188,5 +193,5 @@ def make_gemini_caller(api_key: str, model: str, timeout: float) -> Callable[[st
 def make_caller(provider: str, api_key: str, model: str, effort: str, timeout: float) -> Callable[[str], str]:
     """settings.yaml의 llm.provider에 맞는 호출 함수를 만든다."""
     if provider == "gemini":
-        return make_gemini_caller(api_key, model, timeout)
+        return make_gemini_caller(api_key, model, effort, timeout)
     return make_anthropic_caller(api_key, model, effort, timeout)
