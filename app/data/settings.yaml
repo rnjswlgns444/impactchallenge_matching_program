@@ -1,0 +1,58 @@
+# 화면 문구와 동작 설정
+# 문구를 바꾸고 싶으면 이 파일만 고치면 됩니다.
+
+app_title: "나에게 맞는 안산 프로그램 찾기"
+top_n: 3                      # 추천 프로그램 개수
+
+llm:
+  model: claude-opus-5-5      # 사용할 AI 모델
+  effort: low                 # 생각하는 깊이 (low / medium / high). 낮을수록 빠릅니다.
+  timeout_seconds: 30         # 이 시간 안에 답이 없으면 실패로 처리
+
+text:
+  start_intro: "몇 가지 질문에 답하면, 나에게 맞는 안산의 프로그램을 찾아 드려요."
+  start_time: "약 3분이면 끝나요."
+  start_privacy: "이름이나 연락처는 묻지 않아요. 익명으로 응답 결과만 저장해요."
+  start_button: "시작하기"
+  back_button: "← 이전으로"
+  type_heading: "나의 유형"
+  wish_help: "해당하는 것을 모두 눌러 주세요. 누르기만 해도 돼요."
+  wish_text_label: "더 원하는 것이 있으면 적어 주세요. (안 적어도 돼요)"
+  wish_text_tip: "키보드의 마이크 단추를 누르면 말로 입력할 수 있어요."
+  wish_privacy: "이름, 전화번호, 주소 같은 개인정보는 적지 말아 주세요. 적어주신 내용은 프로그램을 찾기 위해 AI에게 전달되며, 저장되지 않아요."
+  wish_unsure: "잘 모르겠어요"
+  wish_submit: "프로그램 찾기"
+  wish_need_input: "위에서 하나 이상 누르거나, 원하는 것을 적어 주세요."
+  loading: "맞는 프로그램을 찾고 있어요…"
+  result_heading: "이런 프로그램은 어떠세요?"
+  fail_a: "적어주신 내용으로 맞춤 찾기를 하지 못했어요. 잠시 후 다시 시도해 주세요."
+  fail_a_retry: "다시 시도"
+  fail_a_default_heading: "유형만으로 찾은 프로그램"
+  fail_b: "'{items}'에 꼭 맞는 프로그램은 아직 찾지 못했어요. 대신 아래 프로그램과 상담 창구를 안내해 드려요."
+  fail_c: "지금 안내할 수 있는 프로그램을 찾지 못했어요. 아래 창구에 물어보시면 도와드려요."
+  unsure_heading: "먼저 편하게 이야기 나눌 수 있는 곳이에요"
+  consult_heading: "무엇이 맞을지 함께 찾아 주는 곳"
+  card_about: "이런 곳이에요"
+  card_flow: "가면 이렇게 진행돼요"
+  card_taste: "여기서 먼저 맛보기"
+  taste_start: "맛보기 시작"
+  taste_next: "다음"
+  taste_done: "어떠셨어요? 실제 프로그램도 이렇게 편하게 진행돼요."
+  taste_link: "맛보기 열기"
+  card_contact: "연락해 보고 싶다면"
+  call_button: "전화로 물어보기"
+  say_prefix: "이렇게 말해 보세요"
+  detail_button: "자세히 보기"
+  checked_note: "{date} 기준 정보예요. 신청 전에 기관에 꼭 확인해 주세요."
+  capture_tip: "이 화면을 캡처해 두면 나중에 다시 볼 수 있어요."
+  restart_button: "처음부터 다시 하기"
+  disclaimer: "심리검사나 진단이 아니라, 필요한 도움을 찾도록 돕는 안내입니다."
+
+# 추천할 프로그램이 하나도 없을 때 보여주는 기본 창구 (예시)
+fallback_card:
+  name: "[예시] 처음 오신 분 종합상담"
+  org: "[예시] 중장년 지원센터"
+  description: "무엇을 하고 싶은지 정해지지 않아도 편하게 이야기 나눌 수 있어요."
+  phone: "031-000-0000"
+  say: "처음인데요, 어떤 프로그램이 있는지 상담받고 싶어서 전화드렸어요."
+  url: "https://example.com/"
