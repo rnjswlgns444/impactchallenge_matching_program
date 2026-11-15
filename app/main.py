@@ -198,6 +198,8 @@ def screen_result(data, text) -> None:
             def retry():
                 state.result = None
             st.button(width="stretch", label=f'↻ {text["fail_a_retry"]}', key="retry", type="primary", on_click=retry)
+            if data.settings.get("show_error_kind") and result.error:
+                st.caption(f"점검용 오류 종류: {result.error}")
             heading = text["fail_a_default_heading"]
         elif result.status == "B":
             ui.notice(text["fail_b"].format(items=", ".join(result.unmatched)))

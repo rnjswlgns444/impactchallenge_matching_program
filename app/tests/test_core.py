@@ -138,7 +138,8 @@ def test_failure_a_when_llm_errors(data):
 
 
 def test_failure_a_when_no_key_bad_json_or_only_invalid_ids(data):
-    assert recommend(data, "JTR", ["걷기·운동"], "", False, None).status == "A"
+    no_key = recommend(data, "JTR", ["걷기·운동"], "", False, None)
+    assert no_key.status == "A" and no_key.error == "API 키 없음"
     assert recommend(data, "JTR", ["걷기·운동"], "", False, lambda p: "죄송합니다").status == "A"
     only_invalid = fake_llm({"matches": [{"id": "P15", "reason": "x"}], "unmatched": []})
     assert recommend(data, "JTR", ["걷기·운동"], "", False, only_invalid).status == "A"

@@ -44,6 +44,7 @@ class Recommendation:
     reasons: dict[str, str] = field(default_factory=dict)  # 프로그램 id → AI가 쓴 추천 이유
     consults: list[dict] = field(default_factory=list)   # 함께 보여줄 상담 창구
     unmatched: list[str] = field(default_factory=list)   # 맞는 후보를 못 찾은 희망
+    error: str = ""                                     # 실패 A의 원인 종류 (점검용, 사용자 글은 담지 않음)
 
 
 def build_prompt(template: str, type_info: dict, wish_examples: list[str], wish_text: str,
@@ -111,8 +112,12 @@ def recommend(data: AppData, type_code: str, wish_examples: list[str], wish_text
             raise ValueError("고른 프로그램이 없음")
     except Exception as err:  # 어떤 실패든 사용자에게는 실패 A로 알린다
         code = getattr(err, "code", None)   # API 오류면 상태 코드(예: 429)를 함께 남긴다
-        on_error(type(err).__name__ + (f":{code}" if code else ""))
-        return Recommendation("A", programs=default)
+        status = getattr(err, "status", None)
+        kind = type(err).__name__ + (f":{code}" if code else "") + (f":{status}" if status else "")
+        if call_llm is None:
+            kind = "API 키 없음"
+        on_error(kind)
+        return Recommendation("A", programs=default, error=kind)
 
     programs = [by_id[m["id"]] for m in matches]
     reasons = {m["id"]: m["reason"] for m in matches}

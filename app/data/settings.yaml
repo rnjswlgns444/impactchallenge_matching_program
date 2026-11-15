@@ -3,6 +3,7 @@
 
 app_title: "나에게 맞는 안산 프로그램 찾기"
 top_n: 3                      # 추천 프로그램 개수
+show_error_kind: true         # AI 호출이 실패하면 원인 종류를 화면에 작게 보여줌 (점검용. 실험 전에 false로)
 
 llm:
   provider: gemini            # gemini(구글, 무료 구간 사용) 또는 anthropic
