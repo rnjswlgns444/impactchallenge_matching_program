@@ -1,0 +1,13 @@
+# 화면 색과 글꼴 (밝은 화면으로 고정). 비밀 정보는 여기 넣지 않고 secrets.toml에 넣는다.
+[theme]
+base = "light"
+primaryColor = "#0b5c5c"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#eef5f4"
+textColor = "#1a1a1a"
+
+[browser]
+gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"
