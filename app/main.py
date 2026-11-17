@@ -54,6 +54,20 @@ def restart() -> None:
 
 def go(screen: str) -> None:
     st.session_state.screen = screen
+    st.session_state.to_top = True
+
+
+SCROLL_TOP = """<script>
+const d = window.parent.document;
+d.querySelectorAll('section, [data-testid="stMain"], [data-testid="stAppViewContainer"]').forEach(e => e.scrollTo(0, 0));
+window.parent.scrollTo(0, 0);
+</script>"""
+
+
+def scroll_to_top() -> None:
+    """화면이 바뀌면 맨 위부터 보이게 한다. Streamlit은 화면이 바뀌어도 스크롤 위치를 그대로 둔다."""
+    if st.session_state.pop("to_top", False):
+        st.iframe(SCROLL_TOP, height=1)
 
 
 def back_one(questions: list[dict]) -> None:
@@ -102,6 +116,7 @@ def screen_survey(data, text) -> None:
 
     def answer(value) -> None:
         state.answers[qid] = value
+        state.to_top = True
 
     if question["selection"] == "multi":
         chosen = state.draft.setdefault(qid, [])
@@ -121,7 +136,7 @@ def screen_survey(data, text) -> None:
             st.button(width="stretch", label=check_label(option["label"], selected), key=f"opt_{qid}_{option['id']}",
                       type="primary" if selected else "secondary", on_click=pick, args=(option["id"],))
         st.divider()
-        st.button(width="stretch", label=text["next_button"] if chosen else text["skip_button"], key=f"next_{qid}",
+        st.button(width="stretch", label=text["next_button"].format(count=len(chosen)) if chosen else text["skip_button"], key=f"next_{qid}",
                   type="primary" if chosen else "secondary", on_click=answer, args=(list(chosen),))
     else:
         for option in options:
@@ -185,25 +200,38 @@ def visible_contacts(result: candidates.TypeResult, top_n: int) -> list[dict]:
     return result.contacts[:top_n]
 
 
-def type_section(data, text, result: candidates.TypeResult, guides, open_part, top_n: int) -> None:
+def type_section(data, text, result: candidates.TypeResult, guides, open_part, top_n: int,
+                 seen: dict[str, str], consults: list[dict]) -> None:
+    """유형 하나의 구역. seen은 {이미 카드로 나온 프로그램 id: 그 유형 이름}이고, 여기서 나온 것을 더한다."""
     state = st.session_state
     tid = result.type_id
     type_info = data.types[tid]
     ui.type_header(text["type_label"], type_info)
+
+    if not result.contacts and not result.lists:
+        # 안내할 곳이 없으면 세부 질문을 묻지 않고, 함께 찾아 주는 창구를 바로 붙인다
+        ui.notice(text["no_program"])
+        for program in consults[:1]:
+            if program["id"] in seen:
+                ui.seen_card(program, text, seen[program["id"]])
+            else:
+                seen[program["id"]] = type_info["name"]
+                ui.program_card(program, text, None, guides, None, open_part, key=f"{tid}_consult_{program['id']}")
+        return
 
     detail = sel.detail_of(type_info)
     if detail:
         detail_question(text, type_info, detail)
     asked = [opt["label"] for opt in sel.chosen_detail_options(type_info, state.details.get(tid))]
 
-    if not result.contacts and not result.lists:
-        ui.notice(text["no_program"])
-        return
-
     if result.contacts:
         ui.html(f'<p class="sec">{escape(text["contacts_heading"])}</p>')
         shown = visible_contacts(result, top_n)
         for program in shown:
+            if program["id"] in seen:
+                ui.seen_card(program, text, seen[program["id"]])
+                continue
+            seen[program["id"]] = type_info["name"]
             ui.program_card(program, text, type_info, guides, asked, open_part, key=f"{tid}_{program['id']}")
         hidden = len(result.contacts) - len(shown)
         if hidden:
@@ -219,8 +247,11 @@ def type_section(data, text, result: candidates.TypeResult, guides, open_part, t
             ui.list_card(program, text)
 
 
-def browse_types(data, text, type_ids: list[str]) -> None:
-    """유형을 정하지 않은 사람이 12개 유형을 둘러본다. 본인이 누른 것만 유형으로 더한다."""
+def browse_types(data, text, type_ids: list[str], draw_section) -> None:
+    """유형을 정하지 않은 사람이 12개 유형을 둘러본다. 본인이 누른 것만 유형으로 더한다.
+
+    누른 유형의 안내는 그 단추 바로 아래에 그린다(draw_section). 화면 밖에 생기면 찾지 못한다.
+    """
     state = st.session_state
     options = sel.options_of(sel.question(data.questions, sel.TYPE_Q), data.types)
 
@@ -239,6 +270,8 @@ def browse_types(data, text, type_ids: list[str]) -> None:
             st.button(width="stretch", label=check_label(f'{type_info["name"]}: {type_info["purpose"]}', selected),
                       key=f"browse_{type_info['id']}", type="primary" if selected else "secondary",
                       on_click=pick, args=(type_info["id"],))
+            if selected:
+                draw_section(type_info["id"])
 
 
 def consult_section(data, text, consults: list[dict], guides, open_part) -> None:
@@ -278,24 +311,29 @@ def screen_result(data, text) -> None:
     shown_ids = [p["id"] for r in results for p in visible_contacts(r, top_n) + r.lists]
     log_once(type_ids, shown_ids or [p["id"] for p in consults])
 
+    seen: dict[str, str] = {}
+    by_type = {r.type_id: r for r in results}
+
+    def draw_section(type_id: str) -> None:
+        type_section(data, text, by_type[type_id], guides, open_part, top_n, seen, consults)
+
     ui.heading(text["result_heading"])
     if state.browsing:
         # 유형을 정하지 않은 사람: 일반 창구를 먼저, 그 아래에서 유형을 둘러본다
         ui.notice(text["unknown_intro"], "info")
         if consults:
             consult_section(data, text, consults, guides, open_part)
+            seen.update({p["id"]: text["consult_heading"] for p in consults})
         else:
             ui.fallback_card(data.settings["fallback_card"], text)
-        browse_types(data, text, type_ids)
-        for result in results:
-            type_section(data, text, result, guides, open_part, top_n)
+        browse_types(data, text, type_ids, draw_section)
     else:
         ui.body(text["result_intro"])
         if len(type_ids) >= 2 and sel.PRIORITY_Q not in state.answers:
             priority_question(data, type_ids)
         for result in results:
-            type_section(data, text, result, guides, open_part, top_n)
-        rest = [p for p in consults if p["id"] not in shown_ids]      # 위에 이미 나온 창구는 다시 내지 않는다
+            draw_section(result.type_id)
+        rest = [p for p in consults if p["id"] not in seen]           # 위에 이미 나온 창구는 다시 내지 않는다
         if rest:
             consult_section(data, text, rest, guides, open_part)
         elif not shown_ids:
@@ -316,6 +354,7 @@ def main() -> None:
                        initial_sidebar_state="collapsed")
     style.apply()
     init_state()
+    scroll_to_top()
     screens = {"start": screen_start, "survey": screen_survey, "result": screen_result}
     screens[st.session_state.screen](data, text)
 
