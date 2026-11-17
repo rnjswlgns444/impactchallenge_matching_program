@@ -1,12 +1,11 @@
-"""데이터 파일 5개를 읽고, 앱을 켤 때 형식을 검사한다.
+"""데이터 파일을 읽고, 앱을 켤 때 형식을 검사한다.
 
-입력: data/questions.yaml, types.yaml, rules.yaml, programs.csv, settings.yaml, prompts/matching.md
+입력: data/questions.yaml, types.yaml, programs.csv, settings.yaml, prompts/matching.md
 형식이 틀리면 DataError를 던진다. 메시지는 파일을 고치는 팀원이 읽는 한국어 문장이다.
 """
 from __future__ import annotations
 
 import csv
-import itertools
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,14 +16,27 @@ APP_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = APP_DIR / "data"
 PROMPT_PATH = APP_DIR / "prompts" / "matching.md"
 
+# 코드가 읽는 열. 재확인일·운영근거·비고는 팀 점검용이라 없어도 된다.
 REQUIRED_COLUMNS = [
-    "id", "기관명", "프로그램명", "한줄설명", "상세설명", "키워드", "유형태그", "첫상담",
-    "55~64세참여", "운영상태", "매칭가능", "시간대", "비용", "장소", "공식연락처",
-    "홈페이지URL", "상세페이지URL", "진행방식", "첫방문안내", "첫연락문장",
-    "체험유형", "체험제목", "체험URL", "체험내용", "확인날짜",
+    "id", "기관명", "프로그램명", "종류", "한줄설명", "상세설명", "키워드", "유형태그", "세부태그", "첫상담",
+    "55~64세참여", "대상", "확인필요", "보수", "운영상태", "매칭가능", "표시종료일",
+    "시간대", "기간", "비용", "장소", "신청방법", "공식연락처", "홈페이지URL", "상세페이지URL", "신청URL",
+    "진행방식", "첫방문안내", "혼자참여", "초보참여", "첫연락문장",
+    "체험유형", "체험제목", "체험URL", "체험내용", "확인날짜", "출처URL",
 ]
 PLACEHOLDERS = ["{type_name}", "{type_summary}", "{wish_examples}", "{wish_text}", "{candidates}", "{max_n}"]
+
+QUESTION_IDS = ["Q_NEEDS", "Q_BARRIER", "Q_START", "Q_PRIORITY", "Q_FREE"]   # 코드가 id로 찾는 문항
+SELECTIONS = {"single", "multi", "text"}
+OPTION_SOURCES = {"types", "selected_types"}
+CARD_PARTS = {"about", "ask", "contact"}          # Q_START 선택지의 open 값
+RULE_KEYS = ("exclude", "first", "last")          # 세부 질문에 붙는 후보 규칙
+
+KINDS = {"상시서비스", "기간프로그램", "목록"}
+AGE_VALUES = {"가능", "불가", "미확인"}
+PAY_VALUES = {"해당없음", "유급", "활동비", "무보수", "미확인"}
 TASTE_KINDS = {"", "영상", "공개강좌", "앱체험"}
+DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 
 class DataError(Exception):
@@ -38,8 +50,8 @@ class DataError(Exception):
 @dataclass
 class AppData:
     questions: list[dict]
-    rules: dict
-    types: dict[str, dict]      # 유형 코드 → 유형 정보
+    types: dict[str, dict]      # 유형 id → 유형 정보 (파일에 적힌 순서)
+    areas: list[dict]
     programs: list[dict]
     settings: dict
     prompt: str
@@ -71,138 +83,170 @@ def _read_programs(path: Path, problems: list[str]) -> list[dict]:
     return []
 
 
-def all_type_codes(rules: dict) -> list[str]:
-    """축 조합으로 만들 수 있는 모든 유형 코드."""
-    pole_lists = [[p["code"] for p in axis["poles"]] for axis in rules.get("axes", [])]
-    return ["".join(combo) for combo in itertools.product(*pole_lists)]
+def _check_options(where: str, options: list[dict], problems: list[str]) -> None:
+    seen = set()
+    for opt in options:
+        if not opt.get("id") or not opt.get("label"):
+            problems.append(f"{where}의 선택지에 id와 label이 있어야 합니다.")
+        elif opt["id"] in seen:
+            problems.append(f"{where}에 선택지 id '{opt['id']}'가 두 번 나옵니다.")
+        seen.add(opt.get("id"))
 
 
-def validate(questions, rules, types_list, programs, prompt) -> list[str]:
+def _check_rule(where: str, rule, problems: list[str]) -> None:
+    """exclude / first / last 규칙은 {programs.csv의 열 이름: [값]} 꼴이어야 한다."""
+    if not isinstance(rule, dict) or not all(isinstance(v, list) for v in rule.values()):
+        problems.append(f"{where}는 {{열 이름: [값, 값]}} 꼴로 적어야 합니다.")
+        return
+    for column in rule:
+        if column not in REQUIRED_COLUMNS:
+            problems.append(f"{where}의 '{column}'은 programs.csv에 없는 열입니다.")
+
+
+def validate_types(areas: list[dict], types_list: list[dict]) -> list[str]:
     problems: list[str] = []
-
-    # ── 규칙의 축 ──
-    axes = {}
-    for i, axis in enumerate(rules.get("axes") or [], 1):
-        poles = [p.get("code") for p in axis.get("poles") or []]
-        if not axis.get("id") or len(poles) != 2:
-            problems.append(f"rules.yaml: axes의 {i}번째 축에는 id와 poles 2개가 있어야 합니다.")
+    area_ids = {a.get("id") for a in areas}
+    if not types_list:
+        problems.append("types.yaml: 유형이 하나도 없습니다.")
+    seen, detail_ids = set(), set()
+    for i, t in enumerate(types_list, 1):
+        tid = t.get("id")
+        if not tid:
+            problems.append(f"types.yaml: {i}번째 유형에 id가 없습니다.")
             continue
-        axes[axis["id"]] = poles
-    if not axes:
-        problems.append("rules.yaml: axes(축)가 하나도 없습니다.")
+        if tid in seen:
+            problems.append(f"types.yaml: 유형 id '{tid}'가 두 번 나옵니다.")
+        seen.add(tid)
+        for field in ("name", "statement"):
+            if not t.get(field):
+                problems.append(f"types.yaml: 유형 '{tid}'에 {field}가 없습니다.")
+        if t.get("area") not in area_ids:
+            problems.append(f"types.yaml: 유형 '{tid}'의 area '{t.get('area')}'가 areas에 없습니다.")
+        detail = t.get("detail")
+        if not detail:
+            continue
+        where = f"types.yaml: 유형 '{tid}'의 세부 질문"
+        if not detail.get("id") or not detail.get("text") or detail.get("selection") not in ("single", "multi"):
+            problems.append(f"{where}에는 id, text, selection(single 또는 multi)이 있어야 합니다.")
+        if detail.get("id") in detail_ids:
+            problems.append(f"{where} id '{detail.get('id')}'가 다른 유형과 겹칩니다.")
+        detail_ids.add(detail.get("id"))
+        options = detail.get("options") or []
+        if len(options) < 2:
+            problems.append(f"{where}에 선택지가 2개 이상 있어야 합니다.")
+        _check_options(where, options, problems)
+        if "last" in detail:
+            _check_rule(f"{where} last", detail["last"], problems)
+        for opt in options:
+            for key in ("exclude", "first"):
+                if key in opt:
+                    _check_rule(f"{where} 선택지 '{opt.get('id')}'의 {key}", opt[key], problems)
+    return problems
 
-    # ── 문항 ──
-    option_to_question = {}
-    tie_questions = {}
-    seen_q = set()
+
+def validate_questions(questions: list[dict]) -> list[str]:
+    problems: list[str] = []
+    seen = set()
     for i, q in enumerate(questions, 1):
         qid = q.get("id")
-        if not qid or not q.get("text") or len(q.get("options") or []) < 2:
-            problems.append(f"questions.yaml: {i}번째 문항에는 id, text, 선택지 2개 이상이 있어야 합니다.")
+        if not qid or not q.get("text"):
+            problems.append(f"questions.yaml: {i}번째 문항에는 id와 text가 있어야 합니다.")
             continue
-        if qid in seen_q:
+        if qid in seen:
             problems.append(f"questions.yaml: 문항 id '{qid}'가 두 번 나옵니다.")
-        seen_q.add(qid)
-        for opt in q["options"]:
-            if not opt.get("id") or not opt.get("label"):
-                problems.append(f"questions.yaml: 문항 '{qid}'의 선택지에 id와 label이 있어야 합니다.")
-            elif opt["id"] in option_to_question:
-                problems.append(f"questions.yaml: 선택지 id '{opt['id']}'가 두 번 나옵니다.")
-            else:
-                option_to_question[opt["id"]] = qid
-        tie_axis = (q.get("show_when") or {}).get("tie")
-        if tie_axis:
-            if tie_axis not in axes:
-                problems.append(f"questions.yaml: 문항 '{qid}'의 show_when이 가리키는 축 '{tie_axis}'가 rules.yaml에 없습니다.")
-            tie_questions[tie_axis] = qid
-
-    # ── 점수 규칙 ──
-    for opt_id, effect in (rules.get("scores") or {}).items():
-        if opt_id not in option_to_question:
-            problems.append(f"rules.yaml: scores의 '{opt_id}'는 questions.yaml에 없는 선택지입니다.")
-        for axis_id, value in (effect or {}).items():
-            pole_codes = list(value) if isinstance(value, dict) else [value]
-            if axis_id not in axes:
-                problems.append(f"rules.yaml: scores의 '{opt_id}'가 가리키는 축 '{axis_id}'가 axes에 없습니다.")
-            else:
-                for code in pole_codes:
-                    if code not in axes[axis_id]:
-                        problems.append(f"rules.yaml: scores의 '{opt_id}'에서 '{code}'는 축 '{axis_id}'의 값이 아닙니다. ({'/'.join(axes[axis_id])} 중 하나)")
-
-    # ── 동점 규칙 ──
-    for axis_id, how in (rules.get("tie_break") or {}).items():
-        if axis_id not in axes:
-            problems.append(f"rules.yaml: tie_break의 축 '{axis_id}'가 axes에 없습니다.")
-        elif how == "ask":
-            if axis_id not in tie_questions:
-                problems.append(f"rules.yaml: 축 '{axis_id}'의 동점 처리가 ask인데, questions.yaml에 show_when: {{tie: {axis_id}}} 문항이 없습니다.")
-        elif how not in axes[axis_id]:
-            problems.append(f"rules.yaml: tie_break의 '{axis_id}: {how}'는 ask 또는 {'/'.join(axes[axis_id])} 중 하나여야 합니다.")
-    for axis_id in axes:
-        if axis_id not in (rules.get("tie_break") or {}):
-            problems.append(f"rules.yaml: 축 '{axis_id}'의 동점 처리(tie_break)가 없습니다.")
-
-    # ── 예외 규칙 ──
-    for i, rule in enumerate(rules.get("overrides") or [], 1):
-        for qid, opt_id in (rule.get("if") or {}).items():
-            if option_to_question.get(opt_id) != qid:
-                problems.append(f"rules.yaml: overrides {i}번째의 조건 '{qid}: {opt_id}'가 questions.yaml과 맞지 않습니다.")
-        for axis_id, code in (rule.get("then") or {}).items():
-            if code not in axes.get(axis_id, []):
-                problems.append(f"rules.yaml: overrides {i}번째의 결과 '{axis_id}: {code}'가 axes와 맞지 않습니다.")
-
-    # ── 유형 ──
-    type_codes = [t.get("code") for t in types_list]
-    known_tags = set()
-    for code in all_type_codes(rules) if axes else []:
-        if code not in type_codes:
-            problems.append(f"types.yaml: 유형 '{code}'가 없습니다. 축 조합마다 유형이 하나씩 있어야 합니다.")
-    for t in types_list:
-        code = t.get("code", "?")
-        for field in ("name", "summary", "tags", "wish_question", "wish_examples"):
-            if not t.get(field):
-                problems.append(f"types.yaml: 유형 '{code}'에 {field}가 없습니다.")
-        known_tags.update(t.get("tags") or [])
-
-    # ── 프로그램 정보표 ──
-    if programs:
-        missing = [c for c in REQUIRED_COLUMNS if c not in programs[0]]
-        if missing:
-            problems.append(f"programs.csv: 다음 열이 없습니다: {', '.join(missing)}")
-        else:
-            seen_ids = set()
-            for row_no, row in enumerate(programs, 2):  # 1행은 제목이므로 2부터
-                pid = row["id"]
-                if not pid or pid in seen_ids:
-                    problems.append(f"programs.csv {row_no}행: id가 비었거나 중복입니다.")
-                seen_ids.add(pid)
-                for tag in split_multi(row["유형태그"]):
-                    if tag not in known_tags:
-                        problems.append(f"programs.csv {row_no}행({pid}): 유형태그 '{tag}'가 types.yaml의 tags에 없습니다.")
-                if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", row["확인날짜"]):
-                    problems.append(f"programs.csv {row_no}행({pid}): 확인날짜는 2026-11-15 같은 형식이어야 합니다.")
-                if row["체험유형"] not in TASTE_KINDS:
-                    problems.append(f"programs.csv {row_no}행({pid}): 체험유형은 영상/공개강좌/앱체험 중 하나이거나 비워 둡니다.")
-                if row["체험유형"] == "앱체험" and not split_multi(row["체험내용"]):
-                    problems.append(f"programs.csv {row_no}행({pid}): 체험유형이 앱체험이면 체험내용에 단계를 적어야 합니다.")
-                if row["체험유형"] in ("영상", "공개강좌") and not row["체험URL"]:
-                    problems.append(f"programs.csv {row_no}행({pid}): 체험유형이 {row['체험유형']}이면 체험URL이 있어야 합니다.")
-    else:
-        problems.append("programs.csv: 프로그램이 하나도 없습니다.")
-
-    # ── AI 지시문 ──
-    for placeholder in PLACEHOLDERS:
-        if placeholder not in prompt:
-            problems.append(f"prompts/matching.md: 자리표시자 {placeholder}가 없습니다. 지우지 마세요.")
-
+        seen.add(qid)
+        where = f"questions.yaml: 문항 '{qid}'"
+        if q.get("selection") not in SELECTIONS:
+            problems.append(f"{where}의 selection은 single, multi, text 중 하나여야 합니다.")
+        if q.get("options_from") and q["options_from"] not in OPTION_SOURCES:
+            problems.append(f"{where}의 options_from은 types 또는 selected_types여야 합니다.")
+        options = q.get("options") or []
+        if q.get("selection") in ("single", "multi") and not q.get("options_from") and len(options) < 2:
+            problems.append(f"{where}에 선택지가 2개 이상 있어야 합니다.")
+        _check_options(where, options, problems)
+        for opt in options:
+            for column in opt.get("show") or []:
+                if column not in REQUIRED_COLUMNS:
+                    problems.append(f"{where} 선택지 '{opt.get('id')}'의 show에 적힌 '{column}'은 programs.csv에 없는 열입니다.")
+            if "open" in opt and opt["open"] not in CARD_PARTS:
+                problems.append(f"{where} 선택지 '{opt.get('id')}'의 open은 about, ask, contact 중 하나여야 합니다.")
+    for qid in QUESTION_IDS:
+        if qid not in seen:
+            problems.append(f"questions.yaml: 문항 '{qid}'가 없습니다. 이 id는 코드가 쓰므로 지우거나 바꾸면 안 됩니다.")
     return problems
+
+
+def detail_tags(types_list: list[dict]) -> set[str]:
+    """programs.csv의 세부태그에 쓸 수 있는 값. '세부질문id.선택지id' 꼴."""
+    return {
+        f"{t['detail']['id']}.{opt['id']}"
+        for t in types_list if t.get("detail")
+        for opt in t["detail"].get("options") or [] if not opt.get("exclusive")
+    }
+
+
+def validate_programs(programs: list[dict], types_list: list[dict]) -> list[str]:
+    problems: list[str] = []
+    if not programs:
+        return ["programs.csv: 프로그램이 하나도 없습니다."]
+    missing = [c for c in REQUIRED_COLUMNS if c not in programs[0]]
+    if missing:
+        return [f"programs.csv: 다음 열이 없습니다: {', '.join(missing)}"]
+
+    type_ids = {t.get("id") for t in types_list}
+    known_details = detail_tags(types_list)
+    seen_ids = set()
+    for row_no, row in enumerate(programs, 2):  # 1행은 제목이므로 2부터
+        pid = row["id"]
+        where = f"programs.csv {row_no}행({pid})"
+        if not pid or pid in seen_ids:
+            problems.append(f"programs.csv {row_no}행: id가 비었거나 중복입니다.")
+        seen_ids.add(pid)
+
+        tags = split_multi(row["유형태그"])
+        if not tags:
+            problems.append(f"{where}: 유형태그가 비었습니다. T01 같은 유형 번호를 적어 주세요.")
+        for tag in tags:
+            if tag not in type_ids:
+                problems.append(f"{where}: 유형태그 '{tag}'가 types.yaml에 없습니다.")
+        for tag in split_multi(row["세부태그"]):
+            if tag not in known_details:
+                problems.append(f"{where}: 세부태그 '{tag}'가 types.yaml에 없습니다. 'D02.wage_required'처럼 적습니다.")
+
+        for column, allowed in (("종류", KINDS), ("매칭가능", {"Y", "N"}), ("55~64세참여", AGE_VALUES), ("보수", PAY_VALUES)):
+            if row[column] not in allowed:
+                problems.append(f"{where}: '{column}' 칸은 {' / '.join(sorted(allowed))} 중 하나여야 합니다. (지금: '{row[column]}')")
+        if not DATE.fullmatch(row["확인날짜"]):
+            problems.append(f"{where}: 확인날짜는 2026-11-15 같은 형식이어야 합니다.")
+        if row["표시종료일"] and not DATE.fullmatch(row["표시종료일"]):
+            problems.append(f"{where}: 표시종료일은 비워 두거나 2026-11-20 같은 형식으로 적습니다.")
+        if row["매칭가능"] == "Y" and not row["출처URL"]:
+            problems.append(f"{where}: 매칭가능이 Y이면 출처URL이 있어야 합니다. 확인한 공식 페이지 주소를 적어 주세요.")
+
+        if row["체험유형"] not in TASTE_KINDS:
+            problems.append(f"{where}: 체험유형은 영상/공개강좌/앱체험 중 하나이거나 비워 둡니다.")
+        if row["체험유형"] == "앱체험" and not split_multi(row["체험내용"]):
+            problems.append(f"{where}: 체험유형이 앱체험이면 체험내용에 단계를 적어야 합니다.")
+        if row["체험유형"] in ("영상", "공개강좌") and not row["체험URL"]:
+            problems.append(f"{where}: 체험유형이 {row['체험유형']}이면 체험URL이 있어야 합니다.")
+    return problems
+
+
+def validate_prompt(prompt: str) -> list[str]:
+    return [f"prompts/matching.md: 자리표시자 {p}가 없습니다. 지우지 마세요." for p in PLACEHOLDERS if p not in prompt]
+
+
+def validate(areas, types_list, questions, programs, prompt) -> list[str]:
+    problems = validate_types(areas, types_list) + validate_questions(questions)
+    return problems + validate_programs(programs, types_list) + validate_prompt(prompt)
 
 
 def load_all(data_dir: Path = DATA_DIR, prompt_path: Path = PROMPT_PATH) -> AppData:
     problems: list[str] = []
     questions = (_read_yaml(data_dir / "questions.yaml", problems) or {}).get("questions") or []
-    rules = _read_yaml(data_dir / "rules.yaml", problems)
-    types_list = (_read_yaml(data_dir / "types.yaml", problems) or {}).get("types") or []
+    types_file = _read_yaml(data_dir / "types.yaml", problems) or {}
+    areas = types_file.get("areas") or []
+    types_list = types_file.get("types") or []
     settings = _read_yaml(data_dir / "settings.yaml", problems)
     programs = _read_programs(data_dir / "programs.csv", problems)
     try:
@@ -212,7 +256,7 @@ def load_all(data_dir: Path = DATA_DIR, prompt_path: Path = PROMPT_PATH) -> AppD
         problems.append("prompts/matching.md: 파일이 없습니다.")
 
     if not problems:
-        problems = validate(questions, rules, types_list, programs, prompt)
+        problems = validate(areas, types_list, questions, programs, prompt)
     if problems:
         raise DataError(problems)
-    return AppData(questions, rules, {t["code"]: t for t in types_list}, programs, settings, prompt)
+    return AppData(questions, {t["id"]: t for t in types_list}, areas, programs, settings, prompt)
