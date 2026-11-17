@@ -269,3 +269,21 @@ def test_general_window_may_have_no_type_tag(data):
 
 def test_good_fake_rows_pass_validation(data):
     assert loader.validate_programs([row("a", "T01|T02", 세부태그="D02.wage_required")], list(data.types.values())) == []
+
+
+# ── 전화 걸기 ──
+
+def test_phone_dials_first_number_only():
+    from app.ui.components import phones
+    assert phones("031-439-1619~21") == [("0314391619", "031-439-1619~21")]
+    assert phones("031-369-1590~1591") == [("0313691590", "031-369-1590~1591")]
+    assert [n for n, _ in phones("1666-1234")] == ["16661234"]
+    assert [n for n, _ in phones("129")] == ["129"]
+    assert [n for n, _ in phones("1332")] == ["1332"]
+    assert phones("") == []
+
+
+def test_phone_with_two_offices_gives_two_buttons():
+    from app.ui.components import phones
+    found = phones("031-481-5795 (상록수) / 031-481-6541 (단원)")
+    assert found == [("0314815795", "031-481-5795 (상록수)"), ("0314816541", "031-481-6541 (단원)")]
