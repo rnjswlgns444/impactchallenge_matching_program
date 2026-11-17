@@ -1,23 +1,19 @@
-"""익명 기록. 저장 방식을 나중에 바꿀 수 있게 함수 두 개로 감싼다.
+"""익명 기록. 저장 방식을 나중에 바꿀 수 있게 함수로 감싼다.
 
-- responses.csv: 결과가 나올 때마다 한 행
-- events.csv: 맛보기를 시작하거나 끝까지 봤을 때 한 행
+- responses.csv: 결과 화면에 처음 도착했을 때 한 행 (한 번 진행에 한 행)
+- events.csv: 그 뒤의 행동마다 한 행 (먼저 볼 유형 고르기, 세부 질문 답하기, 맛보기 등)
 이름·연락처·주관식 원문은 받지도 저장하지도 않는다. 시각은 시간 단위까지만 남긴다.
 """
 from __future__ import annotations
 
 import csv
-import json
 from datetime import datetime
 from pathlib import Path
 
 LOG_DIR = Path(__file__).resolve().parent.parent / "logs"
 
-RESPONSE_FIELDS = [
-    "session_id", "hour", "option_ids", "axis_scores", "type_code",
-    "wish_examples", "wrote_text", "unsure", "status", "program_ids",
-]
-EVENT_FIELDS = ["session_id", "hour", "event", "program_id"]
+RESPONSE_FIELDS = ["session_id", "hour", "type_ids", "barriers", "start", "program_ids"]
+EVENT_FIELDS = ["session_id", "hour", "event", "target", "value"]
 
 
 def _hour() -> str:
@@ -26,6 +22,12 @@ def _hour() -> str:
 
 def _append(path: Path, fields: list[str], row: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        with path.open(encoding="utf-8-sig", newline="") as f:
+            header = next(csv.reader(f), [])
+        if header != fields:
+            # 예전 형식의 파일이면 이름을 바꿔 보관하고 새로 시작한다. 열이 어긋난 채 쌓이지 않게 한다.
+            path.rename(path.with_name(f"{path.stem}_이전형식_{datetime.now():%Y%m%d_%H%M%S}{path.suffix}"))
     is_new = not path.exists()
     with path.open("a", encoding="utf-8-sig", newline="") as f:
         writer = csv.DictWriter(f, fields)
@@ -34,31 +36,31 @@ def _append(path: Path, fields: list[str], row: dict) -> None:
         writer.writerow(row)
 
 
-def log_response(session_id, option_ids, axis_scores, type_code, wish_examples,
-                 wrote_text, unsure, status, program_ids, log_dir: Path = LOG_DIR) -> None:
-    _append(log_dir / "responses.csv", RESPONSE_FIELDS, {
+def log_response(session_id, type_ids, barriers, start, program_ids, log_dir: Path | None = None) -> None:
+    """고른 유형, 걸림돌, 시작 방식, 화면에 나온 프로그램을 남긴다."""
+    _append((log_dir or LOG_DIR) / "responses.csv", RESPONSE_FIELDS, {
         "session_id": session_id,
         "hour": _hour(),
-        "option_ids": "|".join(option_ids),
-        "axis_scores": json.dumps(axis_scores, ensure_ascii=False),
-        "type_code": type_code,
-        "wish_examples": "|".join(wish_examples),
-        "wrote_text": "Y" if wrote_text else "N",
-        "unsure": "Y" if unsure else "N",
-        "status": status,
+        "type_ids": "|".join(type_ids),
+        "barriers": "|".join(barriers),
+        "start": start or "",
         "program_ids": "|".join(program_ids),
     })
 
 
-def log_event(session_id, event, program_id, log_dir: Path = LOG_DIR) -> None:
-    """event: taste_start(맛보기 시작) 또는 taste_done(끝까지 봄)."""
-    _append(log_dir / "events.csv", EVENT_FIELDS, {
-        "session_id": session_id, "hour": _hour(), "event": event, "program_id": program_id,
+def log_event(session_id, event, target="", value="", log_dir: Path | None = None) -> None:
+    """event 예: priority(먼저 볼 유형), detail(세부 질문 답), taste_start, taste_done.
+
+    target은 유형·프로그램 id, value는 고른 선택지 id다. 사용자가 적은 글은 넣지 않는다.
+    """
+    _append((log_dir or LOG_DIR) / "events.csv", EVENT_FIELDS, {
+        "session_id": session_id, "hour": _hour(), "event": event, "target": target, "value": value,
     })
 
 
-def log_error(kind: str, log_dir: Path = LOG_DIR) -> None:
+def log_error(kind: str, log_dir: Path | None = None) -> None:
     """AI 호출 실패 원인을 종류만 남긴다. 사용자가 적은 글은 남기지 않는다."""
+    log_dir = log_dir or LOG_DIR
     log_dir.mkdir(parents=True, exist_ok=True)
     with (log_dir / "errors.log").open("a", encoding="utf-8") as f:
         f.write(f"{datetime.now():%Y-%m-%d %H:%M} {kind}\n")
