@@ -22,10 +22,10 @@ CSS = """
   border: 2px solid #0b5c5c; }
 .stButton > button p { font-size: 21px !important; font-weight: 600; line-height: 1.4; }
 .stButton > button[kind="secondary"] { background: #ffffff; }
-.stButton > button[kind="secondary"] p { color: #0b5c5c; }
-.stButton > button[kind="primary"] p { color: #ffffff; }
+.stApp .stButton > button[kind="secondary"] p { color: #0b5c5c; }
+.stApp .stButton > button[kind="primary"] p { color: #ffffff; }
 .stButton > button[kind="tertiary"] { border: none; min-height: 56px; }
-.stButton > button[kind="tertiary"] p { color: #444444; font-weight: 500; text-decoration: underline; }
+.stApp .stButton > button[kind="tertiary"] p { color: #444444; font-weight: 500; text-decoration: underline; }
 .stButton > button:focus-visible { outline: 4px solid #f2a900; outline-offset: 2px; }
 
 /* 글 입력칸 */
