@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 import csv
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 LOG_DIR = Path(__file__).resolve().parent.parent / "logs"
@@ -16,11 +16,25 @@ RESPONSE_FIELDS = ["session_id", "hour", "type_ids", "barriers", "start", "progr
 EVENT_FIELDS = ["session_id", "hour", "event", "target", "value"]
 
 
+KST = timezone(timedelta(hours=9))     # 서버가 어디에 있든 한국 시각으로 남긴다
+
+
 def _hour() -> str:
-    return datetime.now().strftime("%Y-%m-%d %H시")
+    return datetime.now(KST).strftime("%Y-%m-%d %H시")
 
 
 def _append(path: Path, fields: list[str], row: dict) -> None:
+    """한 행을 덧붙인다. 파일이 잠겨 있는 등으로 실패해도 사용자 화면은 멈추지 않게 한다."""
+    try:
+        _write(path, fields, row)
+    except OSError as err:
+        try:
+            log_error(f"기록 실패 {path.name} {type(err).__name__}", path.parent)
+        except OSError:
+            pass
+
+
+def _write(path: Path, fields: list[str], row: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
         with path.open(encoding="utf-8-sig", newline="") as f:
