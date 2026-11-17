@@ -287,3 +287,13 @@ def test_phone_with_two_offices_gives_two_buttons():
     from app.ui.components import phones
     found = phones("031-481-5795 (상록수) / 031-481-6541 (단원)")
     assert found == [("0314815795", "031-481-5795 (상록수)"), ("0314816541", "031-481-6541 (단원)")]
+
+
+def test_log_failure_does_not_break_screen(tmp_path, monkeypatch):
+    """기록 파일이 잠겨 있어도(엑셀로 열어 둔 경우 등) 예외가 화면까지 올라오지 않는다."""
+    def locked(*args):
+        raise PermissionError("잠김")
+    monkeypatch.setattr(logger, "_write", locked)
+    logger.log_response("s1", ["T01"], [], "", ["JOB01"], log_dir=tmp_path)
+    logger.log_event("s1", "detail", "T01", "new_work", log_dir=tmp_path)
+    assert "기록 실패" in (tmp_path / "errors.log").read_text(encoding="utf-8")

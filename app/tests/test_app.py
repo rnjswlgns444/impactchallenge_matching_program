@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+from html import escape
 from pathlib import Path
 
 import pytest
@@ -49,6 +50,10 @@ def test_two_types_to_the_end(app, tmp_path):
     hidden = {p["프로그램명"] for p in data.programs if p["매칭가능"] != "Y"} - shown
     assert not [name for name in hidden if name in text]
 
+    # 두 유형에 모두 해당하는 곳은 카드를 되풀이하지 않고 한 줄로 알린다
+    assert escape(data.settings["text"]["seen_note"].format(type=data.types["T01"]["name"])) in text
+    assert data.settings["text"]["call_button"] in text       # 전화 단추는 접지 않고 보인다
+
     click(app, "priority_T04")                              # 먼저 볼 유형을 고르면 순서만 바뀐다
     text = page_text(app)
     assert text.index(data.types["T04"]["name"]) < text.index(data.types["T01"]["name"])
@@ -72,6 +77,8 @@ def test_unknown_browses_all_types(app, tmp_path):
     assert data.settings["text"]["type_label"] not in text    # 아직 유형 구역이 없다
     assert rows(tmp_path, "responses.csv")[0]["type_ids"] == ""
 
+    click(app, "browse_T07")                                  # 안내할 곳이 없는 유형도 막다른 화면이 아니다
+    assert data.settings["text"]["no_program"] in page_text(app)
     click(app, "browse_T09")
     assert data.types["T09"]["statement"] in page_text(app)
     assert len(rows(tmp_path, "responses.csv")) == 1
