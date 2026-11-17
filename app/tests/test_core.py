@@ -29,7 +29,7 @@ def row(pid, tags, **changes):
     """가짜 프로그램 행. 기본값은 '지금 문의할 수 있는 상시 서비스'다."""
     base = {column: "" for column in loader.REQUIRED_COLUMNS}
     base.update({
-        "id": pid, "기관명": "가짜 기관", "프로그램명": f"가짜 프로그램 {pid}", "종류": "상시서비스",
+        "id": pid, "기관명": "가짜 기관", "프로그램명": f"가짜 프로그램 {pid}", "종류": "상시서비스", "범위": "안산",
         "한줄설명": "설명", "유형태그": tags, "첫상담": "N", "55~64세참여": "가능", "보수": "해당없음",
         "운영상태": "상시운영", "매칭가능": "Y", "확인날짜": "2026-11-17", "출처URL": "https://example.com/",
     })
@@ -163,6 +163,11 @@ def test_detail_tag_overlap_moves_program_up(data):
     assert ids(for_type(programs, data.types["T01"], ["unknown"], TODAY).contacts) == ["a", "b"]
 
 
+def test_nationwide_window_comes_after_local(data):
+    programs = [row("a_call", "T10", 범위="전국"), row("b_local", "T10"), row("c_local_event", "T10", 종류="기간프로그램")]
+    assert ids(for_type(programs, data.types["T10"], None, TODAY).contacts) == ["b_local", "c_local_event", "a_call"]
+
+
 def test_conditions_are_kept_for_display_not_evaluated(data):   # 검증 사례 7
     programs = [row("care", "T11", 확인필요="돌봄받는 분의 나이|돌봄 필요 정도", 대상="65세 이상")]
     result = for_type(programs, data.types["T11"], ["adult"], TODAY)
@@ -254,6 +259,12 @@ def test_bad_files_give_korean_messages(data):
     for expected in ("없는영역", "없는열", "'Q_START'가 없습니다", "없는칸", "'T99'", "중복", "D01.없는선택지",
                      "확인날짜", "'종류' 칸은", "표시종료일", "출처URL이 있어야", "{candidates}"):
         assert expected in text, expected
+
+
+def test_general_window_may_have_no_type_tag(data):
+    types_list = list(data.types.values())
+    assert loader.validate_programs([row("g", "", 첫상담="Y")], types_list) == []
+    assert any("유형태그가 비었습니다" in line for line in loader.validate_programs([row("x", "")], types_list))
 
 
 def test_good_fake_rows_pass_validation(data):

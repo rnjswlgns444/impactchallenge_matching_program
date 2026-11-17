@@ -18,7 +18,7 @@ PROMPT_PATH = APP_DIR / "prompts" / "matching.md"
 
 # 코드가 읽는 열. 재확인일·운영근거·비고는 팀 점검용이라 없어도 된다.
 REQUIRED_COLUMNS = [
-    "id", "기관명", "프로그램명", "종류", "한줄설명", "상세설명", "키워드", "유형태그", "세부태그", "첫상담",
+    "id", "기관명", "프로그램명", "종류", "범위", "한줄설명", "상세설명", "키워드", "유형태그", "세부태그", "첫상담",
     "55~64세참여", "대상", "확인필요", "보수", "운영상태", "매칭가능", "표시종료일",
     "시간대", "기간", "비용", "장소", "신청방법", "공식연락처", "홈페이지URL", "상세페이지URL", "신청URL",
     "진행방식", "첫방문안내", "혼자참여", "초보참여", "첫연락문장",
@@ -34,6 +34,7 @@ RULE_KEYS = ("exclude", "first", "last")          # 세부 질문에 붙는 후�
 
 KINDS = {"상시서비스", "기간프로그램", "목록"}
 AGE_VALUES = {"가능", "불가", "미확인"}
+SCOPES = {"안산", "전국"}        # 전국은 안산에 있지 않은 전화·온라인 창구. 안산 기관 뒤에 보여준다
 PAY_VALUES = {"해당없음", "유급", "활동비", "무보수", "미확인"}
 TASTE_KINDS = {"", "영상", "공개강좌", "앱체험"}
 DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
@@ -204,7 +205,7 @@ def validate_programs(programs: list[dict], types_list: list[dict]) -> list[str]
         seen_ids.add(pid)
 
         tags = split_multi(row["유형태그"])
-        if not tags:
+        if not tags and row["첫상담"] != "Y":   # 일반 창구(첫상담 Y)는 유형과 상관없이 안내하므로 비워도 된다
             problems.append(f"{where}: 유형태그가 비었습니다. T01 같은 유형 번호를 적어 주세요.")
         for tag in tags:
             if tag not in type_ids:
@@ -213,7 +214,7 @@ def validate_programs(programs: list[dict], types_list: list[dict]) -> list[str]
             if tag not in known_details:
                 problems.append(f"{where}: 세부태그 '{tag}'가 types.yaml에 없습니다. 'D02.wage_required'처럼 적습니다.")
 
-        for column, allowed in (("종류", KINDS), ("매칭가능", {"Y", "N"}), ("55~64세참여", AGE_VALUES), ("보수", PAY_VALUES)):
+        for column, allowed in (("종류", KINDS), ("범위", SCOPES), ("매칭가능", {"Y", "N"}), ("55~64세참여", AGE_VALUES), ("보수", PAY_VALUES)):
             if row[column] not in allowed:
                 problems.append(f"{where}: '{column}' 칸은 {' / '.join(sorted(allowed))} 중 하나여야 합니다. (지금: '{row[column]}')")
         if not DATE.fullmatch(row["확인날짜"]):

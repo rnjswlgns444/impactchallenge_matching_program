@@ -14,6 +14,7 @@ from .selection import chosen_detail_options, detail_of
 LIST_KIND = "목록"
 KIND_ORDER = {"상시서비스": 0, "기간프로그램": 1}   # 언제든 문의할 수 있는 곳을 먼저
 UNCONFIRMED = "미확인"
+NATIONWIDE = "전국"
 KST = timezone(timedelta(hours=9))
 
 
@@ -49,7 +50,7 @@ def for_type(programs: list[dict], type_info: dict, detail_answer, today: date) 
 
     세부 질문의 규칙: 고른 선택지의 exclude에 해당하면 빼고, first에 해당하면 앞으로 가져온다.
     세부 질문의 last에 해당하는 프로그램은 (first로 가져오지 않는 한) 맨 뒤로 보낸다. 답하지 않아도 적용된다.
-    순서: 앞으로 가져온 것 → 세부태그가 많이 겹치는 순 → 상시서비스 → id. 인기순이 아니다.
+    순서: 앞으로 가져온 것 → 안산에 있는 곳 → 세부태그가 많이 겹치는 순 → 상시서비스 → id. 인기순이 아니다.
     """
     detail = detail_of(type_info)
     chosen = chosen_detail_options(type_info, detail_answer)
@@ -62,7 +63,8 @@ def for_type(programs: list[dict], type_info: dict, detail_answer, today: date) 
 
     def sort_key(program: dict):
         overlap = len(chosen_tags & set(split_multi(program["세부태그"])))
-        return (place(program), -overlap, KIND_ORDER.get(program["종류"], 2), program["id"])
+        nationwide = program["범위"] == NATIONWIDE     # 전국 전화 창구는 안산 기관 뒤에
+        return (place(program), nationwide, -overlap, KIND_ORDER.get(program["종류"], 2), program["id"])
 
     candidates = [
         p for p in eligible(programs, today)
