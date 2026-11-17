@@ -1,18 +1,23 @@
-"""유형 판정, 후보 거르기, AI 매칭, 개인정보 지우기, 데이터 검사 테스트.
+"""유형 선택, 후보 거르기, AI 답 검증, 개인정보 지우기, 기록, 데이터 검사 테스트.
 
-AI는 가짜 답을 돌려주는 함수로 바꿔서 테스트한다. 실제 API는 부르지 않는다.
+문항과 유형은 실제 데이터 파일을 쓰고, 프로그램은 이 파일 안의 가짜 행을 쓴다.
+그래서 팀원이 프로그램 정보표를 고쳐도 테스트가 깨지지 않는다. 날짜는 인자로 넘긴다.
+'검증 사례 n'은 전달 자료(01_질문_유형_분류규칙.json)의 acceptance_cases 번호다.
 실행: 프로젝트 루트에서  python -m pytest app/tests
 """
 import copy
-import itertools
 import json
+from datetime import date
 
 import pytest
 
 from app.core import loader, logger, privacy
-from app.core.candidates import eligible, filter_candidates
-from app.core.llm_matcher import build_prompt, recommend
-from app.core.rules_engine import active_questions, decide_type, next_question
+from app.core.candidates import build_result, eligible, first_consult, for_type, unconfirmed_columns
+from app.core.llm_matcher import parse_answer
+from app.core.selection import (barrier_guides, card_part_to_open, chosen_detail_options, detail_of,
+                                next_question, options_of, ordered_types, question, selected_types, toggle)
+
+TODAY = date(2026, 11, 17)
 
 
 @pytest.fixture(scope="module")
@@ -20,160 +25,182 @@ def data():
     return loader.load_all()
 
 
-def answer_all(data, picks):
-    """picks: 축마다 고를 pole. 기본 문항과 추가 문항을 차례로 답한다."""
-    answers = {}
-    while (q := next_question(answers, data.questions, data.rules)) is not None:
-        for opt in q["options"]:
-            effect = data.rules["scores"].get(opt["id"], {})
-            if all(picks[axis] == pole for axis, pole in effect.items()):
-                answers[q["id"]] = opt["id"]
-                break
-    return answers
+def row(pid, tags, **changes):
+    """가짜 프로그램 행. 기본값은 '지금 문의할 수 있는 상시 서비스'다."""
+    base = {column: "" for column in loader.REQUIRED_COLUMNS}
+    base.update({
+        "id": pid, "기관명": "가짜 기관", "프로그램명": f"가짜 프로그램 {pid}", "종류": "상시서비스",
+        "한줄설명": "설명", "유형태그": tags, "첫상담": "N", "55~64세참여": "가능", "보수": "해당없음",
+        "운영상태": "상시운영", "매칭가능": "Y", "확인날짜": "2026-11-17", "출처URL": "https://example.com/",
+    })
+    base.update(changes)
+    return base
 
 
-# ── 유형 판정 ──
-
-def test_every_axis_combination_gives_its_type(data):
-    axes = data.rules["axes"]
-    for combo in itertools.product(*[[p["code"] for p in a["poles"]] for a in axes]):
-        picks = {a["id"]: code for a, code in zip(axes, combo)}
-        result = decide_type(answer_all(data, picks), data.questions, data.rules)
-        assert result["code"] == "".join(combo)
-        assert result["code"] in data.types
+def ids(programs):
+    return [p["id"] for p in programs]
 
 
-def test_tie_with_ask_shows_extra_question(data):
-    answers = {"q1": "q1_a", "q2": "q2_b", "q3": "q3_a", "q4": "q4_a", "q5": "q5_a", "q6": "q6_a"}
-    nxt = next_question(answers, data.questions, data.rules)
-    assert nxt["id"] == "qt_purpose"           # 목적 축이 1:1 동점 → 추가 문항
-    answers["qt_purpose"] = "qt_purpose_b"
-    assert next_question(answers, data.questions, data.rules) is None
-    assert decide_type(answers, data.questions, data.rules)["code"] == "JTR"
+# ── 유형 선택 (규칙 R01~R04) ──
+
+def test_first_question_offers_every_type_and_unknown(data):
+    options = options_of(question(data.questions, "Q_NEEDS"), data.types)
+    assert [o["id"] for o in options] == list(data.types) + ["unknown"]
+    assert options[0]["label"] == data.types["T01"]["statement"]
 
 
-def test_tie_with_fixed_pole(data):
-    answers = {"q1": "q1_a", "q2": "q2_a", "q3": "q3_a", "q4": "q4_a", "q5": "q5_a", "q6": "q6_b"}
-    assert next_question(answers, data.questions, data.rules) is None   # 시작 축은 묻지 않음
-    assert decide_type(answers, data.questions, data.rules)["code"] == "MTW"  # 동점이면 W
+@pytest.mark.parametrize("chosen", [["T05", "T07"], ["T09", "T10"], ["T01", "T04"]])   # 검증 사례 1, 2, 3
+def test_all_chosen_types_are_kept(data, chosen):
+    assert selected_types({"Q_NEEDS": chosen}, data.types) == chosen
 
 
-def test_no_tie_question_when_not_tied(data):
-    answers = {"q1": "q1_a", "q2": "q2_a", "q3": "q3_a", "q4": "q4_a", "q5": "q5_a", "q6": "q6_a"}
-    assert len(active_questions(answers, data.questions, data.rules)) == 6
+def test_types_come_in_file_order_not_click_order(data):
+    assert selected_types({"Q_NEEDS": ["T07", "T02"]}, data.types) == ["T02", "T07"]
 
 
-def test_override_wins_over_score(data):
-    rules = copy.deepcopy(data.rules)
-    rules["overrides"] = [{"if": {"q6": "q6_b"}, "then": {"start": "W", "purpose": "J"}}]
-    answers = {"q1": "q1_a", "q2": "q2_a", "q3": "q3_a", "q4": "q4_a", "q5": "q5_a", "q6": "q6_b"}
-    assert decide_type(answers, data.questions, rules)["code"] == "JTW"   # 점수는 M이지만 예외가 먼저
+def test_barrier_does_not_change_type(data):   # 검증 사례 4
+    answers = {"Q_NEEDS": ["T07"], "Q_BARRIER": ["alone"]}
+    assert selected_types(answers, data.types) == ["T07"]
+    guides = barrier_guides(answers, data.questions)
+    assert [g["id"] for g in guides] == ["alone"] and guides[0]["ask"]
 
 
-def test_weighted_score(data):
-    rules = copy.deepcopy(data.rules)
-    rules["scores"]["q1_b"] = {"purpose": {"J": 3}}
-    answers = {"q1": "q1_b", "q2": "q2_a", "q3": "q3_a", "q4": "q4_a", "q5": "q5_a", "q6": "q6_a"}
-    assert decide_type(answers, data.questions, rules)["code"] == "JTR"
+@pytest.mark.parametrize("answer", [["unknown"], [], None])   # 검증 사례 6
+def test_unknown_or_empty_gives_no_type(data, answer):
+    assert selected_types({"Q_NEEDS": answer}, data.types) == []
+
+
+def test_exclusive_option_cannot_mix(data):
+    options = options_of(question(data.questions, "Q_NEEDS"), data.types)
+    assert toggle(["T01", "T05"], "unknown", options) == ["unknown"]     # 모르겠어요를 누르면 나머지가 풀림
+    assert toggle(["unknown"], "T01", options) == ["T01"]                # 유형을 누르면 모르겠어요가 풀림
+    assert toggle(["T01"], "T05", options) == ["T01", "T05"]
+    assert toggle(["T01", "T05"], "T01", options) == ["T05"]             # 다시 누르면 해제
+
+
+def test_survey_asks_three_questions_in_order(data):
+    answers, asked = {}, []
+    while (q := next_question(answers, data.questions)) is not None:
+        asked.append(q["id"])
+        answers[q["id"]] = None          # 건너뛰어도 다음으로 넘어간다
+    assert asked == ["Q_NEEDS", "Q_BARRIER", "Q_START"]   # 결과 화면에서 묻는 문항은 빠진다
+
+
+def test_priority_only_reorders(data):
+    assert ordered_types(["T01", "T05", "T07"], "T05") == ["T05", "T01", "T07"]
+    assert ordered_types(["T01", "T05"], "none") == ["T01", "T05"]
+    assert ordered_types(["T01", "T05"], None) == ["T01", "T05"]
+    labels = [o["label"] for o in options_of(question(data.questions, "Q_PRIORITY"), data.types, ["T01", "T05"])]
+    assert labels[:2] == [data.types["T01"]["name"], data.types["T05"]["name"]] and len(labels) == 3
+
+
+def test_start_answer_picks_card_part(data):
+    assert card_part_to_open({"Q_START": "prepare"}, data.questions) == "ask"
+    assert card_part_to_open({"Q_START": "later"}, data.questions) is None
+    assert card_part_to_open({}, data.questions) is None
+
+
+def test_disabled_detail_is_not_asked(data):
+    assert detail_of(data.types["T08"]) is None and detail_of(data.types["T12"]) is None
+    assert detail_of(data.types["T01"])["id"] == "D01"
+    assert chosen_detail_options(data.types["T08"], ["stress"]) == []
+    assert [o["id"] for o in chosen_detail_options(data.types["T01"], ["explore", "unknown"])] == ["explore"]
+
+
+# ── 후보 거르기 (규칙 R05~R09, R15) ──
+
+def test_closed_blocked_and_expired_never_pass():   # 검증 사례 10
+    programs = [
+        row("ok", "T01"),
+        row("closed", "T01", 매칭가능="N", 운영상태="모집마감"),
+        row("too_old", "T01", **{"55~64세참여": "불가"}),
+        row("past", "T01", 표시종료일="2026-11-16"),
+        row("today", "T01", 표시종료일="2026-11-17"),
+    ]
+    assert ids(eligible(programs, TODAY)) == ["ok", "today"]      # 종료일 당일까지는 보인다
+    assert ids(eligible(programs, date(2026, 11, 18))) == ["ok"]
+
+
+def test_unknown_age_is_not_treated_as_blocked():   # 규칙 R05
+    assert ids(eligible([row("a", "T01", **{"55~64세참여": "미확인"})], TODAY)) == ["a"]
+
+
+def test_directory_goes_to_list_area_only(data):   # 검증 사례 12
+    programs = [row("svc", "T05"), row("dir", "T05", 종류="목록"), row("event", "T05", 종류="기간프로그램")]
+    result = for_type(programs, data.types["T05"], None, TODAY)
+    assert ids(result.contacts) == ["svc", "event"] and ids(result.lists) == ["dir"]   # 상시서비스가 먼저
+
+
+def test_each_type_gets_its_own_result(data):   # 검증 사례 1
+    programs = [row("hobby", "T05"), row("club", "T07"), row("both", "T05|T07"), row("job", "T01")]
+    results = build_result(programs, data.types, ["T05", "T07"], {}, TODAY)
+    assert [r.type_id for r in results] == ["T05", "T07"]
+    assert ids(results[0].contacts) == ["both", "hobby"] and ids(results[1].contacts) == ["both", "club"]
+
+
+def test_wage_required_drops_unpaid_but_keeps_unconfirmed(data):   # 검증 사례 5, 규칙 R07
+    t02 = data.types["T02"]
+    programs = [row("paid", "T02", 보수="유급"), row("volunteer", "T02", 보수="무보수"),
+                row("unknown_pay", "T02", 보수="미확인"), row("counsel", "T02")]
+    result = for_type(programs, t02, "wage_required", TODAY)
+    assert "volunteer" not in ids(result.contacts)
+    assert set(ids(result.contacts)) == {"paid", "unknown_pay", "counsel"}
+    assert unconfirmed_columns(programs[2], t02) == ["보수"]      # 빼지 않고 '확인 필요'로 표시
+    assert unconfirmed_columns(programs[0], t02) == []
+
+
+def test_unpaid_is_shown_first_only_when_wanted(data):
+    t02 = data.types["T02"]
+    programs = [row("a_volunteer", "T02", 보수="무보수"), row("b_paid", "T02", 보수="유급")]
+    for answer in (None, "unknown", "allowance_ok"):
+        assert ids(for_type(programs, t02, answer, TODAY).contacts) == ["b_paid", "a_volunteer"]   # 맨 뒤로
+    assert ids(for_type(programs, t02, "unpaid_ok", TODAY).contacts) == ["a_volunteer", "b_paid"]  # 앞으로
+
+
+def test_detail_tag_overlap_moves_program_up(data):
+    programs = [row("a", "T01"), row("b", "T01", 세부태그="D01.explore")]
+    assert ids(for_type(programs, data.types["T01"], ["explore"], TODAY).contacts) == ["b", "a"]
+    assert ids(for_type(programs, data.types["T01"], ["unknown"], TODAY).contacts) == ["a", "b"]
+
+
+def test_conditions_are_kept_for_display_not_evaluated(data):   # 검증 사례 7
+    programs = [row("care", "T11", 확인필요="돌봄받는 분의 나이|돌봄 필요 정도", 대상="65세 이상")]
+    result = for_type(programs, data.types["T11"], ["adult"], TODAY)
+    assert ids(result.contacts) == ["care"]      # 응답자 나이로 걸러 내지 않는다. 조건은 카드에 보여준다
+
+
+def test_first_consult_is_general_window():
+    programs = [row("general", "T01", 첫상담="Y"), row("closed_general", "T01", 첫상담="Y", 매칭가능="N"), row("x", "T01")]
+    assert ids(first_consult(programs, TODAY)) == ["general"]
 
 
 def test_same_input_same_result(data):
-    answers = {"q1": "q1_b", "q2": "q2_b", "q3": "q3_b", "q4": "q4_b", "q5": "q5_b", "q6": "q6_b"}
-    results = {json.dumps(decide_type(answers, data.questions, data.rules), sort_keys=True) for _ in range(5)}
+    programs = [row("a", "T01"), row("b", "T01|T04", 종류="목록"), row("c", "T04", 종류="기간프로그램")]
+    results = {json.dumps([(r.type_id, ids(r.contacts), ids(r.lists))
+                           for r in build_result(programs, data.types, ["T01", "T04"], {}, TODAY)]) for _ in range(5)}
     assert len(results) == 1
 
 
-def test_two_axes_work_without_code_change(data):
-    rules = copy.deepcopy(data.rules)
-    rules["axes"] = rules["axes"][:2]
-    answers = {"q1": "q1_a", "q2": "q2_a", "q3": "q3_b", "q4": "q4_b"}
-    questions = [q for q in data.questions if q["id"] in ("q1", "q2", "q3", "q4")]
-    assert decide_type(answers, questions, rules)["code"] == "MS"
+# ── 실제 데이터 파일 ──
+
+def test_real_table_never_shows_unavailable_rows(data):
+    blocked = {p["id"] for p in data.programs if p["매칭가능"] != "Y" or p["55~64세참여"] == "불가"}
+    for day in (TODAY, date(2027, 6, 1)):
+        for result in build_result(data.programs, data.types, list(data.types), {}, day):
+            shown = set(ids(result.contacts + result.lists))
+            assert not shown & blocked
+            assert all(not p["표시종료일"] or p["표시종료일"] >= day.isoformat() for p in result.contacts + result.lists)
 
 
-# ── 후보 거르기 ──
+# ── AI 답 검증 ──
 
-def test_closed_and_age_blocked_programs_never_pass(data):
-    ids = {p["id"] for p in eligible(data.programs)}
-    assert "P14" not in ids      # 55~64세 참여 불가
-    assert "P15" not in ids      # 매칭가능 N (종료)
-    for t in data.types.values():
-        for p in filter_candidates(data.programs, t["tags"]):
-            assert p["매칭가능"] == "Y" and p["55~64세참여"] != "불가"
-
-
-def test_every_type_has_candidates(data):
-    for code, t in data.types.items():
-        assert filter_candidates(data.programs, t["tags"]), f"{code} 유형에 후보가 없음"
-
-
-# ── AI 매칭 ──
-
-def fake_llm(answer):
-    return lambda prompt: json.dumps(answer, ensure_ascii=False)
-
-
-def test_llm_success(data):
-    rec = recommend(data, "JTR", ["당일치기 여행·나들이"], "", False,
-                    fake_llm({"matches": [{"id": "P07", "reason": "나들이를 원하셔서요."}], "unmatched": []}))
-    assert rec.status == "ok"
-    assert [p["id"] for p in rec.programs] == ["P07"]
-    assert rec.reasons["P07"]
-
-
-def test_llm_ids_outside_candidates_are_dropped(data):
-    answer = {"matches": [{"id": "P15", "reason": "종료된 것"}, {"id": "없는id", "reason": "지어낸 것"},
-                          {"id": "P02", "reason": "다른 유형 것"}, {"id": "P07", "reason": "맞는 것"}], "unmatched": []}
-    rec = recommend(data, "JTR", ["당일치기 여행·나들이"], "", False, fake_llm(answer))
-    assert [p["id"] for p in rec.programs] == ["P07"]
-
-
-def test_failure_a_when_llm_errors(data):
-    def broken(prompt):
-        raise TimeoutError
-    errors = []
-    rec = recommend(data, "JTR", ["걷기·운동"], "", False, broken, errors.append)
-    assert rec.status == "A"
-    assert rec.programs and errors == ["TimeoutError"]
-
-
-def test_failure_a_when_no_key_bad_json_or_only_invalid_ids(data):
-    no_key = recommend(data, "JTR", ["걷기·운동"], "", False, None)
-    assert no_key.status == "A" and no_key.error == "API 키 없음"
-    assert recommend(data, "JTR", ["걷기·운동"], "", False, lambda p: "죄송합니다").status == "A"
-    only_invalid = fake_llm({"matches": [{"id": "P15", "reason": "x"}], "unmatched": []})
-    assert recommend(data, "JTR", ["걷기·운동"], "", False, only_invalid).status == "A"
-
-
-def test_failure_b_shows_consult(data):
-    rec = recommend(data, "JTR", ["걷기·운동"], "해외여행", False,
-                    fake_llm({"matches": [{"id": "P08", "reason": "걷기를 원하셔서요."}], "unmatched": ["해외여행"]}))
-    assert rec.status == "B"
-    assert rec.unmatched == ["해외여행"]
-    assert [p["id"] for p in rec.consults] == ["P01"]
-
-
-def test_failure_c_when_no_candidates(data):
-    empty = copy.copy(data)
-    empty.programs = [p for p in data.programs if p["매칭가능"] != "Y"]
-    assert recommend(empty, "JTR", ["걷기·운동"], "", False, fake_llm({})).status == "C"
-
-
-def test_unsure_skips_llm_and_shows_consult_first(data):
-    def must_not_call(prompt):
-        raise AssertionError("AI를 부르면 안 됨")
-    for code in ("JTR", "MTW"):
-        rec = recommend(data, code, [], "", True, must_not_call)
-        assert rec.status == "unsure"
-        assert rec.programs[0]["첫상담"] == "Y"
-
-
-def test_prompt_has_scrubbed_text_and_only_candidates(data):
-    t = data.types["JTR"]
-    cands = filter_candidates(data.programs, t["tags"])
-    prompt = build_prompt(data.prompt, t, ["걷기·운동"], "010-1234-5678로 연락 주세요", cands, 3)
-    assert "010-1234-5678" not in prompt and privacy.REMOVED in prompt
-    assert "P15" not in prompt and "P14" not in prompt and "{" + "candidates}" not in prompt
+def test_llm_ids_outside_candidates_are_dropped():
+    raw = json.dumps({"matches": [{"id": "closed", "reason": "끝난 것"}, {"id": "없는id", "reason": "지어낸 것"},
+                                  {"id": "ok", "reason": "맞는 것"}, {"id": "ok", "reason": "중복"}], "unmatched": ["해외여행"]})
+    matches, unmatched = parse_answer(raw, ["ok", "other"], 3)
+    assert matches == [{"id": "ok", "reason": "맞는 것"}] and unmatched == ["해외여행"]
+    with pytest.raises(ValueError):
+        parse_answer("죄송합니다", ["ok"], 3)
 
 
 # ── 개인정보 ──
@@ -189,25 +216,45 @@ def test_scrub_keeps_normal_text():
     assert privacy.scrub("주 3일, 하루 4시간 2026년") == "주 3일, 하루 4시간 2026년"
 
 
+# ── 기록 ──
+
 def test_log_has_no_free_text(tmp_path):
-    logger.log_response("sid", ["q1_a"], {"purpose": {"M": 1}}, "MTR", ["앉아서 하는 일"], True, False, "ok", ["P02"], tmp_path)
-    logger.log_event("sid", "taste_start", "P08", tmp_path)
-    header = (tmp_path / "responses.csv").read_text(encoding="utf-8-sig").splitlines()[0]
+    logger.log_response("sid", ["T02", "T05"], ["alone"], "prepare", ["JOB01"], tmp_path)
+    logger.log_event("sid", "detail", "T02", "wage_required", tmp_path)
+    header, line = (tmp_path / "responses.csv").read_text(encoding="utf-8-sig").splitlines()
     assert header.split(",") == logger.RESPONSE_FIELDS
-    assert "text" not in header.replace("wrote_text", "")
+    assert "text" not in header and "T02|T05" in line
+    assert (tmp_path / "events.csv").read_text(encoding="utf-8-sig").splitlines()[0].split(",") == logger.EVENT_FIELDS
+
+
+def test_old_format_log_is_set_aside(tmp_path):
+    old = tmp_path / "responses.csv"
+    old.write_text("session_id,hour,option_ids,axis_scores\nold,x,y,z\n", encoding="utf-8-sig")
+    logger.log_response("sid", ["T01"], [], None, [], tmp_path)
+    lines = old.read_text(encoding="utf-8-sig").splitlines()
+    assert lines[0].split(",") == logger.RESPONSE_FIELDS and len(lines) == 2      # 새 파일로 시작
+    kept = [p for p in tmp_path.iterdir() if "이전형식" in p.name]
+    assert len(kept) == 1 and "old,x,y,z" in kept[0].read_text(encoding="utf-8-sig")   # 예전 기록은 보관
 
 
 # ── 데이터 파일 검사 ──
 
 def test_bad_files_give_korean_messages(data):
-    rules = copy.deepcopy(data.rules)
-    rules["scores"]["없는선택지"] = {"purpose": "M"}
-    rules["scores"]["q1_a"] = {"purpose": "X"}
-    types_list = [t for t in data.types.values() if t["code"] != "MTR"]
-    programs = copy.deepcopy(data.programs)
-    programs[0]["유형태그"] = "없는태그"
-    programs[1]["확인날짜"] = "11/15"
-    problems = loader.validate(data.questions, rules, types_list, programs, "자리표시자 없음")
-    text = "\n".join(problems)
-    for expected in ("없는선택지", "'X'", "유형 'MTR'가 없습니다", "없는태그", "확인날짜", "{candidates}"):
-        assert expected in text
+    types_list = copy.deepcopy(list(data.types.values()))
+    types_list[0]["area"] = "없는영역"
+    types_list[1]["detail"]["options"][0]["exclude"] = {"없는열": ["무보수"]}
+    questions = [q for q in copy.deepcopy(data.questions) if q["id"] != "Q_START"]
+    question(questions, "Q_BARRIER")["options"][0]["show"] = ["없는칸"]
+    programs = [
+        row("a", "T99"), row("a", "T01"),
+        row("b", "T01", 세부태그="D01.없는선택지", 확인날짜="11/15", 종류="행사", 표시종료일="내일"),
+        row("c", "T01", 출처URL=""),
+    ]
+    text = "\n".join(loader.validate(data.areas, types_list, questions, programs, "자리표시자 없음"))
+    for expected in ("없는영역", "없는열", "'Q_START'가 없습니다", "없는칸", "'T99'", "중복", "D01.없는선택지",
+                     "확인날짜", "'종류' 칸은", "표시종료일", "출처URL이 있어야", "{candidates}"):
+        assert expected in text, expected
+
+
+def test_good_fake_rows_pass_validation(data):
+    assert loader.validate_programs([row("a", "T01|T02", 세부태그="D02.wage_required")], list(data.types.values())) == []
