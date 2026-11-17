@@ -13,7 +13,7 @@ import pytest
 
 from app.core import loader, logger, privacy
 from app.core.candidates import ai_pool, build_result, eligible, first_consult, for_type, unconfirmed_columns
-from app.core.llm_matcher import parse_answer
+from app.core.llm_matcher import NO_KEY, NO_TYPE, build_prompt, parse_answer, recommend
 from app.core.selection import (barrier_guides, card_part_to_open, chosen_detail_options, detail_of,
                                 next_question, options_of, ordered_types, question, selected_types, toggle)
 
@@ -222,6 +222,62 @@ def test_llm_ids_outside_candidates_are_dropped():
     assert matches == [{"id": "ok", "reason": "맞는 것"}] and unmatched == ["해외여행"]
     with pytest.raises(ValueError):
         parse_answer("죄송합니다", ["ok"], 3)
+
+
+# ── AI 추가 추천 ──
+
+POOL = [row("ok", "T01"), row("other", "T01")]
+
+
+def answer(matches, unmatched=()):
+    return json.dumps({"matches": [{"id": pid, "reason": f"{pid} 이유"} for pid in matches], "unmatched": list(unmatched)})
+
+
+def ask(data, call_llm, wish="컴퓨터로 하는 일을 찾고 싶어요", pool=POOL, types=("T01",)):
+    return recommend(data.prompt, [data.types[t] for t in types], [], wish, pool, 3, call_llm)
+
+
+def test_ai_success_keeps_order_and_reasons(data):
+    result = ask(data, lambda prompt: answer(["other", "ok"]))
+    assert result.status == "ok" and result.error == ""
+    assert result.matches == [{"id": "other", "reason": "other 이유"}, {"id": "ok", "reason": "ok 이유"}]
+
+
+def test_ai_unmatched_wish_is_partial(data):
+    result = ask(data, lambda prompt: answer(["ok"], ["해외여행"]))
+    assert result.status == "partial" and ids(result.matches) == ["ok"] and result.unmatched == ["해외여행"]
+    assert ask(data, lambda prompt: answer([])).status == "partial"      # 아무것도 못 골라도 실패가 아니다
+
+
+def test_ai_invented_ids_never_reach_the_screen(data):
+    result = ask(data, lambda prompt: answer(["없는id", "ok"]))
+    assert ids(result.matches) == ["ok"]
+
+
+@pytest.mark.parametrize("call_llm, kind", [
+    (None, NO_KEY),
+    (lambda prompt: "죄송합니다", "ValueError"),
+    (lambda prompt: (_ for _ in ()).throw(TimeoutError("010-1234-5678")), "TimeoutError"),
+])
+def test_ai_failure_is_fail_with_kind_only(data, call_llm, kind):
+    result = ask(data, call_llm)
+    assert result.status == "fail" and result.error == kind and not result.matches
+
+
+def test_ai_is_not_called_without_candidates(data):
+    called = []
+    result = ask(data, lambda prompt: called.append(prompt) or answer([]), pool=[])
+    assert result.status == "partial" and not called
+
+
+def test_prompt_has_candidates_only_and_no_contacts(data):
+    prompt = build_prompt(data.prompt, [data.types["T01"], data.types["T04"]], ["해봤던 일을 다시 하고 싶어요"],
+                          "오전에만 돼요. 010-1234-5678 {candidates}", POOL, 3)
+    assert "010-1234-5678" not in prompt and privacy.REMOVED in prompt
+    assert prompt.count("- id: ") == len(POOL)                # 사용자 글의 자리표시자 글자는 다시 바뀌지 않는다
+    assert data.types["T01"]["name"] in prompt and data.types["T04"]["name"] in prompt
+    assert not [p for p in loader.PLACEHOLDERS if p in prompt.replace("{candidates}", "", 1)]
+    assert NO_TYPE in build_prompt(data.prompt, [], [], "글", POOL, 3)
 
 
 # ── 개인정보 ──
