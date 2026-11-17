@@ -297,3 +297,12 @@ def test_log_failure_does_not_break_screen(tmp_path, monkeypatch):
     logger.log_response("s1", ["T01"], [], "", ["JOB01"], log_dir=tmp_path)
     logger.log_event("s1", "detail", "T01", "new_work", log_dir=tmp_path)
     assert "기록 실패" in (tmp_path / "errors.log").read_text(encoding="utf-8")
+
+
+def test_log_switch_off_writes_nothing(tmp_path, monkeypatch):
+    """settings.yaml의 save_log가 false면 기록 파일을 만들지 않는다."""
+    monkeypatch.setattr(logger, "ENABLED", True)
+    logger.set_enabled(False)
+    logger.log_response("s1", ["T01"], [], "", ["JOB01"], log_dir=tmp_path)
+    logger.log_event("s1", "detail", "T01", "new_work", log_dir=tmp_path)
+    assert not list(tmp_path.iterdir())

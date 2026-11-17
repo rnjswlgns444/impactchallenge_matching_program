@@ -3,6 +3,7 @@
 
 app_title: "나에게 맞는 안산 프로그램 찾기"
 top_n: 3                      # 유형마다 먼저 보여줄 곳의 수. 나머지는 '더 보기'를 눌러야 나옵니다.
+save_log: false               # 응답 기록(app/logs)을 남길지. 테스트할 때는 false, 파일럿·실험 전에 꼭 true로 바꿉니다.
 show_error_kind: true         # AI 호출이 실패하면 원인 종류를 화면에 작게 보여줌 (점검용. 실험 전에 false로)
 
 llm:

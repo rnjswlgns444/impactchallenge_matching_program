@@ -350,6 +350,7 @@ def screen_result(data, text) -> None:
 def main() -> None:
     data = load_data()
     text = data.settings["text"]
+    logger.set_enabled(data.settings.get("save_log", True))
     st.set_page_config(page_title=data.settings["app_title"], page_icon="🌿", layout="centered",
                        initial_sidebar_state="collapsed")
     style.apply()

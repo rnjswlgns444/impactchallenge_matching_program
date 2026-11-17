@@ -16,6 +16,8 @@ MAIN = str(Path(__file__).resolve().parents[1] / "main.py")
 @pytest.fixture
 def app(monkeypatch, tmp_path):
     monkeypatch.setattr(logger, "LOG_DIR", tmp_path)      # 테스트가 실제 기록(app/logs)을 건드리지 않게 한다
+    monkeypatch.setattr(logger, "ENABLED", True)
+    monkeypatch.setattr(logger, "set_enabled", lambda on: None)   # settings.yaml에서 꺼 두어도 기록 동작을 확인한다
     at = AppTest.from_file(MAIN, default_timeout=30)
     at.run()
     assert not at.exception

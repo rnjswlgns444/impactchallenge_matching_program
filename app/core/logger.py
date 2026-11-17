@@ -12,6 +12,14 @@ from pathlib import Path
 
 LOG_DIR = Path(__file__).resolve().parent.parent / "logs"
 
+ENABLED = True      # settings.yaml의 save_log 값. False면 아무것도 쓰지 않는다
+
+
+def set_enabled(on: bool) -> None:
+    global ENABLED
+    ENABLED = bool(on)
+
+
 RESPONSE_FIELDS = ["session_id", "hour", "type_ids", "barriers", "start", "program_ids"]
 EVENT_FIELDS = ["session_id", "hour", "event", "target", "value"]
 
@@ -25,6 +33,8 @@ def _hour() -> str:
 
 def _append(path: Path, fields: list[str], row: dict) -> None:
     """한 행을 덧붙인다. 파일이 잠겨 있는 등으로 실패해도 사용자 화면은 멈추지 않게 한다."""
+    if not ENABLED:
+        return
     try:
         _write(path, fields, row)
     except OSError as err:
