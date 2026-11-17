@@ -84,3 +84,10 @@ def test_unknown_browses_all_types(app, tmp_path):
     click(app, "browse_T09")
     assert data.types["T09"]["statement"] in page_text(app)
     assert len(rows(tmp_path, "responses.csv")) == 1
+
+
+def test_start_screen_tells_the_truth_about_saving(app):
+    """시작 화면의 저장 안내가 settings.yaml의 save_log 값과 맞는다."""
+    settings = loader.load_all().settings
+    key = "start_privacy_saving" if settings.get("save_log", False) else "start_privacy"
+    assert settings["text"][key] in page_text(app)

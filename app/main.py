@@ -95,7 +95,8 @@ def screen_start(data, text) -> None:
     ui.html(f'<p class="app-title">{escape(data.settings["app_title"])}</p>')
     ui.body(text["start_intro"])
     ui.body(f'⏱ {text["start_time"]}')
-    ui.notice(text["start_privacy"], "info")
+    saving = bool(data.settings.get("save_log", False))      # 기록을 켰을 때만 '저장해요'라고 말한다
+    ui.notice(text["start_privacy_saving"] if saving else text["start_privacy"], "info")
     st.button(width="stretch", label=text["start_button"], key="start", type="primary", on_click=go, args=("survey",))
     ui.html(f'<p class="small-note">{escape(text["disclaimer"])}</p>')
 
@@ -350,7 +351,7 @@ def screen_result(data, text) -> None:
 def main() -> None:
     data = load_data()
     text = data.settings["text"]
-    logger.set_enabled(data.settings.get("save_log", True))
+    logger.set_enabled(data.settings.get("save_log", False))
     st.set_page_config(page_title=data.settings["app_title"], page_icon="🌿", layout="centered",
                        initial_sidebar_state="collapsed")
     style.apply()
