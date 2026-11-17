@@ -12,7 +12,7 @@ from datetime import date
 import pytest
 
 from app.core import loader, logger, privacy
-from app.core.candidates import build_result, eligible, first_consult, for_type, unconfirmed_columns
+from app.core.candidates import ai_pool, build_result, eligible, first_consult, for_type, unconfirmed_columns
 from app.core.llm_matcher import parse_answer
 from app.core.selection import (barrier_guides, card_part_to_open, chosen_detail_options, detail_of,
                                 next_question, options_of, ordered_types, question, selected_types, toggle)
@@ -195,6 +195,22 @@ def test_real_table_never_shows_unavailable_rows(data):
             shown = set(ids(result.contacts + result.lists))
             assert not shown & blocked
             assert all(not p["표시종료일"] or p["표시종료일"] >= day.isoformat() for p in result.contacts + result.lists)
+
+
+# ── AI에게 보낼 후보 ──
+
+def test_ai_pool_has_only_showable_contacts(data):
+    programs = [row("a", "T01"), row("b", "T04"), row("both", "T01|T04"), row("other", "T09"),
+                row("closed", "T01", 매칭가능="N"), row("blocked", "T01", **{"55~64세참여": "불가"}),
+                row("expired", "T01", 표시종료일="2026-11-16"), row("list", "T01", 종류="목록")]
+    assert sorted(ids(ai_pool(programs, data.types, ["T01", "T04"], {}, TODAY))) == ["a", "b", "both"]
+    # 유형을 정하지 않았으면 보여줘도 되는 곳 전체(목록 제외)
+    assert sorted(ids(ai_pool(programs, data.types, [], {}, TODAY))) == ["a", "b", "both", "other"]
+
+
+def test_ai_pool_follows_detail_exclude(data):
+    programs = [row("paid", "T02", 보수="유급"), row("unpaid", "T02", 보수="무보수")]
+    assert ids(ai_pool(programs, data.types, ["T02"], {"T02": "wage_required"}, TODAY)) == ["paid"]
 
 
 # ── AI 답 검증 ──

@@ -85,6 +85,22 @@ def build_result(programs: list[dict], types: dict[str, dict], type_ids: list[st
     return [for_type(programs, types[tid], details.get(tid), today) for tid in type_ids]
 
 
+def ai_pool(programs: list[dict], types: dict[str, dict], type_ids: list[str],
+            details: dict, today: date) -> list[dict]:
+    """AI에게 보낼 후보. AI는 이 목록 안에서만 고를 수 있다.
+
+    유형을 골랐으면 그 유형들의 '문의할 곳'을 합친 것이다(세부 질문으로 뺀 것은 여기서도 빠진다).
+    유형을 정하지 않았으면 지금 보여줘도 되는 곳 전체다. 목록(강좌 목록 등)은 넣지 않는다.
+    """
+    if not type_ids:
+        return [p for p in eligible(programs, today) if p["종류"] != LIST_KIND]
+    pool: dict[str, dict] = {}
+    for result in build_result(programs, types, type_ids, details, today):
+        for program in result.contacts:
+            pool.setdefault(program["id"], program)
+    return list(pool.values())
+
+
 def unconfirmed_columns(program: dict, type_info: dict) -> list[str]:
     """이 유형의 세부 규칙이 보는 열 가운데 값이 '미확인'인 열.
 
