@@ -173,6 +173,11 @@ def program_card(program: dict, text: dict, type_info: dict | None = None, guide
         _checked_note(program, text)
 
 
+def ai_reason(label: str, reason: str) -> None:
+    """AI가 쓴 추천 이유. 글은 그대로 보여주고 마크다운이나 HTML로 해석하지 않는다."""
+    html(f'<div class="say"><b>{escape(label)}</b><br>{escape(reason)}</div>')
+
+
 def seen_card(program: dict, text: dict, type_name: str) -> None:
     """위쪽 유형 구역에 이미 나온 곳. 같은 카드를 되풀이하지 않고 한 줄로 알려 준다."""
     with st.container(border=True):
