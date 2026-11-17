@@ -1,66 +1,219 @@
-# 유형 정보 (예시)
-# 유형 코드는 rules.yaml의 축 순서대로 pole 코드를 이어 붙인 것입니다.
-# 축 조합마다 유형이 하나씩 모두 있어야 합니다. (축 3개 × 양쪽 2개 = 8개)
+# 유형 12개 (전달 자료 01_질문_유형_분류규칙.json, 2026-11-16 기준)
 #
-#   name          : 유형 이름 (성별을 가정하지 않는 표현)
-#   summary       : 한 줄 설명
-#   tags          : 이 유형에 맞는 프로그램 분야. programs.csv의 '유형태그'와 같은 단어를 씁니다.
-#   wish_question : 세부 희망을 묻는 질문
-#   wish_examples : 누르기만 해도 되는 예시 버튼
+# 유형은 성격 검사 결과가 아니라 '지금 필요한 도움의 이름'입니다.
+# 사용자가 첫 질문에서 고른 문장(statement)이 그대로 유형이 됩니다. 점수 계산은 없고, 여러 개를 함께 고를 수 있습니다.
+#
+#   id         : 유형 번호. programs.csv의 '유형태그'에 이 번호를 적어 프로그램과 연결합니다. 바꾸지 마세요.
+#   area       : 첫 질문 화면에서 묶어 보여줄 영역 (아래 areas의 id)
+#   name       : 유형 이름
+#   purpose    : 한 줄 요약
+#   statement  : 첫 질문의 선택지 문장이자, 결과 화면의 유형 설명
+#   definition : 구분 기준. 화면에는 나오지 않고, 팀원과 AI가 유형을 구분할 때 봅니다.
+#   detail     : 결과 화면에서 유형을 열었을 때 보여주는 선택 질문 (답하지 않아도 됨)
+#       selection : single(하나만) 또는 multi(여러 개)
+#       options   : 선택지. exclusive: true인 선택지는 다른 선택지와 함께 고를 수 없습니다.
+#       exclude   : 이 선택지를 고르면 후보에서 뺄 프로그램. {programs.csv의 열 이름: [뺄 값]}
+#
+# 세부 선택지를 프로그램과 연결하려면 programs.csv의 '세부태그'에 '질문id.선택지id'를 적습니다. 예) D02.wage_required
+
+areas:
+  - {id: work, label: "일자리"}
+  - {id: leisure, label: "여가·배움·관계"}
+  - {id: life, label: "생활·돌봄·건강"}
 
 types:
-  - code: MTR
-    name: "[예시] 함께 일하는 실행형"
-    summary: "사람들과 어울리며 내 이름으로 된 수입을 바로 만들어 보고 싶은 분"
-    tags: [일자리, 사회참여]
-    wish_question: "어떤 일을 해보고 싶으세요?"
-    wish_examples: ["짧은 시간 일하는 곳", "앉아서 하는 일", "사람을 만나는 일", "경력을 살리는 일", "자격증 따기"]
+  # ── 일자리 ──
+  - id: T01
+    area: work
+    name: 일터찾기형
+    purpose: 본격 재취업
+    statement: "꾸준히 다닐 직장을 찾고 싶어요."
+    definition: "지속적인 고용이 목적. 정규직만 뜻하지 않으며 시간제라도 꾸준히 다닐 직장을 원하면 포함."
+    detail:
+      id: D01
+      text: "어떤 일을 찾고 계세요?"
+      selection: multi
+      options:
+        - {id: previous_work, label: "해봤던 일을 다시 하고 싶어요"}
+        - {id: new_work, label: "새로운 일을 해보고 싶어요"}
+        - {id: explore, label: "무슨 일을 할지부터 알아보고 싶어요"}
+        - {id: unknown, label: "아직 모르겠어요", exclusive: true}
 
-  - code: MTW
-    name: "[예시] 함께 일하는 탐색형"
-    summary: "사람들과 함께 일하고 싶지만, 무엇부터 할지는 천천히 알아보고 싶은 분"
-    tags: [일자리, 사회참여, 상담]
-    wish_question: "어떤 일에 관심이 있으세요?"
-    wish_examples: ["짧은 시간 일하는 곳", "앉아서 하는 일", "사람을 만나는 일", "활동비가 있는 봉사", "어떤 일이 있는지 듣고 싶어요"]
+  - id: T02
+    area: work
+    name: 보탬활동형
+    purpose: 단시간 일·사회참여
+    statement: "짧게 일하거나 동네에 보탬이 되고 싶어요."
+    definition: "단시간 유급 일, 활동비가 있는 참여, 무보수 봉사를 구분. 급여 필요 응답에 봉사를 대체 추천하지 않음."
+    detail:
+      id: D02
+      text: "활동을 한다면 보수는 어느 정도 필요하세요?"
+      selection: single
+      options:
+        # 규칙 R07: 급여가 꼭 필요하면 무보수로 확인된 활동을 뺍니다. 보수가 '미확인'인 것은 빼지 않고 확인이 필요하다고 표시합니다.
+        - {id: wage_required, label: "급여가 꼭 필요해요", exclude: {보수: [무보수]}}
+        - {id: allowance_ok, label: "교통비·식비 정도도 괜찮아요"}
+        - {id: unpaid_ok, label: "보수 없이도 괜찮아요"}
+        - {id: unknown, label: "아직 모르겠어요", exclusive: true}
 
-  - code: MSR
-    name: "[예시] 나만의 일 실행형"
-    summary: "혼자서도 꾸준히 할 수 있는 일로 수입을 만들고 싶은 분"
-    tags: [일자리, 창업]
-    wish_question: "어떤 일을 해보고 싶으세요?"
-    wish_examples: ["경력을 살리는 일", "작은 가게·장사", "집 가까운 곳", "자격증 따기", "앉아서 하는 일"]
+  - id: T03
+    area: work
+    name: 내일사장형
+    purpose: 창업 준비·사업 운영
+    statement: "작은 장사나 내 사업을 해보고 싶어요."
+    definition: "창업·사업 운영 욕구. 예비창업자와 기존 사업자 전용 지원을 구분."
+    detail:
+      id: D03
+      text: "사업은 어느 정도 준비하셨나요?"
+      selection: single
+      options:
+        - {id: explore, label: "무엇을 할지 알아보는 중이에요"}
+        - {id: prepare, label: "해보고 싶은 사업을 준비하고 있어요"}
+        - {id: operate, label: "이미 하는 사업을 개선하고 싶어요"}
+        - {id: unknown, label: "아직 모르겠어요", exclusive: true}
 
-  - code: MSW
-    name: "[예시] 나만의 일 탐색형"
-    summary: "혼자 조용히 할 수 있는 일을 찾고 있고, 먼저 차근차근 알아보고 싶은 분"
-    tags: [일자리, 창업, 상담]
-    wish_question: "어떤 일에 관심이 있으세요?"
-    wish_examples: ["경력을 살리는 일", "작은 가게·장사", "집 가까운 곳", "어떤 일이 있는지 듣고 싶어요"]
+  - id: T04
+    area: work
+    name: 실력쌓기형
+    purpose: 취업교육·자격 취득
+    statement: "일에 필요한 기술이나 자격증을 배우고 싶어요."
+    definition: "배움의 목적이 일·취업·부업인 경우. T01·T02·T03과 함께 선택 가능."
+    detail:
+      id: D04
+      text: "일을 위해 무엇을 배우고 싶으세요?"
+      selection: multi
+      options:
+        - {id: job_skill, label: "일할 때 쓰는 기술을 배우고 싶어요"}
+        - {id: certificate, label: "자격증을 준비하고 싶어요"}
+        - {id: explore, label: "무엇을 배울지부터 알고 싶어요"}
+        - {id: unknown, label: "아직 모르겠어요", exclusive: true}
 
-  - code: JTR
-    name: "[예시] 함께 즐기는 실행형"
-    summary: "사람들과 어울려 배우고 즐기는 활동을 바로 시작하고 싶은 분"
-    tags: [취미여가, 모임]
-    wish_question: "어떤 활동을 해보고 싶으세요?"
-    wish_examples: ["당일치기 여행·나들이", "걷기·운동", "노래·악기", "요리·공예", "동네 친구 모임"]
+  # ── 여가·배움·관계 ──
+  - id: T05
+    area: leisure
+    name: 취미발견형
+    purpose: 취미·문화활동
+    statement: "즐거운 취미나 문화생활을 찾고 싶어요."
+    definition: "활동 자체의 즐거움이 중심. 지속적인 사람·소속이 중심이면 T07도 선택."
+    detail:
+      id: D05
+      text: "어떤 활동이 끌리세요?"
+      selection: multi
+      options:
+        - {id: making, label: "배우고 만들기를 하고 싶어요"}
+        - {id: exercise, label: "가볍게 운동을 즐기고 싶어요"}
+        - {id: culture, label: "공연·전시·축제를 즐기고 싶어요"}
+        - {id: unknown, label: "아직 모르겠어요", exclusive: true}
 
-  - code: JTW
-    name: "[예시] 함께 즐기는 탐색형"
-    summary: "사람들과 어울리고 싶지만, 어떤 활동이 맞을지 천천히 알아보고 싶은 분"
-    tags: [취미여가, 모임, 상담]
-    wish_question: "어떤 활동에 관심이 있으세요?"
-    wish_examples: ["당일치기 여행·나들이", "걷기·운동", "노래·악기", "동네 친구 모임", "어떤 활동이 있는지 듣고 싶어요"]
+  - id: T06
+    area: leisure
+    name: 배움산책형
+    purpose: 생활·교양 배움
+    statement: "새로운 지식이나 생활에 필요한 것을 배우고 싶어요."
+    definition: "취업 외 생활 기능·지식 학습. 디지털에 한정하지 않고, 취업 목적도 있으면 T04 추가 여부 확인."
+    detail:
+      id: D06
+      text: "무엇을 배우고 싶으세요?"
+      selection: multi
+      options:
+        - {id: knowledge, label: "인문·역사·외국어 등을 배우고 싶어요"}
+        - {id: digital, label: "스마트폰이나 AI를 배우고 싶어요"}
+        - {id: basic, label: "읽기·쓰기 등 기초부터 배우고 싶어요"}
+        - {id: unknown, label: "아직 모르겠어요", exclusive: true}
 
-  - code: JSR
-    name: "[예시] 혼자 배우는 실행형"
-    summary: "내 속도에 맞춰 혼자 배우고 즐길 거리를 바로 시작하고 싶은 분"
-    tags: [배움, 디지털, 취미여가]
-    wish_question: "무엇을 배우거나 해보고 싶으세요?"
-    wish_examples: ["스마트폰 배우기", "집에서 듣는 강좌", "요리·공예", "책 읽기·글쓰기"]
+  - id: T07
+    area: leisure
+    name: 동네친구형
+    purpose: 정기 모임·교류
+    statement: "꾸준히 만나고 함께할 사람들을 찾고 싶어요."
+    definition: "정기적인 교류·관계가 목적. 일회 행사·공연 또는 단체 공모를 개인이 가입할 모임으로 추천하지 않음."
+    detail:
+      id: D07
+      text: "어떤 만남이 있으면 좋겠어요?"
+      selection: multi
+      options:
+        - {id: hobby_group, label: "같은 취미를 가진 사람들을 만나고 싶어요"}
+        - {id: regular_group, label: "독서·걷기 등을 함께할 모임을 찾고 싶어요"}
+        - {id: neighbors, label: "가까운 이웃과 어울리고 싶어요"}
+        - {id: unknown, label: "아직 모르겠어요", exclusive: true}
 
-  - code: JSW
-    name: "[예시] 혼자 배우는 탐색형"
-    summary: "조용히 배워 보고 싶지만, 무엇이 맞을지 먼저 알아보고 싶은 분"
-    tags: [배움, 디지털, 상담]
-    wish_question: "무엇에 관심이 있으세요?"
-    wish_examples: ["스마트폰 배우기", "집에서 듣는 강좌", "책 읽기·글쓰기", "어떤 배움이 있는지 듣고 싶어요"]
+  - id: T08
+    area: leisure
+    name: 마음쉼표형
+    purpose: 마음·관계 상담
+    statement: "마음이나 관계 고민을 상담자와 이야기하고 싶어요."
+    definition: "본인이 상담을 원할 때 연결. 혼자 참여하기 어렵다는 답만으로 우울·치료 필요를 추정하지 않음."
+    detail:
+      id: D08
+      text: "어떤 이야기를 나누고 싶으세요?"
+      selection: multi
+      options:
+        - {id: stress, label: "마음이나 스트레스에 관한 이야기예요"}
+        - {id: family, label: "가족이나 부부관계에 관한 이야기예요"}
+        - {id: process, label: "상담이 어떻게 진행되는지부터 알고 싶어요"}
+        - {id: unknown, label: "아직 모르겠어요", exclusive: true}
+
+  # ── 생활·돌봄·건강 ──
+  - id: T09
+    area: life
+    name: 노후든든형
+    purpose: 연금·노후 재무계획
+    statement: "연금과 앞으로의 생활비를 계획하고 싶어요."
+    definition: "내 연금·자산·지출을 계획하는 목적. 받을 수 있는 지원금·감면 탐색은 T10."
+    detail:
+      id: D09
+      text: "어떤 부분이 궁금하세요?"
+      selection: multi
+      options:
+        - {id: pension, label: "언제 얼마나 연금을 받을지 궁금해요"}
+        - {id: cashflow, label: "앞으로 들어오고 나갈 돈을 정리하고 싶어요"}
+        - {id: explore, label: "노후 준비를 어디서 시작할지 모르겠어요"}
+        - {id: unknown, label: "아직 모르겠어요", exclusive: true}
+
+  - id: T10
+    area: life
+    name: 혜택찾기형
+    purpose: 지원·혜택 확인
+    statement: "내 조건으로 받을 수 있는 지원이나 혜택이 궁금해요."
+    definition: "혜택 조회·신청 지원. 형편이 어렵다고 답한 사람에게만 부여하지 않음. 조회는 선정 확정이 아님."
+    detail:
+      id: D10
+      text: "어떤 지원이 궁금하세요?"
+      selection: multi
+      options:
+        - {id: living, label: "생활비나 요금 부담을 줄이고 싶어요"}
+        - {id: housing_medical, label: "주거비나 병원비 지원이 궁금해요"}
+        - {id: explore, label: "어떤 혜택이 있는지 두루 보고 싶어요"}
+        - {id: unknown, label: "아직 모르겠어요", exclusive: true}
+
+  - id: T11
+    area: life
+    name: 돌봄동행형
+    purpose: 본인·가족 돌봄
+    statement: "나나 가족을 돌보는 데 도움이 필요해요."
+    definition: "응답자와 돌봄 대상자를 구분. 대상자의 나이·필요도를 확인하고 사업별 대상 조건 적용."
+    detail:
+      id: D11
+      text: "누구에게 도움이 필요하세요?"
+      selection: multi
+      options:
+        - {id: self, label: "내 식사·집안일 등 일상에 도움이 필요해요"}
+        - {id: adult, label: "부모님이나 배우자 돌봄을 나누고 싶어요"}
+        - {id: child, label: "아이를 돌보는 데 도움이 필요해요"}
+        - {id: unknown, label: "아직 모르겠어요", exclusive: true}
+
+  - id: T12
+    area: life
+    name: 건강챙김형
+    purpose: 건강 유지·관리
+    statement: "내 건강을 확인하고 관리하고 싶어요."
+    definition: "건강 유지·관리 욕구. 운동의 재미가 목적이면 T05도 가능. 질환이나 치료 필요를 자동 판정하지 않음."
+    detail:
+      id: D12
+      text: "어떤 도움을 받고 싶으세요?"
+      selection: multi
+      options:
+        - {id: habits, label: "운동·식사 습관을 챙기고 싶어요"}
+        - {id: chronic, label: "진단받은 혈압·혈당을 관리하고 싶어요"}
+        - {id: check, label: "금연이나 건강검진을 알아보고 싶어요"}
+        - {id: unknown, label: "아직 모르겠어요", exclusive: true}
