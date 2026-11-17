@@ -46,12 +46,19 @@ CSS = """
 .stApp .notice.fail { border-color: #b3261e; background: #fdeceb; }
 .stApp .notice.info { border-color: #0b5c5c; background: #eef5f4; }
 .stApp .sec { font-size: 21px; font-weight: 800; color: #0b5c5c; margin: 10px 0 2px; }
+.stApp .p-kind { display: inline-block; font-size: 20px; font-weight: 700; color: #0b5c5c; background: #eef5f4;
+  border-radius: 8px; padding: 2px 10px; margin: 0 0 6px; }
+.stApp .body { font-size: 20px; line-height: 1.7; margin: 0; color: #1a1a1a; }
+.stApp ul.facts { margin: 0; padding-left: 24px; }
+.stApp ul.facts li { font-size: 20px; line-height: 1.7; color: #1a1a1a; }
+.stApp .area { font-size: 21px; font-weight: 800; color: #0b5c5c; margin: 12px 0 0; }
+.stApp [data-testid="stExpander"] summary p { font-size: 21px !important; font-weight: 700; color: #0b5c5c; }
+.stApp [data-testid="stExpander"] summary { min-height: 56px; }
 .stApp .p-name { font-size: 25px; font-weight: 800; line-height: 1.4; margin: 0; color: #1a1a1a; }
 .stApp .p-org { font-size: 20px; color: #444444; margin: 0; }
 .stApp .reason { background: #eef5f4; border-left: 6px solid #0b5c5c; padding: 12px 14px; border-radius: 8px;
   font-size: 20px; line-height: 1.7; }
 .stApp .say { background: #f4f4f4; border-radius: 10px; padding: 12px 14px; font-size: 20px; line-height: 1.7; }
-.stApp .step { background: #fff8e6; border-radius: 12px; padding: 16px; font-size: 22px; line-height: 1.6; font-weight: 600; }
 .stApp .small-note { font-size: 20px; color: #444444; line-height: 1.6; }
 .stApp a.a-btn { display: flex; align-items: center; justify-content: center; min-height: 60px; width: 100%;
   box-sizing: border-box; padding: 12px 16px; border-radius: 12px; border: 2px solid #0b5c5c;
