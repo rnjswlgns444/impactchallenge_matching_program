@@ -10,8 +10,16 @@ __pycache__/
 # 익명 응답 기록 (실험 데이터, 저장소에 올리지 않음)
 app/logs/
 
+# 앱 외 자료 (설문·인터뷰 원자료, 분석 코드와 결과). 저장소에는 앱만 올린다.
+# 앞의 /는 프로젝트 맨 위 폴더만 뜻한다. 없으면 app/data/까지 무시된다.
+/analysis/
+/data/
+/results/
+
 # 로컬 도구 설정
 .mcp.json
+/.claude/
+/CLAUDE.md
 
 # 화면 확인용 스크린샷
 .playwright-mcp/
