@@ -13,6 +13,7 @@
 #       selection : single(하나만) 또는 multi(여러 개)
 #       options   : 선택지. exclusive: true인 선택지는 다른 선택지와 함께 고를 수 없습니다.
 #       exclude   : 이 선택지를 고르면 후보에서 뺄 프로그램. {programs.csv의 열 이름: [뺄 값]}
+#       enabled   : false면 이 세부 질문을 화면에서 묻지 않습니다. (적지 않으면 묻습니다)
 #
 # 세부 선택지를 프로그램과 연결하려면 programs.csv의 '세부태그'에 '질문id.선택지id'를 적습니다. 예) D02.wage_required
 
@@ -49,11 +50,15 @@ types:
       id: D02
       text: "활동을 한다면 보수는 어느 정도 필요하세요?"
       selection: single
+      # 무보수 활동은 원하는 사람에게만 앞에 보여줍니다 (11/12 팀 초안: "무급 봉사는 희망할 때만 안내").
+      #   last    : 이 값인 프로그램은 맨 뒤로 보냅니다. 이 질문에 답하지 않아도 적용됩니다.
+      #   first   : 이 선택지를 고르면 이 값인 프로그램을 앞으로 가져옵니다.
+      #   exclude : 이 선택지를 고르면 이 값인 프로그램을 뺍니다 (규칙 R07). 보수가 '미확인'인 것은 빼지 않습니다.
+      last: {보수: [무보수]}
       options:
-        # 규칙 R07: 급여가 꼭 필요하면 무보수로 확인된 활동을 뺍니다. 보수가 '미확인'인 것은 빼지 않고 확인이 필요하다고 표시합니다.
         - {id: wage_required, label: "급여가 꼭 필요해요", exclude: {보수: [무보수]}}
         - {id: allowance_ok, label: "교통비·식비 정도도 괜찮아요"}
-        - {id: unpaid_ok, label: "보수 없이도 괜찮아요"}
+        - {id: unpaid_ok, label: "보수 없이도 괜찮아요", first: {보수: [무보수]}}
         - {id: unknown, label: "아직 모르겠어요", exclusive: true}
 
   - id: T03
@@ -145,6 +150,7 @@ types:
     definition: "본인이 상담을 원할 때 연결. 혼자 참여하기 어렵다는 답만으로 우울·치료 필요를 추정하지 않음."
     detail:
       id: D08
+      enabled: false   # 민감한 내용이고 아직 답이 결과에 쓰이지 않아 꺼 둡니다. 세부태그가 채워지면 true로 바꿉니다.
       text: "어떤 이야기를 나누고 싶으세요?"
       selection: multi
       options:
@@ -210,6 +216,7 @@ types:
     definition: "건강 유지·관리 욕구. 운동의 재미가 목적이면 T05도 가능. 질환이나 치료 필요를 자동 판정하지 않음."
     detail:
       id: D12
+      enabled: false   # 민감한 내용이고 아직 답이 결과에 쓰이지 않아 꺼 둡니다. 세부태그가 채워지면 true로 바꿉니다.
       text: "어떤 도움을 받고 싶으세요?"
       selection: multi
       options:
