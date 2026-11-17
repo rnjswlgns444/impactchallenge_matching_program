@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from dataclasses import dataclass, field
 from typing import Callable
 
@@ -20,6 +21,9 @@ from .privacy import scrub
 NO_TYPE = "(정하지 않음)"
 NOTHING = "(없음)"
 NO_KEY = "API 키 없음"
+REASON_LIMIT = 200       # AI가 쓴 이유 글의 최대 길이(자). 화면에 긴 글이 그대로 나오지 않게 한다
+UNMATCHED_LIMIT, UNMATCHED_COUNT = 40, 3
+RETRY_WAIT_SECONDS = 3
 
 ANSWER_SCHEMA = {
     "type": "object",
@@ -48,6 +52,12 @@ class AiResult:
     error: str = ""                                       # fail의 원인 종류 (점검용, 사용자 글은 담지 않음)
 
 
+def _type_line(type_info: dict) -> str:
+    """유형의 문장과 구분 기준. 구분 기준에는 '공연을 모임으로 추천하지 않음' 같은 주의가 들어 있다."""
+    definition = type_info.get("definition")
+    return f'{type_info["statement"]} (구분 기준: {definition})' if definition else type_info["statement"]
+
+
 def build_prompt(template: str, type_infos: list[dict], wish_examples: list[str], wish_text: str,
                  pool: list[dict], max_n: int) -> str:
     """지시문의 자리표시자를 채운다. 사용자 글은 전화번호·이메일을 지운 뒤에만 들어간다."""
@@ -60,7 +70,7 @@ def build_prompt(template: str, type_infos: list[dict], wish_examples: list[str]
         )
     values = {
         "{type_name}": ", ".join(t["name"] for t in type_infos) or NO_TYPE,
-        "{type_summary}": " / ".join(t["statement"] for t in type_infos) or NO_TYPE,
+        "{type_summary}": " / ".join(_type_line(t) for t in type_infos) or NO_TYPE,
         "{wish_examples}": ", ".join(wish_examples) or NOTHING,
         "{wish_text}": scrub(wish_text).strip() or NOTHING,
         "{candidates}": "\n".join(lines),
@@ -109,9 +119,9 @@ def parse_answer(raw: str, candidate_ids: list[str], max_n: int):
         pid = str(item.get("id", "")).strip()
         if pid in candidate_ids and pid not in seen:
             seen.add(pid)
-            matches.append({"id": pid, "reason": str(item.get("reason", "")).strip()})
-    unmatched = [str(x).strip() for x in data.get("unmatched") or [] if str(x).strip()]
-    return matches[:max_n], unmatched
+            matches.append({"id": pid, "reason": str(item.get("reason", "")).strip()[:REASON_LIMIT]})
+    unmatched = [str(x).strip()[:UNMATCHED_LIMIT] for x in data.get("unmatched") or [] if str(x).strip()]
+    return matches[:max_n], unmatched[:UNMATCHED_COUNT]
 
 
 def make_anthropic_caller(api_key: str, model: str, effort: str, timeout: float) -> Callable[[str], str]:
@@ -159,8 +169,8 @@ def make_gemini_caller(api_key: str, model: str, effort: str, timeout: float) ->
         "required": ["matches", "unmatched"],
     }
 
-    def call(prompt: str) -> str:
-        response = client.models.generate_content(
+    def generate(prompt: str):
+        return client.models.generate_content(
             model=model,
             contents=prompt,
             config={
@@ -170,6 +180,16 @@ def make_gemini_caller(api_key: str, model: str, effort: str, timeout: float) ->
                 "thinking_config": {"thinking_level": effort},
             },
         )
+
+    def call(prompt: str) -> str:
+        try:
+            response = generate(prompt)
+        except Exception as err:
+            # 503(서버가 잠시 바쁨)은 몇 초 만에 돌아오므로 한 번만 다시 부른다. 시간 초과(504)는 다시 부르지 않는다.
+            if getattr(err, "code", None) != 503:
+                raise
+            time.sleep(RETRY_WAIT_SECONDS)
+            response = generate(prompt)
         if not response.text:
             raise RuntimeError("빈 답")
         return response.text

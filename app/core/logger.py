@@ -85,6 +85,9 @@ def log_event(session_id, event, target="", value="", log_dir: Path | None = Non
 def log_error(kind: str, log_dir: Path | None = None) -> None:
     """AI 호출 실패 원인을 종류만 남긴다. 사용자가 적은 글은 남기지 않는다."""
     log_dir = log_dir or LOG_DIR
-    log_dir.mkdir(parents=True, exist_ok=True)
-    with (log_dir / "errors.log").open("a", encoding="utf-8") as f:
-        f.write(f"{datetime.now():%Y-%m-%d %H:%M} {kind}\n")
+    try:
+        log_dir.mkdir(parents=True, exist_ok=True)
+        with (log_dir / "errors.log").open("a", encoding="utf-8") as f:
+            f.write(f"{datetime.now():%Y-%m-%d %H:%M} {kind}\n")
+    except OSError:
+        pass        # 오류 기록을 못 써도 사용자 화면은 멈추지 않게 한다

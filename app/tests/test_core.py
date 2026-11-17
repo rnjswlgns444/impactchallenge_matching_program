@@ -13,7 +13,7 @@ import pytest
 
 from app.core import loader, logger, privacy
 from app.core.candidates import ai_pool, build_result, eligible, first_consult, for_type, unconfirmed_columns
-from app.core.llm_matcher import NO_KEY, NO_TYPE, build_prompt, parse_answer, recommend
+from app.core.llm_matcher import NO_KEY, NO_TYPE, REASON_LIMIT, build_prompt, parse_answer, recommend
 from app.core.selection import (barrier_guides, card_part_to_open, chosen_detail_options, detail_of,
                                 next_question, options_of, ordered_types, question, selected_types, toggle)
 
@@ -287,6 +287,22 @@ def test_prompt_has_candidates_only_and_no_contacts(data):
 ])
 def test_scrub_removes_contacts(text):
     assert privacy.scrub(f"연락처는 {text} 입니다") == f"연락처는 {privacy.REMOVED} 입니다"
+
+
+def test_scrub_removes_resident_number():
+    assert privacy.scrub("주민번호 600101-2345678 이에요") == f"주민번호 {privacy.REMOVED} 이에요"
+
+
+def test_ai_text_is_cut_to_limits():
+    raw = json.dumps({"matches": [{"id": "ok", "reason": "가" * 1000}], "unmatched": ["나" * 100] * 9})
+    matches, unmatched = parse_answer(raw, ["ok"], 3)
+    assert len(matches[0]["reason"]) == REASON_LIMIT and len(unmatched) == 3 and len(unmatched[0]) == 40
+
+
+def test_error_log_failure_does_not_raise(tmp_path):
+    blocker = tmp_path / "file"
+    blocker.write_text("x", encoding="utf-8")
+    logger.log_error("종류", blocker / "logs")               # 폴더를 만들 수 없는 곳이어도 예외가 나지 않는다
 
 
 def test_scrub_keeps_normal_text():
