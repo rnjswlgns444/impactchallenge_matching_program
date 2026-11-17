@@ -2,10 +2,12 @@
 
 실행: 프로젝트 루트에서  streamlit run app/main.py
 내용(문항, 유형, 프로그램, 문구)은 app/data의 파일에서 읽는다. 판단은 app/core가 한다.
-유형은 사용자가 고른 문장 그대로이고, 결과는 AI 없이 정보표에서 걸러서 만든다.
+유형은 사용자가 고른 문장 그대로이고, 기본 결과는 AI 없이 정보표에서 걸러서 만든다.
+결과 화면에서 원하는 점을 직접 적은 사람에게만, AI가 정보표 후보 안에서 고른 곳을 덧붙인다.
 """
 from __future__ import annotations
 
+import os
 import sys
 import uuid
 from html import escape
@@ -16,7 +18,7 @@ import streamlit as st
 # 'streamlit run app/main.py'로 실행해도 app 패키지를 찾을 수 있게 프로젝트 루트를 경로에 넣는다
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.core import candidates, loader, logger  # noqa: E402
+from app.core import candidates, llm_matcher, loader, logger  # noqa: E402
 from app.core import selection as sel  # noqa: E402
 from app.ui import components as ui  # noqa: E402
 from app.ui import style  # noqa: E402
@@ -33,6 +35,29 @@ def load_data() -> loader.AppData:
         st.stop()
 
 
+KEY_NAMES = {"gemini": "GEMINI_API_KEY", "anthropic": "ANTHROPIC_API_KEY"}
+
+
+def get_api_key(provider: str) -> str:
+    """API 키를 st.secrets → 환경변수 순서로 찾는다. 없으면 빈 글자."""
+    name = KEY_NAMES.get(provider, "ANTHROPIC_API_KEY")
+    try:
+        key = st.secrets.get(name, "")
+    except Exception:  # secrets.toml 파일이 없을 때
+        key = ""
+    return key or os.environ.get(name, "")
+
+
+def get_caller(llm: dict):
+    """settings.yaml의 llm 설정으로 AI 호출 함수를 만든다. 키가 없으면 None."""
+    provider = llm.get("provider", "gemini")
+    key = get_api_key(provider)
+    if not key:
+        return None
+    return llm_matcher.make_caller(provider, key, llm.get("model", ""), llm.get("effort", "low"),
+                                   float(llm.get("timeout_seconds", 60)))
+
+
 def init_state() -> None:
     defaults = {
         "screen": "start", "sid": uuid.uuid4().hex,
@@ -42,6 +67,8 @@ def init_state() -> None:
         "more": [],           # '더 보기'를 누른 유형
         "browsing": False,    # 유형을 정하지 않고 결과에 와서 둘러보는 중인지
         "logged": None,       # 기록한 응답의 모양. 한 번 진행에 responses.csv 한 행만 남기려고 둔다
+        "ai": None,           # AI 추가 추천 결과(llm_matcher.AiResult). '찾아보기'를 누를 때만 바뀐다
+        "free_empty": False,  # 글을 적지 않고 '찾아보기'를 눌렀는지
     }
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
@@ -82,6 +109,8 @@ def back_one(questions: list[dict]) -> None:
         state.draft[asked[-1]] = value          # 골라 둔 것은 남겨서 다시 고르지 않게 한다
     state.answers.pop(sel.PRIORITY_Q, None)
     state.browsing = False
+    state.ai = None
+    state.free_empty = False
     go("survey")
 
 
@@ -281,6 +310,89 @@ def consult_section(data, text, consults: list[dict], guides, open_part) -> None
         ui.program_card(program, text, None, guides, None, open_part, key=f"consult_{program['id']}")
 
 
+def wish_examples(data, type_ids: list[str]) -> list[str]:
+    """AI에게 함께 알려 줄, 사용자가 고른 항목: 세부 질문의 답과 마음에 걸린다고 한 점."""
+    state = st.session_state
+    chosen = [opt["label"] for tid in type_ids
+              for opt in sel.chosen_detail_options(data.types[tid], state.details.get(tid))]
+    worries = [f'마음에 걸리는 점: {guide["label"]}' for guide in sel.barrier_guides(state.answers, data.questions)]
+    return chosen + worries
+
+
+def ask_ai(data, type_ids: list[str], pool: list[dict], wish: str) -> llm_matcher.AiResult:
+    """AI를 한 번 부른다. 무엇이 실패해도 예외를 밖으로 던지지 않는다."""
+    try:
+        caller = get_caller(data.settings.get("llm") or {})
+    except Exception as err:  # AI 라이브러리가 없는 등 호출 함수를 만들지 못했을 때
+        return llm_matcher.AiResult("fail", error=llm_matcher.error_kind(err))
+    return llm_matcher.recommend(data.prompt, [data.types[tid] for tid in type_ids], wish_examples(data, type_ids),
+                                 wish, pool, int(data.settings.get("top_n", 3)), caller)
+
+
+def free_wish_section(data, text, type_ids: list[str], pool: list[dict], guides, open_part,
+                      seen: dict[str, str], consults: list[dict]) -> None:
+    """원하는 점을 직접 적는 칸(Q_FREE)과, 적은 사람에게만 보여주는 AI 추가 추천.
+
+    pool은 candidates.ai_pool이 걸러 준 후보다. AI에는 이 후보만 보내고, 답도 이 후보와 대조한다.
+    추천은 글 상자 바로 아래에 그린다. 적은 글은 기록하지 않는다.
+    """
+    state = st.session_state
+    question = sel.question(data.questions, sel.FREE_Q)
+    ui.heading(question["text"])
+    if question.get("help"):
+        ui.html(f'<p class="q-help">{escape(question["help"])}</p>')
+    st.text_area(question["text"], key="free_text", max_chars=int(question.get("max_characters", 500)),
+                 label_visibility="collapsed")
+    ui.html(f'<p class="small-note">{escape(text["free_privacy"])}</p>')
+
+    if st.button(width="stretch", label=text["free_button"], key="free_find", type="primary"):
+        wish = (state.get("free_text") or "").strip()
+        state.free_empty = not wish
+        state.ai = None
+        if wish:
+            with st.spinner(text["free_wait"]):
+                state.ai = ask_ai(data, type_ids, pool, wish)
+            logger.log_event(state.sid, "ai", state.ai.status, "|".join(m["id"] for m in state.ai.matches))
+            if state.ai.status == "fail":
+                logger.log_error(f"AI 추가 추천 실패 {state.ai.error}")
+
+    if state.free_empty:
+        ui.notice(text["free_empty"])
+    result = state.ai
+    if result is None:
+        return
+    if result.status == "fail":
+        ui.notice(text["ai_fail"], "fail")
+        if data.settings.get("show_error_kind"):
+            ui.html(f'<p class="small-note">(점검용) {escape(result.error)}</p>')
+        return
+
+    # 답을 받은 뒤 유형이나 세부 답이 바뀌었을 수 있으므로, 지금의 후보에 있는 것만 그린다
+    by_id = {p["id"]: p for p in pool}
+    matches = [m for m in result.matches if m["id"] in by_id]
+    ui.heading(text["ai_heading"])
+    for match in matches:
+        program = by_id[match["id"]]
+        if match["reason"]:
+            ui.ai_reason(text["ai_reason"], match["reason"])
+        if program["id"] in seen:
+            ui.seen_card(program, text, seen[program["id"]])
+        else:
+            seen[program["id"]] = text["ai_heading"]
+            ui.program_card(program, text, None, guides, None, open_part, key=f"ai_{program['id']}")
+    if result.unmatched:
+        ui.notice(text["ai_unmatched"].format(items=", ".join(result.unmatched)))
+    if not matches or result.unmatched:
+        if not matches:
+            ui.notice(text["ai_none"], "info")
+        for program in consults[:1]:                       # 맞는 곳이 없으면 함께 찾아 주는 창구로 잇는다
+            if program["id"] in seen:
+                ui.seen_card(program, text, seen[program["id"]])
+            else:
+                seen[program["id"]] = text["ai_heading"]
+                ui.program_card(program, text, None, guides, None, open_part, key=f"ai_consult_{program['id']}")
+
+
 def log_once(type_ids: list[str], shown_ids: list[str]) -> None:
     """결과에 처음 왔을 때 한 행만 남긴다. 돌아가서 답을 바꾸면 행을 늘리지 않고 events.csv에 남긴다."""
     state = st.session_state
@@ -314,6 +426,7 @@ def screen_result(data, text) -> None:
 
     seen: dict[str, str] = {}
     by_type = {r.type_id: r for r in results}
+    pool = candidates.ai_pool(data.programs, data.types, ordered, state.details, today)
 
     def draw_section(type_id: str) -> None:
         type_section(data, text, by_type[type_id], guides, open_part, top_n, seen, consults)
@@ -328,12 +441,14 @@ def screen_result(data, text) -> None:
         else:
             ui.fallback_card(data.settings["fallback_card"], text)
         browse_types(data, text, type_ids, draw_section)
+        free_wish_section(data, text, ordered, pool, guides, open_part, seen, consults)
     else:
         ui.body(text["result_intro"])
         if len(type_ids) >= 2 and sel.PRIORITY_Q not in state.answers:
             priority_question(data, type_ids)
         for result in results:
             draw_section(result.type_id)
+        free_wish_section(data, text, ordered, pool, guides, open_part, seen, consults)
         rest = [p for p in consults if p["id"] not in seen]           # 위에 이미 나온 창구는 다시 내지 않는다
         if rest:
             consult_section(data, text, rest, guides, open_part)

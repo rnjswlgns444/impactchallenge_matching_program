@@ -1,14 +1,15 @@
-"""화면 테스트. 실제 데이터 파일로 앱을 끝까지 눌러 보고, 오류와 기록 행 수를 확인한다. AI는 부르지 않는다."""
+"""화면 테스트. 실제 데이터 파일로 앱을 끝까지 눌러 보고, 오류와 기록 행 수를 확인한다. 실제 AI는 부르지 않는다."""
 from __future__ import annotations
 
 import csv
+import json
 from html import escape
 from pathlib import Path
 
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from app.core import loader, logger
+from app.core import candidates, llm_matcher, loader, logger
 
 MAIN = str(Path(__file__).resolve().parents[1] / "main.py")
 
@@ -91,3 +92,102 @@ def test_start_screen_tells_the_truth_about_saving(app):
     settings = loader.load_all().settings
     key = "start_privacy_saving" if settings.get("save_log", False) else "start_privacy"
     assert settings["text"][key] in page_text(app)
+
+
+# ── 직접 적기와 AI 추가 추천 (AI는 가짜 함수로 바꾼다) ──
+
+WISH = "오전에 할 수 있는 사무 일을 찾고 싶어요 010-1234-5678"
+
+
+@pytest.fixture
+def fake_ai(monkeypatch):
+    """실제 AI 대신 쓰는 가짜. prompts에 보낸 지시문이 쌓이고, reply를 바꾸면 답이 바뀐다."""
+    box = {"prompts": [], "reply": None}
+
+    def make_caller(provider, api_key, model, effort, timeout):
+        def call(prompt: str) -> str:
+            box["prompts"].append(prompt)
+            if isinstance(box["reply"], Exception):
+                raise box["reply"]
+            return json.dumps(box["reply"], ensure_ascii=False)
+        return call
+
+    monkeypatch.setattr(llm_matcher, "make_caller", make_caller)
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    return box
+
+
+def to_result_with_t01(at: AppTest) -> None:
+    for key in ("start", "opt_Q_NEEDS_T01", "next_Q_NEEDS", "next_Q_BARRIER", "next_Q_START"):
+        click(at, key)
+
+
+def write_wish(at: AppTest, wish: str) -> None:
+    at.text_area(key="free_text").set_value(wish).run()
+    click(at, "free_find")
+
+
+def test_free_text_adds_ai_picks_with_reasons(app, fake_ai, tmp_path):
+    """글을 적고 찾아보기를 누르면 AI가 고른 곳과 이유가 나온다. 지어낸 id는 나오지 않고, 글은 남지 않는다."""
+    data = loader.load_all()
+    settings = data.settings["text"]
+    pool = candidates.ai_pool(data.programs, data.types, ["T01"], {}, candidates.today_kst())
+    fake_ai["reply"] = {"matches": [{"id": pool[-1]["id"], "reason": "오전에 사무 일을 찾으신다고 해서 골랐어요."},
+                                    {"id": "없는id", "reason": "지어낸 곳이에요."}], "unmatched": []}
+    to_result_with_t01(app)
+    assert settings["ai_heading"] not in page_text(app) and not fake_ai["prompts"]   # 적기 전에는 부르지 않는다
+
+    write_wish(app, WISH)
+    text = page_text(app)
+    assert settings["ai_heading"] in text and "오전에 사무 일을 찾으신다고 해서 골랐어요." in text
+    assert "지어낸 곳이에요." not in text
+    assert len(fake_ai["prompts"]) == 1
+
+    # AI에게는 걸러진 후보만, 전화번호를 지운 글만 간다
+    prompt = fake_ai["prompts"][0]
+    assert prompt.count("- id: ") == len(pool) and "010-1234-5678" not in prompt
+    blocked = [p["프로그램명"] for p in data.programs if p["매칭가능"] != "Y"]
+    assert not [name for name in blocked if name in prompt]
+
+    # 기록에는 상태와 고른 id만 남는다
+    event = [e for e in rows(tmp_path, "events.csv") if e["event"] == "ai"]
+    assert event == [{**event[0], "target": "ok", "value": pool[-1]["id"]}]
+    saved = "".join(path.read_text(encoding="utf-8-sig") for path in tmp_path.iterdir())
+    assert "사무 일" not in saved and "010-1234-5678" not in saved
+
+    click(app, "detail_T01_previous_work")                   # 다른 단추를 눌러도 AI를 다시 부르지 않는다
+    assert len(fake_ai["prompts"]) == 1 and settings["ai_heading"] in page_text(app)
+
+
+def test_empty_free_text_does_not_call_ai(app, fake_ai):
+    to_result_with_t01(app)
+    click(app, "free_find")
+    text = page_text(app)
+    assert loader.load_all().settings["text"]["free_empty"] in text and not fake_ai["prompts"]
+
+
+def test_ai_failure_keeps_basic_result(app, fake_ai, tmp_path):
+    """AI가 실패해도 기본 결과는 그대로이고, 오류 기록에 사용자 글이 없다."""
+    data = loader.load_all()
+    fake_ai["reply"] = TimeoutError(WISH)
+    to_result_with_t01(app)
+    write_wish(app, WISH)
+    text = page_text(app)
+    assert data.settings["text"]["ai_fail"] in text and data.types["T01"]["name"] in text
+    assert data.settings["text"]["call_button"] in text
+    errors = (tmp_path / "errors.log").read_text(encoding="utf-8")
+    assert "TimeoutError" in errors and "사무 일" not in errors
+
+
+def test_nothing_matched_leads_to_general_window(app, fake_ai):
+    """맞는 곳이 없으면 못 찾았다고 말하고 함께 찾아 주는 창구로 잇는다. 유형을 정하지 않은 사람도 쓸 수 있다."""
+    data = loader.load_all()
+    fake_ai["reply"] = {"matches": [], "unmatched": ["해외여행"]}
+    for key in ("start", "opt_Q_NEEDS_unknown", "next_Q_NEEDS", "next_Q_BARRIER", "next_Q_START"):
+        click(app, key)
+    write_wish(app, "해외여행을 가고 싶어요")
+    text = page_text(app)
+    assert data.settings["text"]["ai_none"] in text and "해외여행" in text
+    everything = candidates.ai_pool(data.programs, data.types, [], {}, candidates.today_kst())
+    assert fake_ai["prompts"][0].count("- id: ") == len(everything)
