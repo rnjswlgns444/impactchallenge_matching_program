@@ -28,6 +28,10 @@ CSS = """
 .stApp .stButton > button[kind="tertiary"] p { color: #444444; font-weight: 500; text-decoration: underline; }
 .stButton > button:focus-visible { outline: 4px solid #f2a900; outline-offset: 2px; }
 
+/* 선택지가 많은 질문의 '다음' 단추는 화면 아래에 붙여 둔다 */
+.stApp [class*="st-key-next_"]:has(button[kind="primary"]) { position: sticky; bottom: 12px; z-index: 50;
+  background: #ffffff; border-radius: 12px; box-shadow: 0 0 0 10px #ffffff; }
+
 /* 글 입력칸 */
 .stTextArea textarea { font-size: 20px !important; line-height: 1.6; }
 .stTextArea label p { font-size: 20px !important; font-weight: 600; }
@@ -63,6 +67,8 @@ CSS = """
 .stApp a.a-btn { display: flex; align-items: center; justify-content: center; min-height: 60px; width: 100%;
   box-sizing: border-box; padding: 12px 16px; border-radius: 12px; border: 2px solid #0b5c5c;
   font-size: 21px; font-weight: 600; text-decoration: none; text-align: center; margin: 6px 0; }
+.stApp a.a-btn { flex-direction: column; line-height: 1.5; }
+.stApp .nowrap { white-space: nowrap; }
 .stApp a.a-btn.fill { background: #0b5c5c; color: #ffffff !important; }
 .stApp a.a-btn.line { background: #ffffff; color: #0b5c5c !important; }
 </style>

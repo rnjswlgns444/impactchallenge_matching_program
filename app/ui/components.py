@@ -75,7 +75,9 @@ def phones(contact: str) -> list[tuple[str, str]]:
 
 def _call_buttons(contact: str, text: dict) -> None:
     for number, shown in phones(contact):
-        link_button(f'📞 {text["call_button"]} ({shown})', f"tel:{number}", fill=True)
+        # 전화번호가 줄 중간에서 끊기지 않게 번호는 한 덩어리로 둔다
+        html(f'<a class="a-btn fill" href="tel:{number}">📞 {escape(text["call_button"])}<br>'
+             f'<span class="nowrap">{escape(shown)}</span></a>')
 
 
 def _bullets(items: list[str]) -> None:
@@ -116,6 +118,7 @@ def program_card(program: dict, text: dict, type_info: dict | None = None, guide
             없으면 기관에 물어볼 문장을 보여준다. 확인되지 않은 것을 지어내지 않는다.
     asked: 세부 질문에서 고른 문장. 그대로 물어볼 문장에 넣는다.
     open_part: 먼저 펼쳐 둘 곳(about / ask / contact). 내용이 빈 곳은 제목도 내지 않는다.
+    물어볼 문장과 전화 단추는 접지 않고 카드 아래에 항상 보여준다.
     """
     open_part = open_part or "about"
     with st.container(border=True):
@@ -136,12 +139,13 @@ def program_card(program: dict, text: dict, type_info: dict | None = None, guide
         worries, sentences = [], [program["첫연락문장"]] if program["첫연락문장"] else []
         sentences += list(asked or [])
         for guide in guides or []:
-            known = [program[col].replace("|", ", ") for col in guide.get("show") or [] if program.get(col)]
+            known = [program[col].replace("|", ", ") for col in guide.get("show") or []
+                     if program.get(col) and program[col] != candidates.UNCONFIRMED]
             if known:
                 worries.append(f'<b>{escape(guide["label"])}</b>: {escape(" / ".join(known))}')
             elif guide.get("ask"):
                 sentences.append(guide["ask"])
-        if checks or worries or sentences:
+        if checks or worries:
             with st.expander(text["card_ask"], expanded=open_part == "ask", key=f"ask_{key}"):
                 if checks:
                     html(f'<p class="sec">{escape(text["check_heading"])}</p>')
@@ -149,23 +153,31 @@ def program_card(program: dict, text: dict, type_info: dict | None = None, guide
                 if worries:
                     html(f'<p class="sec">{escape(text["worry_heading"])}</p>')
                     _bullets(worries)
-                if sentences:
-                    lines = "<br>".join(f"“{escape(s)}”" for s in sentences)
-                    html(f'<div class="say"><b>{escape(text["say_prefix"])}</b><br>{lines}</div>')
 
         # ── 문의·신청 방법 ──
         detail_url = program["상세페이지URL"] or program["홈페이지URL"]
-        if program["신청방법"] or program["공식연락처"] or program["신청URL"] or detail_url:
+        if program["신청방법"] or program["신청URL"] or detail_url:
             with st.expander(text["card_contact"], expanded=open_part == "contact", key=f"contact_{key}"):
                 if program["신청방법"]:
                     body(program["신청방법"])
-                _call_buttons(program["공식연락처"], text)
                 if program["신청URL"]:
                     link_button(text["apply_button"], program["신청URL"])
                 if detail_url and detail_url != program["신청URL"]:
                     link_button(text["detail_button"], detail_url)
 
+        # ── 항상 보이는 곳: 물어볼 문장과 전화 ──
+        if sentences:
+            lines = "<br>".join(f"“{escape(s)}”" for s in sentences)
+            html(f'<div class="say"><b>{escape(text["say_prefix"])}</b><br>{lines}</div>')
+        _call_buttons(program["공식연락처"], text)
         _checked_note(program, text)
+
+
+def seen_card(program: dict, text: dict, type_name: str) -> None:
+    """위쪽 유형 구역에 이미 나온 곳. 같은 카드를 되풀이하지 않고 한 줄로 알려 준다."""
+    with st.container(border=True):
+        html(f'<p class="p-name">{escape(program["프로그램명"])}</p><p class="p-org">{escape(program["기관명"])}</p>')
+        body(text["seen_note"].format(type=type_name))
 
 
 def list_card(program: dict, text: dict) -> None:

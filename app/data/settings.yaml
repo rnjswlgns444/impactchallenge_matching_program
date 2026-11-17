@@ -20,7 +20,7 @@ text:
 
   # ── 질문 화면 ──
   multi_help: "해당하는 것을 모두 누른 뒤, 아래 '다음'을 눌러 주세요."
-  next_button: "다음"
+  next_button: "다음 ({count}개 골랐어요)"
   skip_button: "고르지 않고 넘어가기"
   back_button: "← 이전으로"
 
@@ -32,11 +32,11 @@ text:
   contacts_heading: "지금 문의할 수 있는 곳"
   lists_heading: "목록에서 직접 찾아보기"
   more_button: "다른 곳 더 보기 ({count}곳)"
-  no_program: "이 도움은 지금 안내할 곳을 아직 확인하지 못했어요. '무엇이 맞을지 함께 찾아 주는 곳'에 물어보시면 도와드려요."
+  no_program: "이 도움은 지금 안내할 곳을 아직 확인하지 못했어요. 대신 무엇이 맞을지 함께 찾아 주는 곳을 안내해 드려요."
   no_program_at_all: "지금 안내할 수 있는 곳을 찾지 못했어요. 아래 창구에 물어보시면 도와드려요."
   unknown_intro: "아직 정하지 않으셔도 괜찮아요. 무엇이 맞을지 함께 찾아 주는 곳부터 안내해 드려요."
   browse_heading: "어떤 도움이 있는지 둘러보기"
-  browse_help: "궁금한 것을 누르면 바로 아래에 안내가 나와요. 여러 개 눌러도 돼요."
+  browse_help: "궁금한 것을 누르면 그 단추 바로 아래에 안내가 나와요. 여러 개 눌러도 돼요."
   consult_heading: "무엇이 맞을지 함께 찾아 주는 곳"
 
   # ── 결과 카드 ──
@@ -57,6 +57,7 @@ text:
   call_button: "전화로 물어보기"
   apply_button: "신청 페이지 열기"
   detail_button: "자세히 보기"
+  seen_note: "위쪽 '{type}'에서 안내한 곳이에요."
   list_note: "지금 신청할 수 있는 강좌가 있는지는 목록에서 직접 확인해 주세요."
   list_button: "목록 열기"
   checked_note: "{date} 기준 정보예요. 신청 전에 기관에 꼭 확인해 주세요."
