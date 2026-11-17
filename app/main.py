@@ -341,9 +341,9 @@ def free_wish_section(data, text, type_ids: list[str], pool: list[dict], guides,
     ui.heading(question["text"])
     if question.get("help"):
         ui.html(f'<p class="q-help">{escape(question["help"])}</p>')
+    ui.html(f'<p class="small-note">{escape(text["free_privacy"])}</p>')     # 적기 전에 읽도록 글 상자 위에 둔다
     st.text_area(question["text"], key="free_text", max_chars=int(question.get("max_characters", 500)),
                  label_visibility="collapsed")
-    ui.html(f'<p class="small-note">{escape(text["free_privacy"])}</p>')
 
     if st.button(width="stretch", label=text["free_button"], key="free_find", type="primary"):
         wish = (state.get("free_text") or "").strip()
@@ -352,6 +352,7 @@ def free_wish_section(data, text, type_ids: list[str], pool: list[dict], guides,
         if wish:
             with st.spinner(text["free_wait"]):
                 state.ai = ask_ai(data, type_ids, pool, wish)
+            state.ai_wish = wish                          # 어떤 글로 찾은 결과인지. 화면에만 두고 기록하지 않는다
             logger.log_event(state.sid, "ai", state.ai.status, "|".join(m["id"] for m in state.ai.matches))
             if state.ai.status == "fail":
                 logger.log_error(f"AI 추가 추천 실패 {state.ai.error}")
@@ -360,6 +361,9 @@ def free_wish_section(data, text, type_ids: list[str], pool: list[dict], guides,
         ui.notice(text["free_empty"])
     result = state.ai
     if result is None:
+        return
+    if (state.get("free_text") or "").strip() != state.get("ai_wish"):
+        ui.notice(text["ai_stale"], "info")               # 글을 고쳤으면 예전 글로 찾은 결과를 보여주지 않는다
         return
     if result.status == "fail":
         ui.notice(text["ai_fail"], "fail")
@@ -370,21 +374,23 @@ def free_wish_section(data, text, type_ids: list[str], pool: list[dict], guides,
     # 답을 받은 뒤 유형이나 세부 답이 바뀌었을 수 있으므로, 지금의 후보에 있는 것만 그린다
     by_id = {p["id"]: p for p in pool}
     matches = [m for m in result.matches if m["id"] in by_id]
-    ui.heading(text["ai_heading"])
+    if matches:
+        ui.heading(text["ai_heading"])
     for match in matches:
         program = by_id[match["id"]]
-        if match["reason"]:
-            ui.ai_reason(text["ai_reason"], match["reason"])
         if program["id"] in seen:
-            ui.seen_card(program, text, seen[program["id"]])
+            # 위에 이미 나온 곳도 이유, 물어볼 문장, 전화 단추는 여기서 바로 볼 수 있게 한다
+            ui.picked_card(program, text, match["reason"], seen[program["id"]])
         else:
             seen[program["id"]] = text["ai_heading"]
+            if match["reason"]:
+                ui.ai_reason(text["ai_reason"], match["reason"])
             ui.program_card(program, text, None, guides, None, open_part, key=f"ai_{program['id']}")
-    if result.unmatched:
+    if not matches:
+        ui.notice(text["ai_none"], "info")
+    elif result.unmatched:
         ui.notice(text["ai_unmatched"].format(items=", ".join(result.unmatched)))
     if not matches or result.unmatched:
-        if not matches:
-            ui.notice(text["ai_none"], "info")
         for program in consults[:1]:                       # 맞는 곳이 없으면 함께 찾아 주는 창구로 잇는다
             if program["id"] in seen:
                 ui.seen_card(program, text, seen[program["id"]])

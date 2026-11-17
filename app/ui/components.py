@@ -175,7 +175,20 @@ def program_card(program: dict, text: dict, type_info: dict | None = None, guide
 
 def ai_reason(label: str, reason: str) -> None:
     """AI가 쓴 추천 이유. 글은 그대로 보여주고 마크다운이나 HTML로 해석하지 않는다."""
-    html(f'<div class="say"><b>{escape(label)}</b><br>{escape(reason)}</div>')
+    html(f'<div class="reason"><b>{escape(label)}</b><br>{escape(reason)}</div>')
+
+
+def picked_card(program: dict, text: dict, reason: str, type_name: str) -> None:
+    """AI가 고른 곳인데 위쪽 유형 구역에 이미 카드가 있는 경우. 이유, 물어볼 문장, 전화 단추만 다시 보여준다."""
+    with st.container(border=True):
+        html(f'<p class="p-name">{escape(program["프로그램명"])}</p><p class="p-org">{escape(program["기관명"])}</p>')
+        if reason:
+            ai_reason(text["ai_reason"], reason)
+        if program["첫연락문장"]:
+            html(f'<div class="say"><b>{escape(text["say_prefix"])}</b><br>“{escape(program["첫연락문장"])}”</div>')
+        _call_buttons(program["공식연락처"], text)
+        body(text["ai_seen_note"].format(type=type_name))
+        _checked_note(program, text)
 
 
 def seen_card(program: dict, text: dict, type_name: str) -> None:

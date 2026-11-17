@@ -188,6 +188,27 @@ def test_nothing_matched_leads_to_general_window(app, fake_ai):
         click(app, key)
     write_wish(app, "해외여행을 가고 싶어요")
     text = page_text(app)
-    assert data.settings["text"]["ai_none"] in text and "해외여행" in text
+    assert data.settings["text"]["ai_none"] in text
+    assert data.settings["text"]["ai_heading"] not in text     # 찾은 곳이 없으면 제목을 내지 않는다
     everything = candidates.ai_pool(data.programs, data.types, [], {}, candidates.today_kst())
     assert fake_ai["prompts"][0].count("- id: ") == len(everything)
+
+
+def test_picked_place_already_shown_keeps_call_button(app, fake_ai):
+    """AI가 고른 곳이 위에 이미 나온 곳이어도 이유와 전화 단추를 그 자리에서 보여준다. 글을 고치면 옛 결과를 숨긴다."""
+    data = loader.load_all()
+    settings = data.settings["text"]
+    pool = candidates.ai_pool(data.programs, data.types, ["T01"], {}, candidates.today_kst())
+    fake_ai["reply"] = {"matches": [{"id": pool[0]["id"], "reason": "가까운 곳이라 골랐어요."}], "unmatched": ["해외여행"]}
+    to_result_with_t01(app)
+    calls_before = page_text(app).count(settings["call_button"])
+    write_wish(app, WISH)
+    text = page_text(app)
+    assert escape(settings["ai_seen_note"].format(type=data.types["T01"]["name"])) in text
+    assert text.count(settings["call_button"]) > calls_before
+    assert "해외여행" in text                                  # 일부만 찾았으면 못 찾은 부분을 알려 준다
+
+    app.text_area(key="free_text").set_value("다른 글").run()
+    text = page_text(app)
+    assert escape(settings["ai_stale"]) in text and "가까운 곳이라 골랐어요." not in text
+    assert len(fake_ai["prompts"]) == 1
