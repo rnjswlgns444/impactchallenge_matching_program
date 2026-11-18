@@ -124,13 +124,17 @@ def check_label(label: str, selected: bool) -> str:
 # ── 시작 화면 ──
 
 def screen_start(data, text) -> None:
-    ui.html(f'<p class="app-title">{escape(data.settings["app_title"])}</p>')
-    ui.body(text["start_intro"])
-    ui.body(f'⏱ {text["start_time"]}')
-    ui.body(text["start_refresh"])                            # 새로고침·뒤로 가기를 하면 답이 지워진다는 안내
+    ui.html(f'<span class="logo big"></span><p class="app-title center">{escape(data.settings["app_title"])}</p>')
+    ui.html(f'<p class="body center">{escape(text["start_intro"])}</p>')
     saving = bool(data.settings.get("save_log", False))      # 기록을 켰을 때만 '저장해요'라고 말한다
+    # 저장·전송 안내는 시작 단추보다 위에 둔다. 누르기 전에 읽을 수 있어야 한다
     ui.notice(text["start_privacy_saving"] if saving else text["start_privacy"], "info")
     st.button(width="stretch", label=text["start_button"], key="start", type="primary", on_click=go, args=("survey",))
+    ui.html(f'<p class="q-help center">⏱ {escape(text["start_time"])}</p>')
+    start_steps = text.get("start_steps") or []              # 없어도 되는 문구라 loader가 검사하지 않는다
+    if start_steps:
+        ui.steps([str(step) for step in start_steps])
+    ui.body(text["start_refresh"])                            # 새로고침·뒤로 가기를 하면 답이 지워진다는 안내
     ui.html(f'<p class="small-note">{escape(text["disclaimer"])}</p>')
 
 
@@ -159,32 +163,37 @@ def screen_survey(data, text) -> None:
     survey = sel.survey_questions(data.questions)
     qid = question["id"]
     kind = question["selection"]
-    ui.question_header(progress_label(text, survey, question), (survey.index(question) + 1) / len(survey),
-                       question["text"], question.get("help") or (text["scale_help"] if kind == sel.SCALE else ""))
+    ui.progress(progress_label(text, survey, question), (survey.index(question) + 1) / len(survey))
 
     def answer(value) -> None:
         state.answers[qid] = value
         state.draft.pop(qid, None)
         state.to_top = True
 
+    # 질문과 선택지는 흰 카드(q_card) 안에, 넘어가기·이전 단추는 카드 밖에 둔다
+    card = st.container(key="q_card")
+    with card:
+        ui.question_text(question["text"], question.get("help") or (text["scale_help"] if kind == sel.SCALE else ""))
+
     if kind == "multi":
         options = sel.options_of(question, data.types)
         chosen = state.draft.setdefault(qid, [])
-        ui.html(f'<p class="q-help">{escape(text["multi_help"])}</p>')
 
         def pick(option_id: str) -> None:
             state.draft[qid] = sel.toggle(state.draft.get(qid, []), option_id, options)
 
-        for option in options:
-            selected = option["id"] in chosen
-            st.button(width="stretch", label=check_label(option["label"], selected), key=f"opt_{qid}_{option['id']}",
-                      type="primary" if selected else "secondary", on_click=pick, args=(option["id"],))
-        st.divider()
+        with card:
+            ui.html(f'<p class="q-help">{escape(text["multi_help"])}</p>')
+            for option in options:
+                selected = option["id"] in chosen
+                st.button(width="stretch", label=check_label(option["label"], selected),
+                          key=f"opt_{qid}_{option['id']}", type="primary" if selected else "secondary",
+                          on_click=pick, args=(option["id"],))
         st.button(width="stretch", label=text["next_button"].format(count=len(chosen)) if chosen else text["skip_button"], key=f"next_{qid}",
                   type="primary" if chosen else "secondary", on_click=answer, args=(list(chosen),))
     elif kind == "number":
         # 폼으로 묶어야, 숫자를 적고 바로 '다음'을 눌러도 적은 값이 함께 넘어온다
-        with st.form(key=f"form_{qid}", border=False):
+        with card, st.form(key=f"form_{qid}", border=False):
             st.number_input(question["text"], min_value=question["min"], max_value=question["max"],
                             value=state.draft.get(qid), step=1, key=f"num_{qid}", label_visibility="collapsed",
                             placeholder=text["number_placeholder"])
@@ -200,10 +209,12 @@ def screen_survey(data, text) -> None:
         else:
             options = sel.options_of(question, data.types)
         before = state.draft.get(qid)                   # '이전으로' 돌아왔을 때, 앞서 고른 답을 표시해 준다
-        for option in options:
-            selected = option["id"] == before
-            st.button(width="stretch", label=check_label(option["label"], selected), key=f"opt_{qid}_{option['id']}",
-                      type="primary" if selected else "secondary", on_click=answer, args=(option["id"],))
+        with card:
+            for option in options:
+                selected = option["id"] == before
+                st.button(width="stretch", label=check_label(option["label"], selected),
+                          key=f"opt_{qid}_{option['id']}", type="primary" if selected else "secondary",
+                          on_click=answer, args=(option["id"],))
         st.button(width="stretch", label=text["skip_button"], key=f"next_{qid}", type="tertiary",
                   on_click=answer, args=(None,))
 
@@ -600,6 +611,7 @@ def screen_result(data, text) -> None:
     with top:
         free_wish_result(data, text, shown_types, pool, guides, seen, consults)
     ui.notice(text["capture_tip"], "info")
+    ui.share_box(text, data.settings["app_title"], str(text.get("share_url") or ""))
     result_footer(data, text, judged)
 
 
@@ -612,7 +624,8 @@ def main() -> None:
     style.apply()
     init_state()
     scroll_to_top()
-    screens = {"start": screen_start, "survey": screen_survey, "result": screen_result}
+    ui.topbar(text.get("top_title") or data.settings["app_title"])
+    screens ={"start": screen_start, "survey": screen_survey, "result": screen_result}
     screens[st.session_state.screen](data, text)
 
 

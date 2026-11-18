@@ -1,6 +1,7 @@
 """화면 조각: 문항 머리말, 안내 상자, 유형 머리말, 프로그램 카드, 목록 카드."""
 from __future__ import annotations
 
+import json
 import re
 from html import escape
 
@@ -31,10 +32,68 @@ def heading(value: str) -> None:
     html(f'<p class="q-title">{escape(value)}</p>')
 
 
-def question_header(label: str, fraction: float, text: str, help_text: str = "") -> None:
+def topbar(title: str) -> None:
+    """모든 화면 맨 위의 띠: 로고와 앱 이름."""
+    html(f'<p class="topbar"><span class="logo"></span>{escape(title)}</p>')
+
+
+def steps(items: list[str]) -> None:
+    """시작 화면의 순서 안내. 1, 2, 3 번호가 붙은 칸으로 보여준다."""
+    rows = "".join(f'<div class="step"><span class="num">{n}</span><p>{escape(item)}</p></div>'
+                   for n, item in enumerate(items, start=1))
+    html(f'<div class="steps">{rows}</div>')
+
+
+# 공유 단추를 누르면 실행되는 코드. 앱 화면(부모 문서)에 한 번만 심는다.
+# 휴대폰 공유 창 → 안 되면 주소 복사 → 그것도 안 되면 주소를 글로 보여준다. 보내는 것은 소개 글과 앱 주소뿐이다.
+_SHARE_CODE = """(function (cfg) {
+  document.addEventListener('click', async function (e) {
+    const a = e.target.closest && e.target.closest('a.share-btn');
+    if (!a) return;
+    e.preventDefault();
+    const box = a.closest('.share');
+    const status = box && box.querySelector('.share-status');
+    const say = function (t) { if (status) status.textContent = t; };
+    let url = cfg.url;
+    if (!url) {
+      try { url = window.top.location.href; } catch (_) { url = window.location.href; }
+      url = url.split('#')[0].split('?')[0];
+    }
+    if (navigator.share) {
+      try { await navigator.share({ title: cfg.title, text: cfg.message, url: url }); return; }
+      catch (err) { if (err && err.name === 'AbortError') return; }
+    }
+    try { await navigator.clipboard.writeText(cfg.message + ' ' + url); say(cfg.copied); }
+    catch (_) { say(cfg.failed + ' ' + url); }
+  });
+})(CONFIG);"""
+
+
+def share_box(text: dict, title: str, url: str = "") -> None:
+    """결과 화면 맨 아래의 '친구에게 공유하기'. 답이나 결과는 보내지 않는다."""
+    html(f'<div class="share"><p class="q-title">{escape(text["share_heading"])}</p>'
+         f'<p class="q-help">{escape(text["share_help"])}</p>'
+         f'<a class="a-btn fill share-btn" href="#" role="button">💬 {escape(text["share_button"])}</a>'
+         f'<p class="small-note share-status" aria-live="polite"></p></div>')
+    config = {"title": title, "message": text["share_message"], "copied": text["share_copied"],
+              "failed": text["share_failed"], "url": url}
+    code = _SHARE_CODE.replace("CONFIG", json.dumps(config, ensure_ascii=False))
+    loader_script = ("<script>const w = window.parent; if (!w.__shareBound) { w.__shareBound = true; "
+                     "const s = w.document.createElement('script'); s.textContent = "
+                     + json.dumps(code, ensure_ascii=False).replace("</", "<\\/")
+                     + "; w.document.head.appendChild(s); }</script>")
+    st.iframe(loader_script, height=1)
+
+
+def progress(label: str, fraction: float) -> None:
     """label은 '질문 3 / 24' 같은 진행 글자, fraction은 전체 설문에서 지금까지 온 비율(0~1)이다."""
-    html(f'<p class="q-progress">{escape(label)}</p>')
-    st.progress(fraction)
+    percent = round(fraction * 100)
+    html(f'<p class="q-progress"><span>{escape(label)}</span><span>{percent}%</span></p>'
+         f'<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{percent}">'
+         f'<i style="width:{percent}%"></i></div>')
+
+
+def question_text(text: str, help_text: str = "") -> None:
     heading(text)
     if help_text:
         html(f'<p class="q-help">{escape(help_text)}</p>')

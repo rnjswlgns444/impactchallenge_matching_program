@@ -494,3 +494,28 @@ def test_no_detail_question_allows_many_answers():
         detail = type_info.get("detail") or {}
         assert detail.get("selection") == "single", type_info["id"]
         assert not [opt for opt in detail["options"] if opt.get("exclusive")], type_info["id"]
+
+
+# ── 겉모습과 공유 ──
+
+def test_top_bar_and_start_steps_are_shown(app):
+    """모든 화면 맨 위에 앱 이름 띠가 있고, 시작 화면에는 순서 안내가 나온다."""
+    text = loader.load_all().settings["text"]
+    page = page_text(app)
+    assert text["top_title"] in page
+    assert all(step in page for step in text["start_steps"])
+    click(app, "start")
+    assert text["top_title"] in page_text(app)
+
+
+def test_share_box_sends_no_answers(app):
+    """결과 화면 맨 아래에 공유 단추가 있다. 공유에 쓰이는 글에는 답, 유형 이름, 기본정보가 들어가지 않는다."""
+    data = loader.load_all()
+    text = data.settings["text"]
+    take_survey(app, barrier="alone", T01=(5, 5))
+    page = page_text(app)
+    assert text["share_button"] in page and text["share_heading"] in page
+
+    sent = " ".join(str(frame.proto) for frame in app.get("iframe"))
+    assert text["share_message"] in sent
+    assert data.types["T01"]["name"] not in sent and "female" not in sent and "61" not in sent

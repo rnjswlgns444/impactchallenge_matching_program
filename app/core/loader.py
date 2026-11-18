@@ -62,6 +62,7 @@ TEXT_KEYS = """
     kind_always kind_period kind_list nationwide card_about card_ask card_contact target_label first_visit_label
     check_heading age_unconfirmed worry_heading say_prefix call_button apply_button detail_button list_note list_button
     capture_tip restart_button disclaimer
+    share_heading share_help share_button share_message share_copied share_failed
 """.split()
 # 값을 끼워 넣는 문구와, 그 문구에 쓸 수 있는 자리표시자
 TEXT_FIELDS = {

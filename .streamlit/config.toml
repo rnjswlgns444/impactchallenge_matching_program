@@ -1,10 +1,11 @@
 # 화면 색과 글꼴 (밝은 화면으로 고정). 비밀 정보는 여기 넣지 않고 secrets.toml에 넣는다.
 [theme]
 base = "light"
-primaryColor = "#0b5c5c"
+# 노란 포인트 색은 여기가 아니라 app/ui/style.py에서 정한 곳에만 칠한다(여기에 넣으면 입력칸 테두리까지 노래져 안 보인다).
+primaryColor = "#191919"
 backgroundColor = "#ffffff"
-secondaryBackgroundColor = "#eef5f4"
-textColor = "#1a1a1a"
+secondaryBackgroundColor = "#f4f3ef"
+textColor = "#191919"
 
 [browser]
 gatherUsageStats = false
