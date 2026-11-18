@@ -1,8 +1,9 @@
-"""유형 선택, 후보 거르기, AI 답 검증, 개인정보 지우기, 기록, 데이터 검사 테스트.
+"""문항 구성, 후보 거르기, AI 답 검증, 개인정보 지우기, 기록, 데이터 검사 테스트.
 
 문항과 유형은 실제 데이터 파일을 쓰고, 프로그램은 이 파일 안의 가짜 행을 쓴다.
 그래서 팀원이 프로그램 정보표를 고쳐도 테스트가 깨지지 않는다. 날짜는 인자로 넘긴다.
-'검증 사례 n'은 전달 자료(01_질문_유형_분류규칙.json)의 acceptance_cases 번호다.
+'검증 사례 n'과 '규칙 Rnn'은 예전 전달 자료(2026-11-16, 01_질문_유형_분류규칙.json)의 번호다.
+채점 규칙 자체의 테스트는 test_scoring.py에 있다.
 실행: 프로젝트 루트에서  python -m pytest app/tests
 """
 import copy
@@ -14,8 +15,9 @@ import pytest
 from app.core import loader, logger, privacy
 from app.core.candidates import ai_pool, build_result, eligible, first_consult, for_type, unconfirmed_columns
 from app.core.llm_matcher import NO_KEY, NO_TYPE, REASON_LIMIT, build_prompt, parse_answer, recommend
-from app.core.selection import (barrier_guides, card_part_to_open, chosen_detail_options, detail_of,
-                                next_question, options_of, ordered_types, question, selected_types, toggle)
+from app.core.scoring import CHOOSE, EXPLORE, RESULT, score
+from app.core.selection import (barrier_guides, chosen_detail_options, detail_of, next_question, options_of,
+                                ordered_types, question, scale_questions, toggle, type_questions)
 
 TODAY = date(2026, 11, 17)
 
@@ -41,63 +43,85 @@ def ids(programs):
     return [p["id"] for p in programs]
 
 
-# ── 유형 선택 (규칙 R01~R04) ──
+# ── 문항 구성과 유형 연결 ──
 
-def test_first_question_offers_every_type_and_unknown(data):
-    options = options_of(question(data.questions, "Q_NEEDS"), data.types)
-    assert [o["id"] for o in options] == list(data.types) + ["unknown"]
-    assert options[0]["label"] == data.types["T01"]["statement"]
-
-
-@pytest.mark.parametrize("chosen", [["T05", "T07"], ["T09", "T10"], ["T01", "T04"]])   # 검증 사례 1, 2, 3
-def test_all_chosen_types_are_kept(data, chosen):
-    assert selected_types({"Q_NEEDS": chosen}, data.types) == chosen
+def high(data, *type_ids, base=1):
+    """실제 문항으로 만든 답. 적어 준 유형의 두 문항만 5점, 나머지는 base점."""
+    pairs = type_questions(data.questions, data.types)
+    answers = {q["id"]: base for q in scale_questions(data.questions)}
+    answers.update({qid: 5 for tid in type_ids for qid in pairs[tid]})
+    return answers
 
 
-def test_types_come_in_file_order_not_click_order(data):
-    assert selected_types({"Q_NEEDS": ["T07", "T02"]}, data.types) == ["T02", "T07"]
+def judge(data, answers, priority=None):
+    scoring = data.settings["scoring"]
+    return score(answers, type_questions(data.questions, data.types), scoring["high"], scoring["confirm"], priority)
 
 
-def test_barrier_does_not_change_type(data):   # 검증 사례 4
-    answers = {"Q_NEEDS": ["T07"], "Q_BARRIER": ["alone"]}
-    assert selected_types(answers, data.types) == ["T07"]
-    guides = barrier_guides(answers, data.questions)
-    assert [g["id"] for g in guides] == ["alone"] and guides[0]["ask"]
+def test_every_type_has_two_scale_questions(data):
+    pairs = type_questions(data.questions, data.types)
+    assert list(pairs) == list(data.types)                       # types.yaml 순서
+    assert all(len(qids) == 2 for qids in pairs.values()) and len(scale_questions(data.questions)) == 24
+    # 전달 자료의 '유형별 연결표'와 같은지 몇 개만 본다
+    assert pairs["T01"] == ["Q01", "Q14"] and pairs["T06"] == ["Q06", "Q24"] and pairs["T12"] == ["Q08", "Q21"]
 
 
-@pytest.mark.parametrize("answer", [["unknown"], [], None])   # 검증 사례 6
-def test_unknown_or_empty_gives_no_type(data, answer):
-    assert selected_types({"Q_NEEDS": answer}, data.types) == []
+def test_two_questions_of_a_type_are_not_adjacent(data):
+    order = [q["type"] for q in scale_questions(data.questions)]
+    assert all(a != b for a, b in zip(order, order[1:]))
 
 
-def test_exclusive_option_cannot_mix(data):
-    options = options_of(question(data.questions, "Q_NEEDS"), data.types)
-    assert toggle(["T01", "T05"], "unknown", options) == ["unknown"]     # 모르겠어요를 누르면 나머지가 풀림
-    assert toggle(["unknown"], "T01", options) == ["T01"]                # 유형을 누르면 모르겠어요가 풀림
-    assert toggle(["T01"], "T05", options) == ["T01", "T05"]
-    assert toggle(["T01", "T05"], "T01", options) == ["T05"]             # 다시 누르면 해제
+def test_scale_has_five_labels(data):
+    assert [opt["value"] for opt in data.scale] == [5, 4, 3, 2, 1] and all(opt["label"] for opt in data.scale)
 
 
-def test_survey_asks_three_questions_in_order(data):
+def test_survey_asks_profile_then_scale_then_barrier(data):
     answers, asked = {}, []
     while (q := next_question(answers, data.questions)) is not None:
         asked.append(q["id"])
         answers[q["id"]] = None          # 건너뛰어도 다음으로 넘어간다
-    assert asked == ["Q_NEEDS", "Q_BARRIER", "Q_START"]   # 결과 화면에서 묻는 문항은 빠진다
+    assert asked == ["P_GENDER", "P_AGE", "P_WORK"] + [f"Q{n:02d}" for n in range(1, 25)] + ["Q_BARRIER"]
+    assert judge(data, answers).state == "incomplete"            # 전부 건너뛰면 유형을 붙이지 않는다
 
 
-def test_priority_only_reorders(data):
+def test_real_questions_lead_to_one_type(data):
+    result = judge(data, high(data, "T06"))
+    assert (result.state, result.primary, result.secondary) == (RESULT, "T06", None)
+    assert judge(data, high(data, base=3)).state == EXPLORE
+
+
+def test_profile_and_barrier_do_not_change_type(data):   # 검증 사례 4
+    answers = high(data, "T07")
+    answers.update({"P_GENDER": "female", "P_AGE": 60, "P_WORK": "not_working", "Q_BARRIER": ["alone"]})
+    assert judge(data, answers).primary == "T07"
+    guides = barrier_guides(answers, data.questions)
+    assert [g["id"] for g in guides] == ["alone"] and guides[0]["ask"]
+
+
+def test_tie_is_settled_by_the_user(data):
+    answers = high(data, "T05", "T07")
+    tied = judge(data, answers)
+    assert tied.state == CHOOSE and tied.candidates == ["T05", "T07"]
+    options = options_of(question(data.questions, "Q_PRIORITY"), data.types, tied.candidates)
+    assert [o["id"] for o in options] == ["T05", "T07", "none"]
+    assert options[0]["label"] == data.types["T05"]["statement"]   # 유형 이름이 아니라 쉬운 설명 문장으로 묻는다
+    chosen = judge(data, answers, "T07")
+    assert (chosen.primary, chosen.secondary) == ("T07", "T05")
+    assert judge(data, answers, "none").state == CHOOSE            # '아직 고르지 않을게요'는 대표를 만들지 않는다
+
+
+def test_exclusive_option_cannot_mix(data):
+    options = options_of(question(data.questions, "Q_BARRIER"), data.types)
+    assert toggle(["alone", "cost"], "none", options) == ["none"]        # 없어요를 누르면 나머지가 풀림
+    assert toggle(["none"], "alone", options) == ["alone"]               # 다른 것을 누르면 없어요가 풀림
+    assert toggle(["alone"], "cost", options) == ["alone", "cost"]
+    assert toggle(["alone", "cost"], "alone", options) == ["cost"]       # 다시 누르면 해제
+
+
+def test_priority_only_reorders():
     assert ordered_types(["T01", "T05", "T07"], "T05") == ["T05", "T01", "T07"]
     assert ordered_types(["T01", "T05"], "none") == ["T01", "T05"]
     assert ordered_types(["T01", "T05"], None) == ["T01", "T05"]
-    labels = [o["label"] for o in options_of(question(data.questions, "Q_PRIORITY"), data.types, ["T01", "T05"])]
-    assert labels[:2] == [data.types["T01"]["name"], data.types["T05"]["name"]] and len(labels) == 3
-
-
-def test_start_answer_picks_card_part(data):
-    assert card_part_to_open({"Q_START": "prepare"}, data.questions) == "ask"
-    assert card_part_to_open({"Q_START": "later"}, data.questions) is None
-    assert card_part_to_open({}, data.questions) is None
 
 
 def test_disabled_detail_is_not_asked(data):
@@ -336,17 +360,43 @@ def test_bad_files_give_korean_messages(data):
     types_list = copy.deepcopy(list(data.types.values()))
     types_list[0]["area"] = "없는영역"
     types_list[1]["detail"]["options"][0]["exclude"] = {"없는열": ["무보수"]}
-    questions = [q for q in copy.deepcopy(data.questions) if q["id"] != "Q_START"]
+    questions = [q for q in copy.deepcopy(data.questions) if q["id"] != "Q_FREE"]
     question(questions, "Q_BARRIER")["options"][0]["show"] = ["없는칸"]
     programs = [
         row("a", "T99"), row("a", "T01"),
         row("b", "T01", 세부태그="D01.없는선택지", 확인날짜="11/15", 종류="행사", 표시종료일="내일"),
         row("c", "T01", 출처URL=""),
     ]
-    text = "\n".join(loader.validate(data.areas, types_list, questions, programs, "자리표시자 없음"))
-    for expected in ("없는영역", "없는열", "'Q_START'가 없습니다", "없는칸", "'T99'", "중복", "D01.없는선택지",
+    text = "\n".join(loader.validate(data.areas, types_list, questions, programs, "자리표시자 없음", data.scale, data.settings))
+    for expected in ("없는영역", "없는열", "'Q_FREE'가 없습니다", "없는칸", "'T99'", "중복", "D01.없는선택지",
                      "확인날짜", "'종류' 칸은", "표시종료일", "출처URL이 있어야", "{candidates}"):
         assert expected in text, expected
+
+
+def test_bad_scale_setup_gives_korean_messages(data):
+    types_list = list(data.types.values())
+    questions = [q for q in copy.deepcopy(data.questions) if q["id"] != "Q24"]      # T06 문항이 하나만 남음
+    question(questions, "Q01")["type"] = "T99"                                      # 없는 유형, T01도 하나만 남음
+    del question(questions, "Q02")["type"]
+    question(questions, "P_AGE")["max"] = "백이십"
+    question(questions, "P_WORK")["type"] = "T01"
+    text = "\n".join(loader.validate_questions(questions, types_list))
+    for expected in ("유형 'T06'의 척도 문항은 2개여야 합니다. (지금: 1개)", "type 'T99'가 types.yaml에 없습니다",
+                     "유형 'T01'의 척도 문항은 2개여야", "문항 'Q02'은 척도 문항이므로 type", "문항 'P_AGE'에는 min과 max",
+                     "문항 'P_WORK'의 type은 척도 문항"):
+        assert expected in text, expected
+    assert loader.validate_questions(data.questions, types_list) == []
+
+    assert loader.validate_scale(data.scale) == []
+    assert "한 번씩" in loader.validate_scale(data.scale[:4])[0]
+    assert "한 번씩" in loader.validate_scale(data.scale + [{"value": 5, "label": "또"}])[0]
+    assert "label" in loader.validate_scale([{"value": v} for v in (5, 4, 3, 2, 1)])[0]
+
+    assert loader.validate_scoring(data.settings) == []
+    for bad in ({}, {"scoring": {"high": 8}}, {"scoring": {"high": 7, "confirm": 7}},
+                {"scoring": {"high": 11, "confirm": 7}}, {"scoring": {"high": 8, "confirm": 1}},
+                {"scoring": {"high": "8", "confirm": 7}}):
+        assert loader.validate_scoring(bad), bad
 
 
 def test_general_window_may_have_no_type_tag(data):

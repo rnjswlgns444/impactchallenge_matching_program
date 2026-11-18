@@ -9,8 +9,14 @@ top_n: 3                      # 유형마다 먼저 보여줄 곳의 수. 나머
 save_log: false
 show_error_kind: true         # AI 호출이 실패하면 원인 종류를 화면에 작게 보여줌 (점검용. 실험 전에 false로)
 
+# 대표 유형을 정하는 기준 (유형 점수는 두 문항 합산 2~10점)
+# 검증된 검사 기준이 아니라 시범 운영 규칙입니다. 실제 답변과 결과 납득 여부를 보고 고칩니다.
+scoring:
+  high: 8                     # 이 점수 이상이고 단독 1위면 대표 유형으로 보여줌. 동점이면 본인이 고름
+  confirm: 7                  # 최고점이 이 점수면 후보로 보여주고 본인이 확인해야 대표가 됨. 이보다 낮으면 둘러보기
+
 llm:
-  provider: gemini            # gemini(구글, 무료 구간 사용) 또는 anthropic
+  provider: gemini           # gemini(구글, 무료 구간 사용) 또는 anthropic
   # 무료 구간 한도는 모델마다 다릅니다. gemini-3.5-flash-lite는 하루 500회, 분당 15회입니다 (2026-11-18 AI Studio 확인).
   # gemini-3.8-flash는 무료로 하루 20회뿐이라 쓰지 않습니다. 한도는 https://aistudio.google.com/rate-limit 에서 봅니다.
   model: gemini-3.5-flash-lite   # 사용할 AI 모델. anthropic이면 claude-opus-5-5 등
@@ -19,13 +25,14 @@ llm:
 
 text:
   # ── 시작 화면 ──
-  start_intro: "질문 몇 개에 답하면, 안산에서 지금 물어볼 수 있는 곳을 찾아 드려요."
-  start_time: "질문은 3개예요. 1~2분이면 끝나요."
+  start_intro: "질문에 답하면, 지금 먼저 살펴볼 도움과 안산에서 물어볼 수 있는 곳을 찾아 드려요."
+  start_time: "질문은 28개예요. 하나씩 눌러서 답하면 3~4분쯤 걸려요."
   start_privacy: "이름이나 연락처는 묻지 않아요. 고르신 답은 저장하지 않아요. 결과 화면에서 글을 직접 적고 찾아보기 단추를 누를 때만, 그 글을 AI 서비스로 보내요."            # save_log가 false일 때
   start_privacy_saving: "이름이나 연락처는 묻지 않아요. 고르신 항목만 익명으로 저장해요."  # save_log가 true일 때
   start_button: "시작하기"
 
   # ── 질문 화면 ──
+  scale_help: "요즘 내 마음과 얼마나 비슷한지 골라주세요. 정답은 없어요."   # 척도 문항(Q01~Q24) 아래 안내
   multi_help: "해당하는 것을 모두 누른 뒤, 아래 '다음'을 눌러 주세요."
   next_button: "다음 ({count}개 골랐어요)"
   skip_button: "고르지 않고 넘어가기"
@@ -87,7 +94,7 @@ text:
   # ── 맨 아래 ──
   capture_tip: "이 화면을 캡처해 두면 나중에 다시 볼 수 있어요."
   restart_button: "처음부터 다시 하기"
-  disclaimer: "심리검사나 진단이 아니에요. 지원 대상으로 선정되거나 취업이 정해졌다는 뜻도 아니에요. 필요한 도움을 찾도록 돕는 안내예요."
+  disclaimer: "성격이나 건강을 진단하는 검사가 아니에요. 지금 관심 있는 것을 정리해 안산의 지원을 찾아보도록 돕는 안내예요. 지원 대상으로 선정되거나 취업이 정해졌다는 뜻도 아니에요."
 
 # 정보표를 읽지 못하는 등 안내할 곳이 하나도 없을 때 보여주는 기본 창구.
 # 평소의 일반 창구는 programs.csv에서 '첫상담'이 Y인 행(JOB07, G01)입니다. 번호가 바뀌면 두 곳을 함께 고쳐 주세요.

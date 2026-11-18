@@ -1,31 +1,87 @@
-# 문항 (전달 자료 01_질문_유형_분류규칙.json, 2026-11-16 기준)
-# 전달 자료의 Q_AWARE("그런 도움을 주는 곳을 알아본 적이 있나요?")는 앱에서 뺐습니다. 실험 사전 설문에서 묻습니다.
+# 문항 (전달 자료 '안산노믹스_24문항_설문과분류규칙', 2026-11-17 기준)
 #
-# 문항은 이 파일에 적힌 순서대로 나옵니다. 모든 문항은 답하지 않고 넘어갈 수 있습니다.
-# 문항 id(Q_NEEDS 등)는 코드가 그대로 쓰므로 바꾸지 마세요. 문구(text, help, label)는 자유롭게 고쳐도 됩니다.
+# 문항은 이 파일에 적힌 순서대로 한 화면에 하나씩 나옵니다. 모든 문항은 답하지 않고 넘어갈 수 있습니다.
+# 문구(text, help, label)는 자유롭게 고쳐도 됩니다. 문항 id는 아래 '바꾸면 안 되는 것'을 봐 주세요.
 #
 #   text      : 화면에 보이는 질문
 #   help      : 질문 아래 작은 안내 (없어도 됨)
-#   selection : single(하나만) / multi(여러 개) / text(직접 적기)
+#   selection : single(하나만) / multi(여러 개) / number(숫자 입력) / scale(5점 척도) / text(직접 적기)
 #   options   : 선택지 (id와 label). exclusive: true인 선택지는 다른 선택지와 함께 고를 수 없습니다.
+#   type      : 척도 문항(scale)에만 적습니다. 이 문항의 점수가 더해질 유형 번호(types.yaml의 id)입니다.
 #   where     : result라고 적으면 설문이 아니라 결과 화면에서 묻습니다.
 #
-# 문항별 역할
-#   Q_NEEDS    : 고른 문장이 그대로 유형이 됩니다. 비워 두거나 '아직 모르겠어요'를 고르면 전체 유형을 둘러봅니다.
+# 문항 묶음별 역할
+#   P_GENDER, P_AGE, P_WORK : 기본정보. 유형 점수에 넣지 않습니다. 기록을 켰을 때만 익명으로 남습니다.
+#   Q01 ~ Q24  : 척도 문항. 같은 유형의 두 문항 점수를 더해(2~10점) 먼저 살펴볼 유형을 정합니다.
 #   Q_BARRIER  : 유형을 바꾸지 않습니다. 결과 카드에서 먼저 보여줄 안내를 정합니다.
-#   Q_START    : 유형을 바꾸지 않습니다. 결과 카드에서 먼저 펼칠 곳을 정합니다.
-#   Q_PRIORITY : 유형이 둘 이상일 때만 묻습니다. 보여주는 순서만 바꾸고 다른 유형은 그대로 둡니다.
+#   Q_PRIORITY : 점수가 같은 유형이 여럿이거나 7점일 때만 묻습니다. 본인이 먼저 볼 유형을 고릅니다.
 #   Q_FREE     : 적은 사람에게만 AI 추가 추천을 합니다. 비워 두면 AI를 부르지 않습니다.
+#
+# 바꾸면 안 되는 것
+#   - Q_BARRIER, Q_PRIORITY, Q_FREE 의 id (코드가 그대로 씁니다)
+#   - 유형마다 척도 문항은 정확히 2개여야 합니다. 척도 문항을 더하거나 빼면 앱이 켜질 때 알려 줍니다.
+#   - 척도 문항은 같은 유형끼리 붙여 두지 않습니다. 유형 이름은 설문 중에 보이지 않습니다.
+#   - 점수를 거꾸로 매기는 문항(역채점)이나 문항별 가중치는 쓰지 않습니다.
+
+# 척도 문항의 공통 선택지. value는 1~5를 한 번씩 써야 합니다. label만 고쳐 주세요.
+scale:
+  - {value: 5, label: "매우 그래요"}
+  - {value: 4, label: "그래요"}
+  - {value: 3, label: "보통이에요"}
+  - {value: 2, label: "아니에요"}
+  - {value: 1, label: "전혀 아니에요"}
 
 questions:
-  - id: Q_NEEDS
-    text: "요즘 무엇을 해보고 싶거나, 어떤 도움이 필요한가요?"
-    help: "여러 개 골라도 괜찮아요."
-    selection: multi
-    options_from: types          # 선택지는 types.yaml의 statement에서 자동으로 만들어집니다.
-    options:                     # 유형이 아닌 선택지
-      - {id: unknown, label: "아직 모르겠어요", exclusive: true}
+  # ── 기본정보 (점수에 넣지 않음) ──
+  - id: P_GENDER
+    text: "성별을 알려주세요."
+    selection: single
+    options:
+      - {id: male, label: "남성"}
+      - {id: female, label: "여성"}
 
+  - id: P_AGE
+    text: "만 나이가 어떻게 되세요?"
+    help: "숫자만 적어 주세요. 예) 60"
+    selection: number
+    min: 0
+    max: 120
+
+  - id: P_WORK
+    text: "현재 일을 하고 계세요?"
+    selection: single
+    options:
+      - {id: employed, label: "고용되어 일하고 있어요 (시간제·일용직 포함)"}
+      - {id: self_employed, label: "자영업·사업을 하고 있어요"}
+      - {id: not_working, label: "현재 일을 하지 않아요"}
+
+  # ── 척도 문항 24개 ──
+  - {id: Q01, type: T01, selection: scale, text: "꾸준히 다닐 직장을 찾고 싶어요."}
+  - {id: Q02, type: T05, selection: scale, text: "여유 시간에 즐길 새로운 취미를 찾고 싶어요."}
+  - {id: Q03, type: T07, selection: scale, text: "정기적으로 만나고 함께할 사람들을 찾고 싶어요."}
+  - {id: Q04, type: T09, selection: scale, text: "앞으로 받을 연금과 쓸 생활비를 정리해보고 싶어요."}
+  - {id: Q05, type: T03, selection: scale, text: "가게나 사업을 직접 꾸려가고 싶어요."}
+  - {id: Q06, type: T06, selection: scale, text: "새로운 지식이나 생활에 필요한 것을 배워보고 싶어요."}
+  - {id: Q07, type: T10, selection: scale, text: "내 조건으로 받을 수 있는 지원이나 혜택을 확인하고 싶어요."}
+  - {id: Q08, type: T12, selection: scale, text: "내 건강 상태에 맞는 관리 방법을 알아보고 싶어요."}
+  - {id: Q09, type: T02, selection: scale, text: "생활에 무리가 없는 만큼 짧게 일하거나 활동하고 싶어요."}
+  - {id: Q10, type: T08, selection: scale, text: "마음에 걸리는 고민을 상담자와 이야기해보고 싶어요."}
+  - {id: Q11, type: T04, selection: scale, text: "일에 필요한 기술이나 자격증을 배우고 싶어요."}
+  - {id: Q12, type: T11, selection: scale, text: "나나 가족의 일상생활을 도와줄 사람이나 서비스를 찾고 싶어요."}
+  - {id: Q13, type: T07, selection: scale, text: "같은 관심사를 가진 사람들과 모임을 이어가고 싶어요."}
+  - {id: Q14, type: T01, selection: scale, text: "오래 일할 수 있는 일자리를 소개받고 싶어요."}
+  - {id: Q15, type: T10, selection: scale, text: "지원금이나 요금 감면 중 내가 신청할 수 있는 것을 알아보고 싶어요."}
+  - {id: Q16, type: T05, selection: scale, text: "재미를 위해 만들기나 운동, 공연 같은 활동을 해보고 싶어요."}
+  - {id: Q17, type: T11, selection: scale, text: "돌봄에 필요한 도움을 어디서 받을 수 있는지 알아보고 싶어요."}
+  - {id: Q18, type: T04, selection: scale, text: "취업이나 부업에 도움이 되는 교육을 찾아보고 싶어요."}
+  - {id: Q19, type: T09, selection: scale, text: "은퇴 전후의 수입과 지출을 어떻게 준비할지 상담받고 싶어요."}
+  - {id: Q20, type: T02, selection: scale, text: "내가 가능한 시간에 조금씩 참여할 일이나 활동을 찾고 싶어요."}
+  - {id: Q21, type: T12, selection: scale, text: "운동이나 식습관 등 건강관리에 도움을 받고 싶어요."}
+  - {id: Q22, type: T03, selection: scale, text: "창업이나 가게 운영에 필요한 도움을 알아보고 싶어요."}
+  - {id: Q23, type: T08, selection: scale, text: "마음이나 관계에 관한 고민을 정리하는 데 상담 도움을 받고 싶어요."}
+  - {id: Q24, type: T06, selection: scale, text: "일자리와 관계없이, 관심 있는 분야를 공부해보고 싶어요."}
+
+  # ── 걸림돌 ──
   # 걸림돌 선택지에만 있는 칸
   #   show : 이 걸림돌을 고른 사람에게 카드에서 먼저 보여줄 programs.csv의 열. 그 열에 내용이 있으면 그대로 보여줍니다.
   #   ask  : 그 열이 비어 있을 때 '기관에 이렇게 물어보세요'로 보여줄 문장. (초안입니다. 팀 검토 필요)
@@ -64,26 +120,14 @@ questions:
       - {id: other, label: "다른 이유"}
       - {id: none, label: "특별히 없어요", exclusive: true}
 
-  # 시작 방식 선택지에만 있는 칸
-  #   open : 카드에서 먼저 펼칠 곳. about(이런 곳이에요) / ask(물어볼 준비) / contact(문의·신청 방법)
-  - id: Q_START
-    text: "어떻게 먼저 알아보면 편할까요?"
-    selection: single
-    options:
-      - {id: read, label: "설명부터 볼게요", open: about}
-      # 전달 자료의 '짧게 해볼게요'(try)는 뺐습니다. 지금 체험 자료가 있는 프로그램이 없기 때문입니다.
-      - {id: prepare, label: "물어볼 준비를 할게요", open: ask}
-      - {id: contact, label: "문의·신청 방법을 볼게요", open: contact}
-      - {id: later, label: "나중에 볼게요"}
-
   # ── 결과 화면에서 묻는 문항 ──
   - id: Q_PRIORITY
     where: result
-    text: "오늘은 무엇부터 볼까요?"
+    text: "오늘은 무엇부터 살펴볼까요?"
     selection: single
-    options_from: selected_types  # 선택지는 사용자가 고른 유형으로 자동으로 만들어집니다.
+    options_from: candidate_types  # 선택지는 점수가 가장 높은 유형들의 statement(types.yaml)로 자동으로 만들어집니다.
     options:
-      - {id: none, label: "우선순위 없이 볼게요"}
+      - {id: none, label: "아직 고르지 않을게요"}
 
   - id: Q_FREE
     where: result

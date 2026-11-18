@@ -1,30 +1,39 @@
-"""응답을 유형과 안내로 바꾼다. 화면과 무관한 순수 함수만 둔다.
+"""문항 순서, 선택지, 걸림돌 안내를 다룬다. 화면과 무관한 순수 함수만 둔다.
 
-유형은 점수로 판정하지 않는다. 첫 질문(Q_NEEDS)에서 고른 문장이 그대로 유형이 되고, 고른 유형은 모두 유지한다.
-걸림돌(Q_BARRIER)과 시작 방식(Q_START)은 유형을 바꾸지 않고, 결과 카드에서 무엇을 먼저 보여줄지만 정한다.
+유형은 척도 문항(selection: scale) 점수로 정한다. 점수 계산과 대표 유형 판정은 scoring.py가 한다.
+이 파일은 어느 문항이 어느 유형에 속하는지(type_questions)만 알려 준다.
+기본정보(P_*)와 걸림돌(Q_BARRIER)은 유형을 바꾸지 않는다. 걸림돌은 결과 카드에서 무엇을 먼저 보여줄지만 정한다.
 
-answers는 {문항 id: 답} 사전이다. 복수 선택은 선택지 id 목록, 단일 선택은 선택지 id 하나(건너뛰면 None)다.
+answers는 {문항 id: 답} 사전이다. 건너뛴 문항은 값이 None이다.
+  multi → 선택지 id 목록 / single → 선택지 id 하나 / scale → 1~5 정수 / number → 정수
 """
 from __future__ import annotations
 
-TYPE_Q = "Q_NEEDS"
 BARRIER_Q = "Q_BARRIER"
-START_Q = "Q_START"
 PRIORITY_Q = "Q_PRIORITY"
 FREE_Q = "Q_FREE"
+SCALE = "scale"
 
 
 def question(questions: list[dict], question_id: str) -> dict:
     return next(q for q in questions if q["id"] == question_id)
 
 
+def scale_questions(questions: list[dict]) -> list[dict]:
+    """척도 문항만, 파일에 적힌 순서대로."""
+    return [q for q in questions if q.get("selection") == SCALE]
+
+
+def type_questions(questions: list[dict], types: dict[str, dict]) -> dict[str, list[str]]:
+    """{유형 id: [그 유형의 척도 문항 id]}. 유형은 types.yaml에 적힌 순서다. scoring.score()에 그대로 넘긴다."""
+    return {tid: [q["id"] for q in scale_questions(questions) if q.get("type") == tid] for tid in types}
+
+
 def options_of(q: dict, types: dict[str, dict], type_ids: list[str] | None = None) -> list[dict]:
-    """문항의 선택지. options_from이 있으면 유형에서 만든 선택지를 앞에 붙인다."""
+    """문항의 선택지. options_from이 candidate_types면 넘겨받은 유형의 설명 문장을 선택지로 만들어 앞에 붙인다."""
     made: list[dict] = []
-    if q.get("options_from") == "types":
-        made = [{"id": t["id"], "label": t["statement"], "area": t.get("area")} for t in types.values()]
-    elif q.get("options_from") == "selected_types":
-        made = [{"id": tid, "label": types[tid]["name"]} for tid in type_ids or []]
+    if q.get("options_from") == "candidate_types":
+        made = [{"id": tid, "label": types[tid]["statement"]} for tid in type_ids or []]
     return made + list(q.get("options") or [])
 
 
@@ -54,15 +63,6 @@ def toggle(selected: list[str], option_id: str, options: list[dict]) -> list[str
     return [x for x in selected if x not in exclusive] + [option_id]
 
 
-def selected_types(answers: dict, types: dict[str, dict]) -> list[str]:
-    """고른 유형 id 목록(types.yaml에 적힌 순서). 비었거나 '아직 모르겠어요'면 빈 목록이다.
-
-    빈 목록은 '유형을 정하지 않고 전체를 둘러본다'는 뜻이다. 임의로 유형을 붙이지 않는다.
-    """
-    chosen = set(answers.get(TYPE_Q) or [])
-    return [tid for tid in types if tid in chosen]
-
-
 def ordered_types(type_ids: list[str], priority: str | None) -> list[str]:
     """먼저 보겠다고 고른 유형을 맨 앞으로 옮긴다. 다른 유형은 지우지 않는다."""
     if priority in type_ids:
@@ -75,15 +75,6 @@ def barrier_guides(answers: dict, questions: list[dict]) -> list[dict]:
     chosen = answers.get(BARRIER_Q) or []
     options = question(questions, BARRIER_Q).get("options") or []
     return [opt for opt in options if opt["id"] in chosen and (opt.get("show") or opt.get("ask"))]
-
-
-def card_part_to_open(answers: dict, questions: list[dict]) -> str | None:
-    """Q_START 답에 따라 카드에서 먼저 펼칠 곳(about / ask / contact). 정해지지 않으면 None."""
-    chosen = answers.get(START_Q)
-    for opt in question(questions, START_Q).get("options") or []:
-        if opt["id"] == chosen:
-            return opt.get("open")
-    return None
 
 
 def detail_of(type_info: dict) -> dict | None:

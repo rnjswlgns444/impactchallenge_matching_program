@@ -26,10 +26,11 @@ REQUIRED_COLUMNS = [
 ]
 PLACEHOLDERS = ["{type_name}", "{type_summary}", "{wish_examples}", "{wish_text}", "{candidates}", "{max_n}"]
 
-QUESTION_IDS = ["Q_NEEDS", "Q_BARRIER", "Q_START", "Q_PRIORITY", "Q_FREE"]   # 코드가 id로 찾는 문항
-SELECTIONS = {"single", "multi", "text"}
-OPTION_SOURCES = {"types", "selected_types"}
-CARD_PARTS = {"about", "ask", "contact"}          # Q_START 선택지의 open 값
+QUESTION_IDS = ["Q_BARRIER", "Q_PRIORITY", "Q_FREE"]   # 코드가 id로 찾는 문항
+SELECTIONS = {"single", "multi", "number", "scale", "text"}
+OPTION_SOURCES = {"candidate_types"}
+SCALE_VALUES = [1, 2, 3, 4, 5]                    # 척도 값. scoring.py의 SCALE_MIN~SCALE_MAX와 같아야 한다
+ITEMS_PER_TYPE = 2                                # 유형마다 척도 문항 수. 점수 기준(8점·7점)이 이 수를 전제한다
 RULE_KEYS = ("exclude", "first", "last")          # 세부 질문에 붙는 후보 규칙
 
 KINDS = {"상시서비스", "기간프로그램", "목록"}
@@ -56,6 +57,7 @@ class AppData:
     programs: list[dict]
     settings: dict
     prompt: str
+    scale: list[dict]           # 척도 문항의 공통 선택지 (value 5 → 1 순서로 적힌 그대로)
 
 
 def split_multi(value: str) -> list[str]:
@@ -145,9 +147,37 @@ def validate_types(areas: list[dict], types_list: list[dict]) -> list[str]:
     return problems
 
 
-def validate_questions(questions: list[dict]) -> list[str]:
+def _is_int(value) -> bool:
+    return type(value) is int
+
+
+def validate_scale(scale: list[dict]) -> list[str]:
+    """척도 선택지는 value 1~5를 한 번씩 쓰고 label이 있어야 한다."""
+    values = [opt.get("value") for opt in scale if isinstance(opt, dict)]
+    if len(values) != len(scale) or sorted(v for v in values if _is_int(v)) != SCALE_VALUES or len(values) != len(SCALE_VALUES):
+        return ["questions.yaml: scale에는 value 1, 2, 3, 4, 5가 한 번씩 있어야 합니다. label만 고쳐 주세요."]
+    if not all(opt.get("label") for opt in scale):
+        return ["questions.yaml: scale의 선택지마다 label이 있어야 합니다."]
+    return []
+
+
+def validate_scoring(settings: dict) -> list[str]:
+    """대표 유형 기준. 유형 점수 범위(문항 수 × 1~5) 안에서 confirm < high 여야 한다."""
+    scoring = settings.get("scoring") or {}
+    high, confirm = scoring.get("high"), scoring.get("confirm")
+    low, top = ITEMS_PER_TYPE * SCALE_VALUES[0], ITEMS_PER_TYPE * SCALE_VALUES[-1]
+    if not _is_int(high) or not _is_int(confirm):
+        return ["settings.yaml: scoring에 high와 confirm을 숫자로 적어야 합니다. 예) high: 8, confirm: 7"]
+    if not low <= confirm < high <= top:
+        return [f"settings.yaml: scoring은 {low} 이상 {top} 이하이고 confirm이 high보다 작아야 합니다. (지금: high {high}, confirm {confirm})"]
+    return []
+
+
+def validate_questions(questions: list[dict], types_list: list[dict] | None = None) -> list[str]:
+    """types_list를 주면 척도 문항이 유형마다 정해진 수만큼 있는지도 본다."""
     problems: list[str] = []
     seen = set()
+    per_type: dict[str, int] = {}
     for i, q in enumerate(questions, 1):
         qid = q.get("id")
         if not qid or not q.get("text"):
@@ -158,9 +188,22 @@ def validate_questions(questions: list[dict]) -> list[str]:
         seen.add(qid)
         where = f"questions.yaml: 문항 '{qid}'"
         if q.get("selection") not in SELECTIONS:
-            problems.append(f"{where}의 selection은 single, multi, text 중 하나여야 합니다.")
+            problems.append(f"{where}의 selection은 single, multi, number, scale, text 중 하나여야 합니다.")
         if q.get("options_from") and q["options_from"] not in OPTION_SOURCES:
-            problems.append(f"{where}의 options_from은 types 또는 selected_types여야 합니다.")
+            problems.append(f"{where}의 options_from은 candidate_types여야 합니다.")
+        if q.get("selection") == "scale":
+            if not q.get("type"):
+                problems.append(f"{where}은 척도 문항이므로 type에 유형 번호(T01 등)를 적어야 합니다.")
+            else:
+                per_type[q["type"]] = per_type.get(q["type"], 0) + 1
+            if q.get("where") == "result":
+                problems.append(f"{where}은 척도 문항이므로 where: result를 쓸 수 없습니다.")
+        elif "type" in q:
+            problems.append(f"{where}의 type은 척도 문항(selection: scale)에만 적습니다.")
+        if q.get("selection") == "number":
+            low, top = q.get("min"), q.get("max")
+            if not _is_int(low) or not _is_int(top) or low > top:
+                problems.append(f"{where}에는 min과 max를 숫자로 적어야 합니다. 예) min: 0, max: 120")
         options = q.get("options") or []
         if q.get("selection") in ("single", "multi") and not q.get("options_from") and len(options) < 2:
             problems.append(f"{where}에 선택지가 2개 이상 있어야 합니다.")
@@ -169,11 +212,17 @@ def validate_questions(questions: list[dict]) -> list[str]:
             for column in opt.get("show") or []:
                 if column not in REQUIRED_COLUMNS:
                     problems.append(f"{where} 선택지 '{opt.get('id')}'의 show에 적힌 '{column}'은 programs.csv에 없는 열입니다.")
-            if "open" in opt and opt["open"] not in CARD_PARTS:
-                problems.append(f"{where} 선택지 '{opt.get('id')}'의 open은 about, ask, contact 중 하나여야 합니다.")
     for qid in QUESTION_IDS:
         if qid not in seen:
             problems.append(f"questions.yaml: 문항 '{qid}'가 없습니다. 이 id는 코드가 쓰므로 지우거나 바꾸면 안 됩니다.")
+    if types_list is not None:
+        type_ids = [t.get("id") for t in types_list if t.get("id")]
+        for tid in per_type:
+            if tid not in type_ids:
+                problems.append(f"questions.yaml: 척도 문항의 type '{tid}'가 types.yaml에 없습니다.")
+        for tid in type_ids:
+            if per_type.get(tid, 0) != ITEMS_PER_TYPE:
+                problems.append(f"questions.yaml: 유형 '{tid}'의 척도 문항은 {ITEMS_PER_TYPE}개여야 합니다. (지금: {per_type.get(tid, 0)}개)")
     return problems
 
 
@@ -237,14 +286,16 @@ def validate_prompt(prompt: str) -> list[str]:
     return [f"prompts/matching.md: 자리표시자 {p}가 없습니다. 지우지 마세요." for p in PLACEHOLDERS if p not in prompt]
 
 
-def validate(areas, types_list, questions, programs, prompt) -> list[str]:
-    problems = validate_types(areas, types_list) + validate_questions(questions)
-    return problems + validate_programs(programs, types_list) + validate_prompt(prompt)
+def validate(areas, types_list, questions, programs, prompt, scale, settings) -> list[str]:
+    problems = validate_types(areas, types_list) + validate_scale(scale) + validate_questions(questions, types_list)
+    return problems + validate_scoring(settings) + validate_programs(programs, types_list) + validate_prompt(prompt)
 
 
 def load_all(data_dir: Path = DATA_DIR, prompt_path: Path = PROMPT_PATH) -> AppData:
     problems: list[str] = []
-    questions = (_read_yaml(data_dir / "questions.yaml", problems) or {}).get("questions") or []
+    questions_file = _read_yaml(data_dir / "questions.yaml", problems) or {}
+    questions = questions_file.get("questions") or []
+    scale = questions_file.get("scale") or []
     types_file = _read_yaml(data_dir / "types.yaml", problems) or {}
     areas = types_file.get("areas") or []
     types_list = types_file.get("types") or []
@@ -257,7 +308,7 @@ def load_all(data_dir: Path = DATA_DIR, prompt_path: Path = PROMPT_PATH) -> AppD
         problems.append("prompts/matching.md: 파일이 없습니다.")
 
     if not problems:
-        problems = validate(areas, types_list, questions, programs, prompt)
+        problems = validate(areas, types_list, questions, programs, prompt, scale, settings)
     if problems:
         raise DataError(problems)
-    return AppData(questions, {t["id"]: t for t in types_list}, areas, programs, settings, prompt)
+    return AppData(questions, {t["id"]: t for t in types_list}, areas, programs, settings, prompt, scale)
