@@ -53,7 +53,7 @@ DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 # (test_text_keys_match_the_screen_code가 둘이 어긋나면 알려 준다)
 TEXT_KEYS = """
     start_intro start_time start_refresh start_privacy start_privacy_saving start_button
-    scale_help number_placeholder number_next skip_number multi_help skip_button back_button
+    scale_help number_placeholder number_next number_required multi_help next_button back_button
     type_label type_label_other result_intro secondary_heading more_types_button also_heading
     tie_two tie_many confirm_one repick_button result_heading low_interest incomplete_all edit_hint incomplete_note
     detail_label contacts_heading lists_heading no_program no_program_at_all unknown_intro
@@ -67,7 +67,7 @@ TEXT_KEYS = """
 # 값을 끼워 넣는 문구와, 그 문구에 쓸 수 있는 자리표시자
 TEXT_FIELDS = {
     "progress_before": {"number", "total"}, "progress_scale": {"number", "total"}, "progress_after": {"number", "total"},
-    "next_button": {"count"}, "more_button": {"count"}, "ai_unmatched": {"items"},
+    "more_button": {"count"}, "ai_unmatched": {"items"},
     "ai_seen_note": {"type"}, "seen_note": {"type"}, "unconfirmed": {"column"}, "checked_note": {"date"},
 }
 FALLBACK_KEYS = ["name", "org", "description", "phone", "say"]   # url은 없어도 된다

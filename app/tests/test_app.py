@@ -43,11 +43,12 @@ def rows(tmp_path: Path, name: str) -> list[dict]:
         return list(csv.DictReader(f))
 
 
-def take_survey(at: AppTest, base: int | None = 1, barrier: str | None = None, profile: bool = True, **by_type) -> None:
-    """시작 화면에서 결과 화면까지 눌러서 간다.
+def take_survey(at: AppTest, base: int = 1, barrier: str = "none", **by_type) -> None:
+    """시작 화면에서 결과 화면까지 눌러서 간다. 모든 문항은 답해야 넘어간다.
 
-    척도 문항은 모두 base점으로 답하고(None이면 건너뜀), 적어 준 유형의 두 문항만 그 값으로 답한다.
-    예) take_survey(at, T01=(5, 5))  /  take_survey(at, base=3)  /  take_survey(at, base=None, profile=False)
+    척도 문항은 모두 base점으로 답하고, 적어 준 유형의 두 문항만 그 값으로 답한다.
+    걸림돌은 하나는 골라야 하므로, 따로 적지 않으면 '특별히 없어요'(none)를 고른다.
+    예) take_survey(at, T01=(5, 5))  /  take_survey(at, base=3)  /  take_survey(at, barrier="alone")
     """
     data = loader.load_all()
     values = {q["id"]: base for q in sel.scale_questions(data.questions)}
@@ -55,19 +56,19 @@ def take_survey(at: AppTest, base: int | None = 1, barrier: str | None = None, p
         values.update(zip(sel.type_questions(data.questions, data.types)[type_id], pair))
 
     click(at, "start")
-    if profile:
-        click(at, "opt_P_GENDER_female")
-        at.number_input(key="num_P_AGE").set_value(61)
-        click(at, "next_P_AGE")
-        click(at, "opt_P_WORK_not_working")
-    else:
-        for key in ("next_P_GENDER", "skip_P_AGE", "next_P_WORK"):
-            click(at, key)
+    answer_profile(at)
     for qid, value in values.items():
-        click(at, f"next_{qid}" if value is None else f"opt_{qid}_{value}")
-    if barrier:
-        click(at, f"opt_Q_BARRIER_{barrier}")
+        click(at, f"opt_{qid}_{value}")
+    click(at, f"opt_Q_BARRIER_{barrier}")
     click(at, "next_Q_BARRIER")
+
+
+def answer_profile(at: AppTest) -> None:
+    """기본정보 세 문항(성별, 나이, 일 여부)에 답한다."""
+    click(at, "opt_P_GENDER_female")
+    at.number_input(key="num_P_AGE").set_value(61)
+    click(at, "next_P_AGE")
+    click(at, "opt_P_WORK_not_working")
 
 
 # ── 설문 ──
@@ -76,8 +77,8 @@ def test_survey_shows_one_question_at_a_time_without_type_names(app):
     """척도 문항은 단추 5개와 진행 표시가 나오고, 유형 이름은 보이지 않는다. 돌아가면 앞서 고른 답이 표시된다."""
     data = loader.load_all()
     text = data.settings["text"]
-    for key in ("start", "next_P_GENDER", "skip_P_AGE", "next_P_WORK"):
-        click(app, key)
+    click(app, "start")
+    answer_profile(app)
     page = page_text(app)
     assert text["progress_scale"].format(number=1, total=24) in page and text["scale_help"] in page
     assert [b.label for b in app.button][:5] == [opt["label"] for opt in data.scale]
@@ -202,24 +203,36 @@ def test_low_scores_browse_all_types(app, tmp_path):
     assert len(rows(tmp_path, "responses.csv")) == 1
 
 
-def test_everything_skipped_is_not_judged(app, tmp_path):
-    """전부 건너뛰어도 끝까지 가고, 답하지 않은 것을 0점이나 3점으로 채우지 않는다."""
-    text = loader.load_all().settings["text"]
-    take_survey(app, base=None, profile=False)
-    page = page_text(app)
-    assert text["incomplete_all"] in page and text["consult_heading"] in page
-    row = rows(tmp_path, "responses.csv")[0]
-    assert (row["state"], row["scores"], row["gender"], row["age_band"], row["work"]) == ("incomplete", "", "", "", "")
-    assert "Q01=|" in row["answers"]
+def test_every_question_must_be_answered(app):
+    """넘어가기 단추가 없다. 나이를 비우면 넘어가지 않고, 걸림돌은 하나를 골라야 '다음'이 켜진다."""
+    data = loader.load_all()
+    text = data.settings["text"]
 
+    def keys() -> list[str]:
+        return [b.key for b in app.button]
 
-def test_one_skipped_question_holds_only_that_type(app, tmp_path):
-    take_survey(app, T01=(5, 5), T09=(5, None))
-    text = loader.load_all().settings["text"]
-    page = page_text(app)
-    assert text["type_label"] in page and text["incomplete_note"] in page
-    row = rows(tmp_path, "responses.csv")[0]
-    assert row["primary"] == "T01" and "T09" not in row["scores"]
+    click(app, "start")
+    assert keys() == ["opt_P_GENDER_male", "opt_P_GENDER_female", "back_survey"]       # 성별: 선택지와 이전뿐
+    click(app, "opt_P_GENDER_female")
+
+    assert "skip_P_AGE" not in keys()
+    click(app, "next_P_AGE")                                                             # 나이를 적지 않고 다음
+    assert text["number_required"] in page_text(app) and "P_AGE" not in app.session_state.answers
+    app.number_input(key="num_P_AGE").set_value(61)
+    click(app, "next_P_AGE")
+    assert app.session_state.answers["P_AGE"] == 61
+    click(app, "opt_P_WORK_not_working")
+
+    for question in sel.scale_questions(data.questions):
+        assert keys() == [f"opt_{question['id']}_{opt['value']}" for opt in data.scale] + ["back_survey"]
+        click(app, f"opt_{question['id']}_3")
+
+    assert app.button(key="next_Q_BARRIER").disabled and app.button(key="next_Q_BARRIER").label == text["next_button"]
+    click(app, "opt_Q_BARRIER_none")
+    assert not app.button(key="next_Q_BARRIER").disabled
+    click(app, "next_Q_BARRIER")
+    assert app.session_state.screen == "result"
+    assert None not in app.session_state.answers.values()
 
 
 def test_changed_answer_is_an_event_not_a_new_row(app, tmp_path):

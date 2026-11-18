@@ -170,7 +170,7 @@ def screen_survey(data, text) -> None:
         state.draft.pop(qid, None)
         state.to_top = True
 
-    # 질문과 선택지는 흰 카드(q_card) 안에, 넘어가기·이전 단추는 카드 밖에 둔다
+    # 질문과 선택지는 흰 카드(q_card) 안에, 이전 단추는 카드 밖에 둔다. 모든 문항은 답해야 넘어간다
     card = st.container(key="q_card")
     with card:
         ui.question_text(question["text"], question.get("help") or (text["scale_help"] if kind == sel.SCALE else ""))
@@ -189,7 +189,8 @@ def screen_survey(data, text) -> None:
                 st.button(width="stretch", label=check_label(option["label"], selected),
                           key=f"opt_{qid}_{option['id']}", type="primary" if selected else "secondary",
                           on_click=pick, args=(option["id"],))
-        st.button(width="stretch", label=text["next_button"].format(count=len(chosen)) if chosen else text["skip_button"], key=f"next_{qid}",
+        # 하나라도 골라야 '다음'이 켜진다. 걸리는 게 없는 사람은 '특별히 없어요'를 고른다
+        st.button(width="stretch", label=text["next_button"], key=f"next_{qid}", disabled=not chosen,
                   type="primary" if chosen else "secondary", on_click=answer, args=(list(chosen),))
     elif kind == "number":
         # 폼으로 묶어야, 숫자를 적고 바로 '다음'을 눌러도 적은 값이 함께 넘어온다
@@ -198,10 +199,12 @@ def screen_survey(data, text) -> None:
                             value=state.draft.get(qid), step=1, key=f"num_{qid}", label_visibility="collapsed",
                             placeholder=text["number_placeholder"])
             if st.form_submit_button(text["number_next"], type="primary", width="stretch", key=f"next_{qid}"):
-                answer(state.get(f"num_{qid}"))          # 비워 두고 누르면 건너뛴 것으로 본다
-                st.rerun()
-        st.button(width="stretch", label=text["skip_number"], key=f"skip_{qid}", type="tertiary",
-                  on_click=answer, args=(None,))
+                number = state.get(f"num_{qid}")
+                if number is None:                       # 비워 두고 누르면 넘어가지 않고 적어 달라고 한다
+                    ui.notice(text["number_required"])
+                else:
+                    answer(number)
+                    st.rerun()
     else:
         # 하나만 고르는 문항과 척도 문항: 누르면 바로 다음 문항으로 간다
         if kind == sel.SCALE:
@@ -215,8 +218,6 @@ def screen_survey(data, text) -> None:
                 st.button(width="stretch", label=check_label(option["label"], selected),
                           key=f"opt_{qid}_{option['id']}", type="primary" if selected else "secondary",
                           on_click=answer, args=(option["id"],))
-        st.button(width="stretch", label=text["skip_button"], key=f"next_{qid}", type="tertiary",
-                  on_click=answer, args=(None,))
 
     st.button(width="stretch", label=text["back_button"], key="back_survey", type="tertiary",
               on_click=back_one, args=(data.questions,))
