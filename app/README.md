@@ -94,7 +94,7 @@ Claude로 바꾸려면 `llm.provider: anthropic`, `llm.model: claude-opus-5-5`�
 - 문항 id `Q_BARRIER`, `Q_PRIORITY`, `Q_FREE`와 유형 id `T01`~`T12`. 코드와 정보표가 쓴다.
 - 척도 문항(`selection: scale`)은 유형마다 정확히 2개여야 한다. 문항의 `type`에 유형 번호를 적어 연결한다. 더하거나 빼면 앱이 켜질 때 어느 유형이 몇 개인지 알려 준다.
 - 척도 선택지(`scale`)의 `value`는 1~5를 한 번씩 쓴다. `label`만 고친다.
-- 기본정보 문항 id(`P_GENDER`, `P_AGE`, `P_WORK`)는 기록 열 이름과 이어져 있다. 바꾸면 기록의 성별·나이대·일 여부가 빈칸이 된다.
+- 기본정보 문항 id(`P_GENDER`, `P_AGE`, `P_WORK`)는 기록 열 이름과 이어져 있다. 바꾸거나 지우면 앱이 켜질 때 알려 준다.
 
 ### 프로그램 정보표(programs.csv)에서 꼭 알아둘 열
 

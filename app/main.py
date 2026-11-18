@@ -496,8 +496,8 @@ def log_once(data, judged: scoring.Score, shown_ids: list[str]) -> None:
             "state": judged.state, "primary": judged.primary, "secondary": judged.secondary,
             "candidates": judged.candidates, "scores": scores,
             "answers": "|".join(f"{qid}={answers.get(qid) or ''}" for qid in sorted(scale_ids)),
-            "barriers": barriers, "gender": answers.get("P_GENDER"), "age_band": sel.age_band(answers.get("P_AGE")),
-            "work": answers.get("P_WORK"), "program_ids": shown_ids,
+            "barriers": barriers, "gender": answers.get(sel.GENDER_Q), "age_band": sel.age_band(answers.get(sel.AGE_Q)),
+            "work": answers.get(sel.WORK_Q), "program_ids": shown_ids,
         })
     elif state.logged != shape:
         logger.log_event(state.sid, "answers_changed", scores, shape[1])

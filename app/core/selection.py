@@ -12,6 +12,7 @@ from __future__ import annotations
 BARRIER_Q = "Q_BARRIER"
 PRIORITY_Q = "Q_PRIORITY"
 FREE_Q = "Q_FREE"
+GENDER_Q, AGE_Q, WORK_Q = "P_GENDER", "P_AGE", "P_WORK"   # 기본정보. 기록(responses.csv)에만 쓴다
 SCALE = "scale"
 CANDIDATE_TYPES = "candidate_types"   # options_from에 적는 값. 넘겨받은 유형들이 선택지가 된다
 DEFER = "none"      # Q_PRIORITY의 '아직 고르지 않을게요' 선택지 id. 유형 id가 아니므로 대표 유형을 만들지 않는다

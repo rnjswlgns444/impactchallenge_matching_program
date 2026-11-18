@@ -13,7 +13,7 @@ from pathlib import Path
 import yaml
 
 from .scoring import SCALE_MAX, SCALE_MIN
-from .selection import CANDIDATE_TYPES
+from .selection import AGE_Q, BARRIER_Q, CANDIDATE_TYPES, FREE_Q, GENDER_Q, PRIORITY_Q, WORK_Q
 
 APP_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = APP_DIR / "data"
@@ -29,7 +29,7 @@ REQUIRED_COLUMNS = [
 ]
 PLACEHOLDERS = ["{type_name}", "{type_summary}", "{wish_examples}", "{wish_text}", "{candidates}", "{max_n}"]
 
-QUESTION_IDS = ["Q_BARRIER", "Q_PRIORITY", "Q_FREE"]   # 코드가 id로 찾는 문항
+QUESTION_IDS = [BARRIER_Q, PRIORITY_Q, FREE_Q, GENDER_Q, AGE_Q, WORK_Q]   # 코드가 id로 찾는 문항 (이름은 selection.py)
 SELECTIONS = {"single", "multi", "number", "scale", "text"}
 OPTION_SOURCES = {CANDIDATE_TYPES}
 SCALE_VALUES = list(range(SCALE_MIN, SCALE_MAX + 1))   # 척도 값. 범위는 scoring.py가 정한다
