@@ -11,7 +11,9 @@ show_error_kind: true         # AI 호출이 실패하면 원인 종류를 화�
 
 llm:
   provider: gemini            # gemini(구글, 무료 구간 사용) 또는 anthropic
-  model: gemini-3.8-flash     # 사용할 AI 모델. anthropic이면 claude-opus-5-5 등
+  # 무료 구간 한도는 모델마다 다릅니다. gemini-3.5-flash-lite는 하루 500회, 분당 15회입니다 (2026-11-18 AI Studio 확인).
+  # gemini-3.8-flash는 무료로 하루 20회뿐이라 쓰지 않습니다. 한도는 https://aistudio.google.com/rate-limit 에서 봅니다.
+  model: gemini-3.5-flash-lite   # 사용할 AI 모델. anthropic이면 claude-opus-5-5 등
   effort: low                 # 생각하는 깊이 (low / medium / high). 낮을수록 빨리 답합니다.
   timeout_seconds: 60         # 이 시간 안에 답이 없으면 실패로 처리
 
