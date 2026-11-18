@@ -14,7 +14,7 @@ import pytest
 
 from app.core import loader, logger, privacy
 from app.core.candidates import ai_pool, build_result, eligible, first_consult, for_type, unconfirmed_columns
-from app.core.llm_matcher import NO_KEY, NO_TYPE, REASON_LIMIT, build_prompt, parse_answer, recommend
+from app.core.llm_matcher import NO_KEY, NO_TYPE, REASON_LIMIT, build_prompt, has_wish, parse_answer, recommend
 from app.core.scoring import CHOOSE, EXPLORE, RESULT, score
 from app.core.selection import (DEFER, age_band, barrier_guides, chosen_detail_options, detail_of, next_question, options_of,
                                 question, scale_questions, toggle, type_questions)
@@ -450,3 +450,25 @@ def test_log_switch_off_writes_nothing(tmp_path, monkeypatch):
     logger.log_response("s1", LOGGED, log_dir=tmp_path)
     logger.log_event("s1", "detail", "T01", "new_work", log_dir=tmp_path)
     assert not list(tmp_path.iterdir())
+
+
+# ── 뜻 없는 주관식 거르기 ──
+
+EMPTY_WORDS = ["없어", "없어요", "딱히 없어요", "몰라요"]
+
+
+@pytest.mark.parametrize("text", ["ㅇ", "ㅇㅇ", "ㅋㅋㅋ", "...", " ? ", "없어", "없어요.", " 딱히  없어요 ", "몰라요~"])
+def test_has_wish_rejects_meaningless_text(text):
+    assert not has_wish(text, EMPTY_WORDS)
+
+
+@pytest.mark.parametrize("text", ["요가", "수영", "오전에 할 일", "허리 아픈 데 없어요", "일자리는 몰라요 알려 주세요", "PC 배우기"])
+def test_has_wish_keeps_short_but_real_wishes(text):
+    assert has_wish(text, EMPTY_WORDS)
+
+
+def test_real_empty_words_do_not_block_real_wishes():
+    """settings.yaml의 목록이 정답표의 글(실제 희망)을 막지 않는다."""
+    words = loader.load_all().settings["free_empty_words"]
+    assert not has_wish("없어", words) and not has_wish("ㅇ", words)
+    assert has_wish("요가", words) and has_wish("같이 걷기 운동 할 동네 친구들 모임을 찾고 싶어요.", words)

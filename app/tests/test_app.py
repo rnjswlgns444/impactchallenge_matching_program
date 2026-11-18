@@ -363,6 +363,22 @@ def test_empty_free_text_does_not_call_ai(app, fake_ai):
     assert loader.load_all().settings["text"]["free_empty"] in text and not fake_ai["prompts"]
 
 
+@pytest.mark.parametrize("wish", ["ㅇ", "없어", "없어요."])
+def test_meaningless_free_text_does_not_call_ai(app, fake_ai, tmp_path, wish):
+    """'ㅇ', '없어'처럼 원하는 점이 없는 글에는 AI를 부르지 않고 더 적어 달라고 한다. 기본 결과는 그대로다."""
+    data = loader.load_all()
+    settings = data.settings["text"]
+    fake_ai["reply"] = {"matches": [], "unmatched": []}
+    to_result_with_t01(app)
+    write_wish(app, wish)
+    text = page_text(app)
+    assert escape(settings["free_unclear"]) in text and not fake_ai["prompts"]
+    assert settings["ai_heading"] not in text and settings["ai_none"] not in text
+    assert data.types["T01"]["name"] in text and settings["call_button"] in text
+    event = [e for e in rows(tmp_path, "events.csv") if e["event"] == "ai"]
+    assert [(e["target"], e["value"]) for e in event] == [("unclear", "")]
+
+
 def test_ai_failure_keeps_basic_result(app, fake_ai, tmp_path):
     """AI가 실패해도 기본 결과는 그대로이고, 오류 기록에 사용자 글이 없다."""
     data = loader.load_all()
@@ -411,3 +427,50 @@ def test_picked_place_already_shown_keeps_call_button(app, fake_ai):
     text = page_text(app)
     assert escape(settings["ai_stale"]) in text and "가까운 곳이라 골랐어요." not in text
     assert len(fake_ai["prompts"]) == 1
+
+
+def test_find_button_is_locked_while_searching(app, fake_ai, monkeypatch):
+    """찾는 동안에는 '찾는 중'이 켜져 단추와 글 상자가 잠기고, 답이 나오면 풀려서 다시 찾을 수 있다."""
+    import streamlit as st
+
+    pool = candidates.ai_pool(loader.load_all().programs, loader.load_all().types, ["T01"], {}, candidates.today_kst())
+    fake_ai["reply"] = {"matches": [{"id": pool[0]["id"], "reason": "첫 번째 답이에요."}], "unmatched": []}
+    during = []
+    real_make = llm_matcher.make_caller
+
+    def make_caller(*args):
+        call = real_make(*args)
+
+        def watched(prompt: str) -> str:
+            during.append(bool(st.session_state.ai_pending))      # AI가 불리는 순간의 상태
+            return call(prompt)
+        return watched
+
+    monkeypatch.setattr(llm_matcher, "make_caller", make_caller)
+    to_result_with_t01(app)
+    assert not app.button(key="free_find").disabled and not app.text_area(key="free_text").disabled
+
+    write_wish(app, WISH)
+    assert during == [True] and len(fake_ai["prompts"]) == 1      # 한 번 눌러서 한 번만 부른다
+    assert app.session_state.ai_pending is False                   # 답이 나오면 풀린다
+    assert not app.button(key="free_find").disabled and not app.text_area(key="free_text").disabled
+    assert "첫 번째 답이에요." in page_text(app)
+
+    fake_ai["reply"] = {"matches": [{"id": pool[0]["id"], "reason": "두 번째 답이에요."}], "unmatched": []}
+    click(app, "free_find")                                        # 답이 나온 뒤에는 다시 찾을 수 있다
+    assert during == [True, True] and len(fake_ai["prompts"]) == 2
+    assert "두 번째 답이에요." in page_text(app) and "첫 번째 답이에요." not in page_text(app)
+
+
+def test_find_button_is_drawn_locked_when_pending(app, fake_ai, monkeypatch):
+    """'찾는 중'인 화면은 단추와 글 상자를 잠근 채로 그린다. (AI의 답을 기다리는 동안 보이는 화면)"""
+    import streamlit as st
+
+    def never_answers(*args, **kwargs):
+        st.stop()                                                  # 호출 도중에 화면을 멈춰, 그 순간 그려진 것을 본다
+
+    monkeypatch.setattr(llm_matcher, "recommend", never_answers)
+    to_result_with_t01(app)
+    write_wish(app, WISH)
+    assert app.session_state.ai_pending is True
+    assert app.button(key="free_find").disabled and app.text_area(key="free_text").disabled

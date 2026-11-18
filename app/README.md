@@ -55,6 +55,8 @@ GEMINI_API_KEY = "여기에 키"
 키가 없거나 AI가 답하지 못하면 "지금은 맞춤 찾기가 되지 않아요" 안내만 나오고, 아래쪽의 기본 결과는 그대로다.
 `settings.yaml`의 `show_error_kind: true`는 실패 원인의 종류를 화면에 작게 보여주는 점검용 설정이다. 실험 전에 `false`로 바꾼다.
 
+"ㅇ", "없어"처럼 원하는 점이 없는 글에는 AI를 부르지 않고 "조금만 더 적어 주세요"라고 안내한다(`core/llm_matcher.py`의 `has_wish()`). 글자가 되지 않는 것은 자동으로 걸러지고, '없다는 뜻의 말'은 `settings.yaml`의 `free_empty_words` 목록에서 더하거나 뺀다. 목록에 없는 글("아무거나요")은 AI 지시문(`prompts/matching.md`)이 아무것도 고르지 않도록 막는다.
+
 무료 구간에서는 보낸 내용을 구글이 서비스 개선에 쓸 수 있다. 그래서 시작 화면과 글 상자 위 안내에 "외부 AI 서비스(구글)로 보낸다"고 적었고, 주민번호·전화번호·이메일 형태는 보내기 전에 지운다(이름과 주소는 지우지 못한다). 실험 전에 무료 구간의 현재 약관을 확인하고, 참여 동의서에도 한 줄을 넣는다. `llm.provider`를 바꾸면 `settings.yaml`의 `free_privacy` 문구도 함께 고친다.
 Claude로 바꾸려면 `llm.provider: anthropic`, `llm.model: claude-opus-5-5`로 고치고 `ANTHROPIC_API_KEY`를 넣는다.
 

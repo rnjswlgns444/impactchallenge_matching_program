@@ -129,6 +129,21 @@ cases:
     text: "남편이 퇴직하고 나서 자주 다퉈요. 부부가 같이 상담을 받아 보고 싶어요."
     first: [L08_FAMILY_COUNSELING]
 
+  # ── 글에 원하는 것이 없는 사례 (유형 정보만 보고 고르면 안 됨) ──
+  # "ㅇ", "없어"처럼 흔한 것은 앱이 AI를 부르기 전에 거른다(llm_matcher.has_wish). 여기는 그 목록에 없는 글이다.
+  - name: "나영희(60세) - 일터찾기형, 글은 '아무거나요'"
+    types: [T01]
+    text: "아무거나요"
+    none: true
+    unmatched: false
+
+  - name: "송미자(58세) - 건강관리형, 글은 '생각해 본 적 없는데요'"
+    types: [T12]
+    details: {}
+    text: "생각해 본 적 없는데요"
+    none: true
+    unmatched: false
+
   # ── 후보가 0개인 유형 ──
   - name: "조금순(62세) - 동네친구형만 고름 (후보 0개, AI를 부르지 않음)"
     types: [T07]

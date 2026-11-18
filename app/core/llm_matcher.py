@@ -7,6 +7,7 @@ AI가 준 id는 후보 목록과 대조하고, 없는 id는 버린다. 유형은
   ok      : 글에 맞는 곳을 찾음
   partial : 일부(또는 전부)에 맞는 후보가 없음 → 찾은 것과 일반 창구를 함께 보여줌
   fail    : AI 호출이나 답 형식이 실패함 → 기본 결과만 보여줌
+  unclear : 글에 원하는 점이 없음("ㅇ", "없어") → AI를 부르지 않고 더 적어 달라고 함 (has_wish가 판단, 화면이 붙임)
 """
 from __future__ import annotations
 
@@ -21,6 +22,7 @@ from .privacy import scrub
 NO_TYPE = "(정하지 않음)"
 NOTHING = "(없음)"
 NO_KEY = "API 키 없음"
+UNCLEAR = "unclear"
 REASON_LIMIT = 200       # AI가 쓴 이유 글의 최대 길이(자). 화면에 긴 글이 그대로 나오지 않게 한다
 UNMATCHED_LIMIT, UNMATCHED_COUNT = 40, 3
 RETRY_WAIT_SECONDS = 3
@@ -50,6 +52,21 @@ class AiResult:
     matches: list[dict] = field(default_factory=list)     # [{"id": 프로그램 id, "reason": 추천 이유}] 순서대로
     unmatched: list[str] = field(default_factory=list)    # 맞는 후보를 찾지 못한 내용
     error: str = ""                                       # fail의 원인 종류 (점검용, 사용자 글은 담지 않음)
+
+
+def _letters(text: str) -> str:
+    """완성된 한글 글자·영문·숫자만 남긴다. 공백, 문장부호, 'ㅇ' 같은 낱자는 뺀다."""
+    return re.sub(r"[^0-9a-z가-힣]", "", str(text).lower())
+
+
+def has_wish(text: str, empty_words: list[str]) -> bool:
+    """적은 글에 원하는 점이 있어 보이는지. False면 AI를 부르지 않는다.
+
+    남는 글자가 없거나("ㅇ", "ㅋㅋ", "..."), 글 전체가 '없다는 뜻의 말'(settings.yaml의 free_empty_words)이면 False다.
+    글자 수로는 거르지 않는다. "요가"처럼 짧아도 뜻이 있는 답이 있다.
+    """
+    letters = _letters(text)
+    return bool(letters) and letters not in {_letters(word) for word in empty_words}
 
 
 def _type_line(type_info: dict) -> str:

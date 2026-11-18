@@ -71,6 +71,7 @@ def init_state() -> None:
         "logged": None,       # 기록한 응답의 모양. 한 번 진행에 responses.csv 한 행만 남기려고 둔다
         "ai": None,           # AI 추가 추천 결과(llm_matcher.AiResult). '찾아보기'를 누를 때만 바뀐다
         "free_empty": False,  # 글을 적지 않고 '찾아보기'를 눌렀는지
+        "ai_pending": False,  # AI에게 묻는 중인지. 켜져 있는 동안 '찾아보기' 단추와 글 상자를 잠근다
     }
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
@@ -111,6 +112,7 @@ def back_one(questions: list[dict]) -> None:
         state.draft[asked[-1]] = value          # 답했던 것은 남겨서, 돌아갔을 때 표시해 준다
     state.answers.pop(sel.PRIORITY_Q, None)
     state.ai = None
+    state.ai_pending = False
     state.free_empty = False
     go("survey")
 
@@ -380,41 +382,68 @@ def ask_ai(data, type_ids: list[str], pool: list[dict], wish: str) -> llm_matche
                                  wish, pool, int(data.settings.get("top_n", 3)), caller)
 
 
-def free_wish_section(data, text, type_ids: list[str], pool: list[dict], guides,
-                      seen: dict[str, str], consults: list[dict]) -> None:
-    """원하는 점을 직접 적는 칸(Q_FREE)과, 적은 사람에게만 보여주는 AI 추가 추천.
+def free_wish_form(data, text) -> None:
+    """원하는 점을 직접 적는 칸(Q_FREE)과 '찾아보기' 단추. 결과 화면 맨 위에 먼저 그린다.
 
-    pool은 candidates.ai_pool이 걸러 준 후보다. AI에는 이 후보만 보내고, 답도 이 후보와 대조한다.
-    추천은 글 상자 바로 아래에 그린다. 적은 글은 기록하지 않는다.
+    단추는 AI를 바로 부르지 않고 '찾는 중'(ai_pending)만 켠다. 찾는 동안에는 단추와 글 상자가 잠겨서
+    다시 눌러도 AI를 또 부르지 않는다. 실제 호출은 free_wish_result가 한다. 적은 글은 기록하지 않는다.
     """
     state = st.session_state
     question = sel.question(data.questions, sel.FREE_Q)
+
+    def find() -> None:
+        wish = (state.get("free_text") or "").strip()
+        state.free_empty = not wish
+        state.ai = None
+        state.ai_pending = False
+        if not wish:
+            return
+        state.ai_wish = wish                              # 어떤 글로 찾는지. 화면에만 두고 기록하지 않는다
+        if llm_matcher.has_wish(wish, data.settings.get("free_empty_words") or []):
+            state.ai_pending = True
+        else:
+            # "ㅇ", "없어"처럼 원하는 점이 없는 글: AI를 부르지 않고 조금 더 적어 달라고 한다
+            state.ai = llm_matcher.AiResult(llm_matcher.UNCLEAR)
+            logger.log_event(state.sid, "ai", state.ai.status, "")
+
     ui.heading(question["text"])
     if question.get("help"):
         ui.html(f'<p class="q-help">{escape(question["help"])}</p>')
     ui.html(f'<p class="small-note">{escape(text["free_privacy"])}</p>')     # 적기 전에 읽도록 글 상자 위에 둔다
+    # 찾는 동안 글을 고치면 실행이 끊겨 AI를 다시 부르게 되므로 글 상자도 함께 잠근다
     st.text_area(question["text"], key="free_text", max_chars=int(question.get("max_characters", 500)),
-                 label_visibility="collapsed")
-
-    if st.button(width="stretch", label=text["free_button"], key="free_find", type="primary"):
-        wish = (state.get("free_text") or "").strip()
-        state.free_empty = not wish
-        state.ai = None
-        if wish:
-            with st.spinner(text["free_wait"]):
-                state.ai = ask_ai(data, type_ids, pool, wish)
-            state.ai_wish = wish                          # 어떤 글로 찾은 결과인지. 화면에만 두고 기록하지 않는다
-            logger.log_event(state.sid, "ai", state.ai.status, "|".join(m["id"] for m in state.ai.matches))
-            if state.ai.status == "fail":
-                logger.log_error(f"AI 추가 추천 실패 {state.ai.error}")
-
+                 label_visibility="collapsed", disabled=state.ai_pending)
+    st.button(width="stretch", label=text["free_button"], key="free_find", type="primary",
+              on_click=find, disabled=state.ai_pending)
     if state.free_empty:
         ui.notice(text["free_empty"])
+
+
+def free_wish_result(data, text, type_ids: list[str], pool: list[dict], guides,
+                     seen: dict[str, str], consults: list[dict]) -> None:
+    """글을 적은 사람에게만 보여주는 AI 추가 추천. 아래 유형 구역을 그린 뒤에 채운다(seen을 알아야 해서).
+
+    pool은 candidates.ai_pool이 걸러 준 후보다. AI에는 이 후보만 보내고, 답도 이 후보와 대조한다.
+    """
+    state = st.session_state
+    if state.ai_pending:
+        # 찾는 중: 한 번만 부르고, 끝나면 화면을 다시 그려 단추를 푼다
+        with st.spinner(text["free_wait"]):
+            state.ai = ask_ai(data, type_ids, pool, state.get("ai_wish") or "")
+        state.ai_pending = False
+        logger.log_event(state.sid, "ai", state.ai.status, "|".join(m["id"] for m in state.ai.matches))
+        if state.ai.status == "fail":
+            logger.log_error(f"AI 추가 추천 실패 {state.ai.error}")
+        st.rerun()
+
     result = state.ai
     if result is None:
         return
     if (state.get("free_text") or "").strip() != state.get("ai_wish"):
         ui.notice(text["ai_stale"], "info")               # 글을 고쳤으면 예전 글로 찾은 결과를 보여주지 않는다
+        return
+    if result.status == llm_matcher.UNCLEAR:
+        ui.notice(text["free_unclear"])
         return
     if result.status == "fail":
         ui.notice(text["ai_fail"], "fail")
@@ -527,8 +556,11 @@ def screen_result(data, text) -> None:
     def draw_section(type_id: str) -> None:
         type_section(data, text, by_type[type_id], text["type_label_other"], guides, top_n, seen, consults)
 
-    # 직접 적기 구간은 화면 맨 위에 둔다. 자리만 먼저 잡고, 아래 구역을 그린 뒤에 채운다.
+    # 직접 적기 구간은 화면 맨 위에 둔다. 글 상자와 단추는 먼저 그려서, 찾는 동안 바로 잠기게 한다.
+    # AI가 고른 곳은 자리만 먼저 잡고, 아래 구역을 그린 뒤에 채운다.
     # 그래야 '이미 카드로 나온 곳'(seen)을 알고 그릴 수 있다.
+    with st.container():
+        free_wish_form(data, text)
     top = st.container()
     if primary:
         # 대표 유형 하나를 크게 보여준다
@@ -574,7 +606,7 @@ def screen_result(data, text) -> None:
         browse_types(data, text, list(data.types), judged.candidates if deferred else [], opened, draw_section)
 
     with top:
-        free_wish_section(data, text, shown_types, pool, guides, seen, consults)
+        free_wish_result(data, text, shown_types, pool, guides, seen, consults)
     ui.notice(text["capture_tip"], "info")
     result_footer(data, text, judged)
 
