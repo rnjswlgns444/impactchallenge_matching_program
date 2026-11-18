@@ -13,6 +13,7 @@ BARRIER_Q = "Q_BARRIER"
 PRIORITY_Q = "Q_PRIORITY"
 FREE_Q = "Q_FREE"
 SCALE = "scale"
+DEFER = "none"      # Q_PRIORITY의 '아직 고르지 않을게요' 선택지 id. 유형 id가 아니므로 대표 유형을 만들지 않는다
 
 
 def question(questions: list[dict], question_id: str) -> dict:
@@ -61,13 +62,6 @@ def toggle(selected: list[str], option_id: str, options: list[dict]) -> list[str
     if option_id in exclusive:
         return [option_id]
     return [x for x in selected if x not in exclusive] + [option_id]
-
-
-def ordered_types(type_ids: list[str], priority: str | None) -> list[str]:
-    """먼저 보겠다고 고른 유형을 맨 앞으로 옮긴다. 다른 유형은 지우지 않는다."""
-    if priority in type_ids:
-        return [priority] + [tid for tid in type_ids if tid != priority]
-    return list(type_ids)
 
 
 def barrier_guides(answers: dict, questions: list[dict]) -> list[dict]:

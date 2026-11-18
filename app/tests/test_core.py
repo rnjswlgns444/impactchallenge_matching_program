@@ -16,8 +16,8 @@ from app.core import loader, logger, privacy
 from app.core.candidates import ai_pool, build_result, eligible, first_consult, for_type, unconfirmed_columns
 from app.core.llm_matcher import NO_KEY, NO_TYPE, REASON_LIMIT, build_prompt, parse_answer, recommend
 from app.core.scoring import CHOOSE, EXPLORE, RESULT, score
-from app.core.selection import (barrier_guides, chosen_detail_options, detail_of, next_question, options_of,
-                                ordered_types, question, scale_questions, toggle, type_questions)
+from app.core.selection import (DEFER, barrier_guides, chosen_detail_options, detail_of, next_question, options_of,
+                                question, scale_questions, toggle, type_questions)
 
 TODAY = date(2026, 11, 17)
 
@@ -103,11 +103,11 @@ def test_tie_is_settled_by_the_user(data):
     tied = judge(data, answers)
     assert tied.state == CHOOSE and tied.candidates == ["T05", "T07"]
     options = options_of(question(data.questions, "Q_PRIORITY"), data.types, tied.candidates)
-    assert [o["id"] for o in options] == ["T05", "T07", "none"]
+    assert [o["id"] for o in options] == ["T05", "T07", DEFER]
     assert options[0]["label"] == data.types["T05"]["statement"]   # 유형 이름이 아니라 쉬운 설명 문장으로 묻는다
     chosen = judge(data, answers, "T07")
     assert (chosen.primary, chosen.secondary) == ("T07", "T05")
-    assert judge(data, answers, "none").state == CHOOSE            # '아직 고르지 않을게요'는 대표를 만들지 않는다
+    assert judge(data, answers, DEFER).state == CHOOSE           # '아직 고르지 않을게요'는 대표를 만들지 않는다
 
 
 def test_exclusive_option_cannot_mix(data):
@@ -116,12 +116,6 @@ def test_exclusive_option_cannot_mix(data):
     assert toggle(["none"], "alone", options) == ["alone"]               # 다른 것을 누르면 없어요가 풀림
     assert toggle(["alone"], "cost", options) == ["alone", "cost"]
     assert toggle(["alone", "cost"], "alone", options) == ["cost"]       # 다시 누르면 해제
-
-
-def test_priority_only_reorders():
-    assert ordered_types(["T01", "T05", "T07"], "T05") == ["T05", "T01", "T07"]
-    assert ordered_types(["T01", "T05"], "none") == ["T01", "T05"]
-    assert ordered_types(["T01", "T05"], None) == ["T01", "T05"]
 
 
 def test_disabled_detail_is_not_asked(data):

@@ -41,7 +41,7 @@ def question_header(label: str, fraction: float, text: str, help_text: str = "")
 
 
 def type_header(label: str, type_info: dict) -> None:
-    """유형 구역의 머리말: 유형 이름과, 사용자가 고른 문장."""
+    """유형 구역의 머리말: 작은 글(label), 유형 이름, 유형 설명 문장."""
     html(
         f'<div class="type-box"><p class="type-label">{escape(label)}</p>'
         f'<p class="type-name">{escape(type_info["name"])}</p>'

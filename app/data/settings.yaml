@@ -45,16 +45,31 @@ text:
   back_button: "← 이전으로"
 
   # ── 결과 화면 ──
-  result_heading: "이런 곳에 물어볼 수 있어요"
+  # 대표 유형이 정해졌을 때: 상자 안에 type_label → 유형 이름 → 유형 설명(types.yaml의 statement) 순서로 보입니다.
+  type_label: "지금 먼저 살펴볼 유형은"
+  type_label_other: "함께 살펴보는 분야"          # 본인이 눌러서 연 다른 유형의 상자
   result_intro: "아래는 지금 문의할 수 있다고 확인한 곳이에요. 이용할 수 있는지는 기관에 물어봐야 정확해요."
-  type_label: "고르신 도움"
+  secondary_heading: "이 분야도 함께 살펴보세요."   # 대표 유형 다음으로 점수가 높은 유형이 하나일 때
+  more_types_button: "다른 분야도 보기"
+  also_heading: "관심이 높다고 답하신 분야"
+  # 점수가 같거나(동점) 확인이 필요한 점수(7점)일 때: 아래 문장 + questions.yaml의 Q_PRIORITY 질문이 나옵니다.
+  tie_two: "둘 다 관심이 있으시네요."
+  tie_many: "여러 분야에 관심이 있으시네요."
+  confirm_one: "이 분야에 관심이 있으신 것 같아요. 맞으면 눌러 주세요."
+  repick_button: "먼저 볼 분야 다시 고르기"
+  # 대표 유형이 없을 때
+  result_heading: "이런 곳에 물어볼 수 있어요"
+  low_interest: "아직 한 가지로 정하기 어려워요. 어떤 도움이 있는지 먼저 둘러볼까요?"
+  incomplete_all: "답하신 질문이 적어서 아직 분야를 정하지 않았어요. 어떤 도움이 있는지 먼저 둘러볼까요?"
+  edit_hint: "답을 고치고 싶으면 맨 아래 '← 이전으로'를 눌러 주세요."
+  incomplete_note: "답하지 않은 분야는 아직 판단하지 않았어요."
   detail_label: "조금 더 맞춰 보기 (안 골라도 돼요)"
   contacts_heading: "지금 문의할 수 있는 곳"
   lists_heading: "목록에서 직접 찾아보기"
   more_button: "다른 곳 더 보기 ({count}곳)"
   no_program: "이 도움은 지금 안내할 곳을 아직 확인하지 못했어요. 대신 무엇이 맞을지 함께 찾아 주는 곳을 안내해 드려요."
   no_program_at_all: "지금 안내할 수 있는 곳을 찾지 못했어요. 아래 창구에 물어보시면 도와드려요."
-  unknown_intro: "아직 정하지 않으셔도 괜찮아요. 무엇이 맞을지 함께 찾아 주는 곳부터 안내해 드려요."
+  unknown_intro: "아직 정하지 않으셔도 괜찮아요. 무엇이 맞을지 함께 찾아 주는 곳부터 안내해 드려요."   # '아직 고르지 않을게요'를 눌렀을 때
   browse_heading: "어떤 도움이 있는지 둘러보기"
   browse_help: "궁금한 것을 누르면 그 단추 바로 아래에 안내가 나와요. 여러 개 눌러도 돼요."
   consult_heading: "무엇이 맞을지 함께 찾아 주는 곳"

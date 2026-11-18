@@ -15,6 +15,7 @@
 #       options   : 선택지. exclusive: true인 선택지는 다른 선택지와 함께 고를 수 없습니다.
 #       exclude   : 이 선택지를 고르면 후보에서 뺄 프로그램. {programs.csv의 열 이름: [뺄 값]}
 #       enabled   : false면 이 세부 질문을 화면에서 묻지 않습니다. (적지 않으면 묻습니다)
+#       prominent : true면 접어 두지 않고 유형 이름 바로 아래에 보여줍니다. (적지 않으면 접어 둡니다)
 #
 # 세부 선택지를 프로그램과 연결하려면 programs.csv의 '세부태그'에 '질문id.선택지id'를 적습니다. 예) D02.wage_required
 
@@ -203,6 +204,7 @@ types:
       id: D11
       text: "누구에게 도움이 필요하세요?"
       selection: multi
+      prominent: true   # 누구의 돌봄인지 먼저 확인하도록 접지 않고 보여줍니다. 답하지 않으면 일반 안내만 나옵니다.
       options:
         - {id: self, label: "내 식사·집안일 등 일상에 도움이 필요해요"}
         - {id: adult, label: "부모님이나 배우자 돌봄을 나누고 싶어요"}
