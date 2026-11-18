@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import csv
-from datetime import datetime
 from pathlib import Path
 
 from . import clock
@@ -56,7 +55,7 @@ def _write(path: Path, fields: list[str], row: dict) -> None:
             header = next(csv.reader(f), [])
         if header != fields:
             # 예전 형식의 파일이면 이름을 바꿔 보관하고 새로 시작한다. 열이 어긋난 채 쌓이지 않게 한다.
-            path.rename(path.with_name(f"{path.stem}_이전형식_{datetime.now():%Y%m%d_%H%M%S}{path.suffix}"))
+            path.rename(path.with_name(f"{path.stem}_이전형식_{clock.now():%Y%m%d_%H%M%S}{path.suffix}"))
     is_new = not path.exists()
     with path.open("a", encoding="utf-8-sig", newline="") as f:
         writer = csv.DictWriter(f, fields)
@@ -111,6 +110,6 @@ def log_error(kind: str, log_dir: Path | None = None) -> None:
     try:
         log_dir.mkdir(parents=True, exist_ok=True)
         with (log_dir / "errors.log").open("a", encoding="utf-8") as f:
-            f.write(f"{datetime.now():%Y-%m-%d %H:%M} {kind}\n")
+            f.write(f"{clock.now():%Y-%m-%d %H:%M} {kind}\n")
     except OSError:
         pass        # 오류 기록을 못 써도 사용자 화면은 멈추지 않게 한다
