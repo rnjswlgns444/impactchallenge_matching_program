@@ -207,6 +207,9 @@ def test_picked_place_already_shown_keeps_call_button(app, fake_ai):
     assert escape(settings["ai_seen_note"].format(type=data.types["T01"]["name"])) in text
     assert text.count(settings["call_button"]) > calls_before
     assert "해외여행" in text                                  # 일부만 찾았으면 못 찾은 부분을 알려 준다
+    # 직접 적기 구간은 화면 맨 위에 있다: AI가 고른 곳이 결과 제목과 유형 구역보다 먼저 나온다
+    assert text.index(settings["ai_heading"]) < text.index(settings["result_heading"])
+    assert text.index(settings["ai_heading"]) < text.index(settings["contacts_heading"])
 
     app.text_area(key="free_text").set_value("다른 글").run()
     text = page_text(app)

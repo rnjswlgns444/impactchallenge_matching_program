@@ -379,7 +379,7 @@ def free_wish_section(data, text, type_ids: list[str], pool: list[dict], guides,
     for match in matches:
         program = by_id[match["id"]]
         if program["id"] in seen:
-            # 위에 이미 나온 곳도 이유, 물어볼 문장, 전화 단추는 여기서 바로 볼 수 있게 한다
+            # 아래쪽 유형 구역에 카드가 있는 곳도 이유, 물어볼 문장, 전화 단추는 여기서 바로 볼 수 있게 한다
             ui.picked_card(program, text, match["reason"], seen[program["id"]])
         else:
             seen[program["id"]] = text["ai_heading"]
@@ -393,7 +393,8 @@ def free_wish_section(data, text, type_ids: list[str], pool: list[dict], guides,
     if not matches or result.unmatched:
         for program in consults[:1]:                       # 맞는 곳이 없으면 함께 찾아 주는 창구로 잇는다
             if program["id"] in seen:
-                ui.seen_card(program, text, seen[program["id"]])
+                # 아래쪽에 이미 카드가 있는 창구: 물어볼 문장과 전화 단추만 여기서 바로 보여준다
+                ui.picked_card(program, text, "", seen[program["id"]])
             else:
                 seen[program["id"]] = text["ai_heading"]
                 ui.program_card(program, text, None, guides, None, open_part, key=f"ai_consult_{program['id']}")
@@ -437,6 +438,9 @@ def screen_result(data, text) -> None:
     def draw_section(type_id: str) -> None:
         type_section(data, text, by_type[type_id], guides, open_part, top_n, seen, consults)
 
+    # 직접 적기 구간은 화면 맨 위에 둔다. 자리만 먼저 잡고, 아래 구역을 그린 뒤에 채운다.
+    # 그래야 '이미 카드로 나온 곳'(seen)을 알고 그릴 수 있다.
+    top = st.container()
     ui.heading(text["result_heading"])
     if state.browsing:
         # 유형을 정하지 않은 사람: 일반 창구를 먼저, 그 아래에서 유형을 둘러본다
@@ -447,14 +451,16 @@ def screen_result(data, text) -> None:
         else:
             ui.fallback_card(data.settings["fallback_card"], text)
         browse_types(data, text, type_ids, draw_section)
-        free_wish_section(data, text, ordered, pool, guides, open_part, seen, consults)
+        with top:
+            free_wish_section(data, text, ordered, pool, guides, open_part, seen, consults)
     else:
         ui.body(text["result_intro"])
         if len(type_ids) >= 2 and sel.PRIORITY_Q not in state.answers:
             priority_question(data, type_ids)
         for result in results:
             draw_section(result.type_id)
-        free_wish_section(data, text, ordered, pool, guides, open_part, seen, consults)
+        with top:
+            free_wish_section(data, text, ordered, pool, guides, open_part, seen, consults)
         rest = [p for p in consults if p["id"] not in seen]           # 위에 이미 나온 창구는 다시 내지 않는다
         if rest:
             consult_section(data, text, rest, guides, open_part)
