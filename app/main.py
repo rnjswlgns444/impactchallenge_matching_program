@@ -525,6 +525,10 @@ def result_footer(data, text, judged: scoring.Score) -> None:
 
 def screen_result(data, text) -> None:
     state = st.session_state
+    if sel.next_question(state.answers, data.questions) is not None:
+        # 결과를 보는 동안 문항 파일이 바뀌어 답이 빠진 문항이 생겼으면, 오류 화면 대신 그 문항을 다시 묻는다
+        go("survey")
+        st.rerun()
     today = candidates.today_kst()
     top_n = int(data.settings.get("top_n", 3))
 
