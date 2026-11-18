@@ -131,10 +131,10 @@ def screen_start(data, text) -> None:
     ui.notice(text["start_privacy_saving"] if saving else text["start_privacy"], "info")
     st.button(width="stretch", label=text["start_button"], key="start", type="primary", on_click=go, args=("survey",))
     ui.html(f'<p class="q-help center">⏱ {escape(text["start_time"])}</p>')
+    ui.notice(text["start_refresh"])                          # 새로고침·뒤로 가기를 하면 답이 지워진다는 안내. 단추 가까이 둔다
     start_steps = text.get("start_steps") or []              # 없어도 되는 문구라 loader가 검사하지 않는다
     if start_steps:
         ui.steps([str(step) for step in start_steps])
-    ui.body(text["start_refresh"])                            # 새로고침·뒤로 가기를 하면 답이 지워진다는 안내
     ui.html(f'<p class="small-note">{escape(text["disclaimer"])}</p>')
 
 
@@ -624,7 +624,8 @@ def main() -> None:
     style.apply()
     init_state()
     scroll_to_top()
-    ui.topbar(text.get("top_title") or data.settings["app_title"])
+    if st.session_state.screen != "start":                    # 시작 화면에는 큰 로고와 제목이 따로 있다
+        ui.topbar(text.get("top_title") or data.settings["app_title"])
     screens ={"start": screen_start, "survey": screen_survey, "result": screen_result}
     screens[st.session_state.screen](data, text)
 

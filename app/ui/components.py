@@ -53,7 +53,8 @@ _SHARE_CODE = """(function (cfg) {
     e.preventDefault();
     const box = a.closest('.share');
     const status = box && box.querySelector('.share-status');
-    const say = function (t) { if (status) status.textContent = t; };
+    const link = box && box.querySelector('.share-url');
+    const say = function (t, u) { if (status) status.textContent = t; if (link) link.textContent = u || ''; };
     let url = cfg.url;
     if (!url) {
       try { url = window.top.location.href; } catch (_) { url = window.location.href; }
@@ -64,7 +65,7 @@ _SHARE_CODE = """(function (cfg) {
       catch (err) { if (err && err.name === 'AbortError') return; }
     }
     try { await navigator.clipboard.writeText(cfg.message + ' ' + url); say(cfg.copied); }
-    catch (_) { say(cfg.failed + ' ' + url); }
+    catch (_) { say(cfg.failed, url); }
   });
 })(CONFIG);"""
 
@@ -74,7 +75,7 @@ def share_box(text: dict, title: str, url: str = "") -> None:
     html(f'<div class="share"><p class="q-title">{escape(text["share_heading"])}</p>'
          f'<p class="q-help">{escape(text["share_help"])}</p>'
          f'<a class="a-btn fill share-btn" href="#" role="button">💬 {escape(text["share_button"])}</a>'
-         f'<p class="small-note share-status" aria-live="polite"></p></div>')
+         f'<p class="small-note share-status" aria-live="polite"></p><p class="share-url"></p></div>')
     config = {"title": title, "message": text["share_message"], "copied": text["share_copied"],
               "failed": text["share_failed"], "url": url}
     code = _SHARE_CODE.replace("CONFIG", json.dumps(config, ensure_ascii=False))
@@ -88,8 +89,10 @@ def share_box(text: dict, title: str, url: str = "") -> None:
 def progress(label: str, fraction: float) -> None:
     """label은 '질문 3 / 24' 같은 진행 글자, fraction은 전체 설문에서 지금까지 온 비율(0~1)이다."""
     percent = round(fraction * 100)
-    html(f'<p class="q-progress"><span>{escape(label)}</span><span>{percent}%</span></p>'
-         f'<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{percent}">'
+    # 퍼센트 숫자는 보여주지 않는다. 진행 글자('질문 1 / 24')와 기준이 달라 어긋나 보인다
+    html(f'<p class="q-progress">{escape(label)}</p>'
+         f'<div class="bar" role="progressbar" aria-label="진행 정도" aria-valuemin="0" aria-valuemax="100" '
+         f'aria-valuenow="{percent}">'
          f'<i style="width:{percent}%"></i></div>')
 
 

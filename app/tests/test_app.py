@@ -499,13 +499,13 @@ def test_no_detail_question_allows_many_answers():
 # ── 겉모습과 공유 ──
 
 def test_top_bar_and_start_steps_are_shown(app):
-    """모든 화면 맨 위에 앱 이름 띠가 있고, 시작 화면에는 순서 안내가 나온다."""
+    """시작 화면에는 순서 안내가, 그 뒤 화면에는 맨 위에 앱 이름 띠가 나온다."""
     text = loader.load_all().settings["text"]
     page = page_text(app)
-    assert text["top_title"] in page
+    assert 'class="topbar"' not in page                        # 시작 화면은 큰 제목이 있어 띠를 겹쳐 그리지 않는다
     assert all(step in page for step in text["start_steps"])
     click(app, "start")
-    assert text["top_title"] in page_text(app)
+    assert 'class="topbar"' in page_text(app) and text["top_title"] in page_text(app)
 
 
 def test_share_box_sends_no_answers(app):

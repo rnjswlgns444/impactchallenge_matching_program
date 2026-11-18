@@ -42,7 +42,7 @@ CSS = """
 .stButton > button:hover, .stFormSubmitButton > button:hover { border-color: var(--ink); background: var(--white); }
 /* 주요 단추와 고른 단추: 노란 바탕에 검은 글자 */
 .stButton > button[kind="primary"], .stFormSubmitButton > button[kind="primaryFormSubmit"] {
-  background: var(--yellow); border-color: var(--yellow-deep); box-shadow: 0 6px 16px rgba(245,212,0,.4); }
+  background: var(--yellow); border-color: var(--ink); box-shadow: 0 6px 16px rgba(245,212,0,.4); }
 .stButton > button[kind="primary"]:hover, .stFormSubmitButton > button[kind="primaryFormSubmit"]:hover,
 .stButton > button[kind="primary"]:active, .stFormSubmitButton > button[kind="primaryFormSubmit"]:active {
   background: var(--yellow-deep); border-color: var(--ink); }
@@ -134,9 +134,9 @@ CSS = """
 .stApp .notice { border: 2px solid #9a6700; background: #fff8e6; border-radius: 16px; padding: 14px 16px;
   margin: 4px 0 10px; font-size: 20px; line-height: 1.7; color: var(--ink); }
 .stApp .notice.fail { border-color: #b3261e; background: #fdeceb; }
-.stApp .notice.info { border: 1px solid var(--line-soft); background: var(--white); }
+.stApp .notice.info { border: 1px solid var(--line-soft); background: var(--white); box-shadow: var(--shadow); }
 .stApp .sec { font-size: 21px; font-weight: 800; color: var(--ink); margin: 10px 0 2px; }
-.stApp .p-kind { display: inline-block; font-size: 18px; font-weight: 700; color: var(--ink); background: var(--gray);
+.stApp .p-kind { display: inline-block; font-size: 20px; font-weight: 700; color: var(--ink); background: var(--gray);
   border-radius: 99px; padding: 4px 14px; margin: 0 0 6px; }
 .stApp .body { font-size: 20px; line-height: 1.7; margin: 0; color: var(--ink); }
 .stApp ul.facts { margin: 0; padding-left: 24px; }
@@ -158,9 +158,11 @@ CSS = """
 .stApp .nowrap { white-space: nowrap; }
 .stApp .share { background: var(--white); border-radius: 20px; box-shadow: var(--shadow); padding: 24px 16px;
   text-align: center; margin-top: 8px; }
-.stApp .share .share-status { margin: 8px 0 0; word-break: break-all; }
-.stApp .share .share-status:empty { display: none; }
-.stApp a.a-btn.fill { background: var(--yellow); border-color: var(--yellow-deep); color: var(--ink) !important; }
+.stApp .share .share-status { margin: 8px 0 0; }
+.stApp .share .share-url { margin: 8px 0 0; padding: 12px; border: 2px solid var(--line); border-radius: 12px;
+  font-size: 20px; color: var(--ink); word-break: break-all; user-select: all; -webkit-user-select: all; }
+.stApp .share .share-status:empty, .stApp .share .share-url:empty { display: none; }
+.stApp a.a-btn.fill { background: var(--yellow); color: var(--ink) !important; }
 .stApp a.a-btn.line { background: var(--white); color: var(--ink) !important; }
 </style>
 """.replace("LOGO_URL", LOGO)
