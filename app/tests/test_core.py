@@ -345,6 +345,22 @@ def test_log_has_no_free_text(tmp_path):
     assert (tmp_path / "events.csv").read_text(encoding="utf-8-sig").splitlines()[0].split(",") == logger.EVENT_FIELDS
 
 
+def test_response_row_has_age_band_and_no_free_text(tmp_path):
+    """기록할 값은 화면이 아니라 logger가 만든다. 나이 숫자와 직접 적은 글은 들어가지 않는다."""
+    answers = {"Q01": 5, "Q13": 4, "Q02": None, "P_GENDER": "female", "P_AGE": 61, "P_WORK": "not_working",
+               "Q_BARRIER": ["alone", "cost"], "Q_FREE": "직접 적은 글"}
+    judged = score(answers, {"T01": ["Q01", "Q13"], "T05": ["Q02", "Q14"]}, 8, 7)
+    fields = logger.response_fields(judged, answers, ["Q13", "Q01", "Q02", "Q14"], ["JOB01"])
+    assert set(fields) == set(logger.RESPONSE_FIELDS[2:])           # 정해진 열만, 빠짐없이
+    assert (fields["state"], fields["primary"], fields["scores"]) == (RESULT, "T01", "T01=9")
+    assert fields["answers"] == "Q01=5|Q02=|Q13=4|Q14="             # 건너뛴 문항은 빈칸
+    assert (fields["gender"], fields["age_band"], fields["work"]) == ("female", "60~64세", "not_working")
+    assert fields["barriers"] == ["alone", "cost"] and fields["program_ids"] == ["JOB01"]
+    logger.log_response("sid", fields, tmp_path)
+    line = (tmp_path / "responses.csv").read_text(encoding="utf-8-sig").splitlines()[1]
+    assert "61" not in line and "직접 적은 글" not in line and "60~64세" in line
+
+
 @pytest.mark.parametrize("age, band", [(54, "54세 이하"), (55, "55~59세"), (59, "55~59세"), (60, "60~64세"),
                                        (64, "60~64세"), (65, "65세 이상"), (None, ""), ("60", "")])
 def test_age_is_logged_as_band_only(age, band):

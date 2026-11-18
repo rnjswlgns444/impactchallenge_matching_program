@@ -11,6 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 from . import clock
+from . import selection as sel
 
 LOG_DIR = Path(__file__).resolve().parent.parent / "logs"
 
@@ -62,6 +63,23 @@ def _write(path: Path, fields: list[str], row: dict) -> None:
         if is_new:
             writer.writeheader()
         writer.writerow(row)
+
+
+def response_fields(judged, answers: dict, scale_ids: list[str], shown_ids: list[str]) -> dict:
+    """responses.csv 한 행에 넣을 값을 만든다. 화면과 무관한 순수 함수다.
+
+    judged는 scoring.Score, scale_ids는 척도 문항 id, shown_ids는 화면에 나온 프로그램 id다.
+    나이는 숫자 대신 나이대로 바꾼다. 여기 적힌 문항만 읽으므로 주관식(Q_FREE)은 들어가지 않는다.
+    """
+    return {
+        "state": judged.state, "primary": judged.primary, "secondary": judged.secondary,
+        "candidates": judged.candidates,
+        "scores": "|".join(f"{tid}={value}" for tid, value in judged.scores.items()),
+        "answers": "|".join(f"{qid}={answers.get(qid) or ''}" for qid in sorted(scale_ids)),
+        "barriers": answers.get(sel.BARRIER_Q) or [], "gender": answers.get(sel.GENDER_Q),
+        "age_band": sel.age_band(answers.get(sel.AGE_Q)), "work": answers.get(sel.WORK_Q),
+        "program_ids": shown_ids,
+    }
 
 
 def log_response(session_id, fields: dict, log_dir: Path | None = None) -> None:

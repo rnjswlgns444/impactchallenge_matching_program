@@ -486,21 +486,13 @@ def log_once(data, judged: scoring.Score, shown_ids: list[str]) -> None:
     먼저 볼 유형을 고르거나 다른 유형을 여는 것은 답이 바뀐 것이 아니다. 그건 각각 priority, browse 이벤트로 남는다.
     """
     state = st.session_state
-    answers = state.answers
-    barriers = answers.get(sel.BARRIER_Q) or []
-    scores = "|".join(f"{tid}={value}" for tid, value in judged.scores.items())
-    shape = (scores, "|".join(barriers))
+    scale_ids = [qid for qids in sel.type_questions(data.questions, data.types).values() for qid in qids]
+    fields = logger.response_fields(judged, state.answers, scale_ids, shown_ids)    # 무엇을 남길지는 logger가 정한다
+    shape = (fields["scores"], "|".join(fields["barriers"]))
     if state.logged is None:
-        scale_ids = [qid for qids in sel.type_questions(data.questions, data.types).values() for qid in qids]
-        logger.log_response(state.sid, {
-            "state": judged.state, "primary": judged.primary, "secondary": judged.secondary,
-            "candidates": judged.candidates, "scores": scores,
-            "answers": "|".join(f"{qid}={answers.get(qid) or ''}" for qid in sorted(scale_ids)),
-            "barriers": barriers, "gender": answers.get(sel.GENDER_Q), "age_band": sel.age_band(answers.get(sel.AGE_Q)),
-            "work": answers.get(sel.WORK_Q), "program_ids": shown_ids,
-        })
+        logger.log_response(state.sid, fields)
     elif state.logged != shape:
-        logger.log_event(state.sid, "answers_changed", scores, shape[1])
+        logger.log_event(state.sid, "answers_changed", *shape)
     state.logged = shape
 
 
