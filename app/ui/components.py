@@ -31,9 +31,10 @@ def heading(value: str) -> None:
     html(f'<p class="q-title">{escape(value)}</p>')
 
 
-def question_header(number: int, total: int, text: str, help_text: str = "") -> None:
-    html(f'<p class="q-progress">{number} / {total}</p>')
-    st.progress(number / total)
+def question_header(label: str, fraction: float, text: str, help_text: str = "") -> None:
+    """label은 '질문 3 / 24' 같은 진행 글자, fraction은 전체 설문에서 지금까지 온 비율(0~1)이다."""
+    html(f'<p class="q-progress">{escape(label)}</p>')
+    st.progress(fraction)
     heading(text)
     if help_text:
         html(f'<p class="q-help">{escape(help_text)}</p>')

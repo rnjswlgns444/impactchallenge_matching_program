@@ -105,8 +105,8 @@ def back_one(questions: list[dict]) -> None:
         go("start")
         return
     value = state.answers.pop(asked[-1])
-    if isinstance(value, list):
-        state.draft[asked[-1]] = value          # 골라 둔 것은 남겨서 다시 고르지 않게 한다
+    if value is not None:
+        state.draft[asked[-1]] = value          # 답했던 것은 남겨서, 돌아갔을 때 표시해 준다
     state.answers.pop(sel.PRIORITY_Q, None)
     state.browsing = False
     state.ai = None
@@ -132,6 +132,19 @@ def screen_start(data, text) -> None:
 
 # ── 질문 화면 ──
 
+def progress_label(text, survey: list[dict], question: dict) -> str:
+    """문항 위의 진행 표시. 척도 문항은 '질문 n / 24'로, 그 앞뒤 문항은 따로 센다."""
+    scale = [q for q in survey if q["selection"] == sel.SCALE]
+    if question in scale:
+        return text["progress_scale"].format(number=scale.index(question) + 1, total=len(scale))
+    first = survey.index(scale[0]) if scale else len(survey)
+    position = survey.index(question)
+    if position < first:
+        return text["progress_before"].format(number=position + 1, total=first)
+    after = survey[first + len(scale):]
+    return text["progress_after"].format(number=after.index(question) + 1, total=len(after))
+
+
 def screen_survey(data, text) -> None:
     state = st.session_state
     question = sel.next_question(state.answers, data.questions)
@@ -141,37 +154,52 @@ def screen_survey(data, text) -> None:
 
     survey = sel.survey_questions(data.questions)
     qid = question["id"]
-    ui.question_header(survey.index(question) + 1, len(survey), question["text"], question.get("help", ""))
-    options = sel.options_of(question, data.types)
+    kind = question["selection"]
+    ui.question_header(progress_label(text, survey, question), (survey.index(question) + 1) / len(survey),
+                       question["text"], question.get("help") or (text["scale_help"] if kind == sel.SCALE else ""))
 
     def answer(value) -> None:
         state.answers[qid] = value
+        state.draft.pop(qid, None)
         state.to_top = True
 
-    if question["selection"] == "multi":
+    if kind == "multi":
+        options = sel.options_of(question, data.types)
         chosen = state.draft.setdefault(qid, [])
         ui.html(f'<p class="q-help">{escape(text["multi_help"])}</p>')
 
         def pick(option_id: str) -> None:
             state.draft[qid] = sel.toggle(state.draft.get(qid, []), option_id, options)
 
-        area_labels = {a["id"]: a["label"] for a in data.areas}
-        shown_area = None
         for option in options:
-            area = option.get("area")
-            if area != shown_area and area in area_labels:      # 유형 선택지는 영역별로 묶어 보여준다
-                ui.html(f'<p class="area">{escape(area_labels[area])}</p>')
-            shown_area = area
             selected = option["id"] in chosen
             st.button(width="stretch", label=check_label(option["label"], selected), key=f"opt_{qid}_{option['id']}",
                       type="primary" if selected else "secondary", on_click=pick, args=(option["id"],))
         st.divider()
         st.button(width="stretch", label=text["next_button"].format(count=len(chosen)) if chosen else text["skip_button"], key=f"next_{qid}",
                   type="primary" if chosen else "secondary", on_click=answer, args=(list(chosen),))
+    elif kind == "number":
+        # 폼으로 묶어야, 숫자를 적고 바로 '다음'을 눌러도 적은 값이 함께 넘어온다
+        with st.form(key=f"form_{qid}", border=False):
+            st.number_input(question["text"], min_value=question["min"], max_value=question["max"],
+                            value=state.draft.get(qid), step=1, key=f"num_{qid}", label_visibility="collapsed",
+                            placeholder=text["number_placeholder"])
+            if st.form_submit_button(text["number_next"], type="primary", width="stretch", key=f"next_{qid}"):
+                answer(state.get(f"num_{qid}"))          # 비워 두고 누르면 건너뛴 것으로 본다
+                st.rerun()
+        st.button(width="stretch", label=text["skip_number"], key=f"skip_{qid}", type="tertiary",
+                  on_click=answer, args=(None,))
     else:
+        # 하나만 고르는 문항과 척도 문항: 누르면 바로 다음 문항으로 간다
+        if kind == sel.SCALE:
+            options = [{"id": opt["value"], "label": opt["label"]} for opt in data.scale]
+        else:
+            options = sel.options_of(question, data.types)
+        before = state.draft.get(qid)                   # '이전으로' 돌아왔을 때, 앞서 고른 답을 표시해 준다
         for option in options:
-            st.button(width="stretch", label=option["label"], key=f"opt_{qid}_{option['id']}",
-                      on_click=answer, args=(option["id"],))
+            selected = option["id"] == before
+            st.button(width="stretch", label=check_label(option["label"], selected), key=f"opt_{qid}_{option['id']}",
+                      type="primary" if selected else "secondary", on_click=answer, args=(option["id"],))
         st.button(width="stretch", label=text["skip_button"], key=f"next_{qid}", type="tertiary",
                   on_click=answer, args=(None,))
 

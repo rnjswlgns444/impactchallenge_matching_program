@@ -32,6 +32,16 @@ CSS = """
 .stApp [class*="st-key-next_"]:has(button[kind="primary"]) { position: sticky; bottom: 12px; z-index: 50;
   background: #ffffff; border-radius: 12px; box-shadow: 0 0 0 10px #ffffff; }
 
+/* 폼 안의 '다음' 단추(숫자 입력 문항)도 다른 단추와 같은 크기로 */
+.stFormSubmitButton > button { width: 100%; min-height: 60px; padding: 12px 16px; border-radius: 12px;
+  border: 2px solid #0b5c5c; }
+.stFormSubmitButton > button p { font-size: 21px !important; font-weight: 600; line-height: 1.4; }
+.stApp .stFormSubmitButton > button[kind="primaryFormSubmit"] p { color: #ffffff; }
+.stApp [data-testid="stForm"] { padding: 0; border: none; }
+
+/* 숫자 입력칸 */
+.stNumberInput input { font-size: 24px !important; min-height: 60px; }
+
 /* 글 입력칸 */
 .stTextArea textarea { font-size: 20px !important; line-height: 1.6; }
 .stTextArea label p { font-size: 20px !important; font-weight: 600; }
