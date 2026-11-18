@@ -9,6 +9,7 @@ import csv
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from string import Formatter
 
 import yaml
 
@@ -47,6 +48,28 @@ SCOPES = {"안산", NATIONWIDE}
 PAY_VALUES = {"해당없음", "유급", "활동비", "무보수", UNCONFIRMED}
 TASTE_KINDS = {"", "영상", "공개강좌", "앱체험"}
 DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+# 화면(main.py, ui/components.py)이 쓰는 settings.yaml의 text 문구. 화면에 문구를 더하면 여기에도 적는다
+# (test_text_keys_match_the_screen_code가 둘이 어긋나면 알려 준다)
+TEXT_KEYS = """
+    start_intro start_time start_refresh start_privacy start_privacy_saving start_button
+    scale_help number_placeholder number_next skip_number multi_help skip_button back_button
+    type_label type_label_other result_intro secondary_heading more_types_button also_heading
+    tie_two tie_many confirm_one repick_button result_heading low_interest incomplete_all edit_hint incomplete_note
+    detail_label contacts_heading lists_heading no_program no_program_at_all unknown_intro
+    browse_heading browse_help consult_heading
+    free_privacy free_button free_empty free_unclear free_wait ai_heading ai_reason ai_stale ai_none ai_fail
+    kind_always kind_period kind_list nationwide card_about card_ask card_contact target_label first_visit_label
+    check_heading age_unconfirmed worry_heading say_prefix call_button apply_button detail_button list_note list_button
+    capture_tip restart_button disclaimer
+""".split()
+# 값을 끼워 넣는 문구와, 그 문구에 쓸 수 있는 자리표시자
+TEXT_FIELDS = {
+    "progress_before": {"number", "total"}, "progress_scale": {"number", "total"}, "progress_after": {"number", "total"},
+    "next_button": {"count"}, "more_button": {"count"}, "ai_unmatched": {"items"},
+    "ai_seen_note": {"type"}, "seen_note": {"type"}, "unconfirmed": {"column"}, "checked_note": {"date"},
+}
+FALLBACK_KEYS = ["name", "org", "description", "phone", "say"]   # url은 없어도 된다
 
 
 class DataError(Exception):
@@ -185,6 +208,39 @@ def validate_scoring(settings: dict) -> list[str]:
     return []
 
 
+def validate_text(settings: dict) -> list[str]:
+    """화면이 쓰는 문구가 settings.yaml에 다 있는지 본다.
+
+    빠진 문구는 그 문구가 나오는 화면에서만 오류가 나서, 드물게 나오는 화면은 실험 중에야 드러난다.
+    """
+    problems: list[str] = []
+    if not isinstance(settings.get("app_title"), str) or not settings["app_title"]:
+        problems.append("settings.yaml: app_title(앱 이름)이 없습니다.")
+    text = settings.get("text")
+    if not isinstance(text, dict):
+        return problems + ["settings.yaml: text(화면 문구)가 없습니다."]
+    for key in TEXT_KEYS + list(TEXT_FIELDS):
+        value = text.get(key)
+        if not isinstance(value, str):
+            problems.append(f"settings.yaml: text에 '{key}' 문구가 없습니다. 지우지 말고 글만 고쳐 주세요. (글은 따옴표로 감쌉니다)")
+            continue
+        if key not in TEXT_FIELDS:
+            continue
+        allowed = TEXT_FIELDS[key]
+        try:
+            used = {name for _, name, _, _ in Formatter().parse(value) if name is not None}
+        except ValueError:
+            used = {""}
+        if not used <= allowed:
+            can = ", ".join("{" + name + "}" for name in sorted(allowed))
+            problems.append(f"settings.yaml: text의 '{key}'에는 중괄호를 {can} 꼴로만 쓸 수 있습니다.")
+    card = settings.get("fallback_card")
+    for key in FALLBACK_KEYS:
+        if not isinstance(card, dict) or not isinstance(card.get(key), str) or not card[key]:
+            problems.append(f"settings.yaml: fallback_card에 '{key}'가 없습니다.")
+    return problems
+
+
 def validate_questions(questions: list[dict], types_list: list[dict] | None = None) -> list[str]:
     """types_list를 주면 척도 문항이 유형마다 정해진 수만큼 있는지도 본다."""
     problems: list[str] = []
@@ -224,6 +280,13 @@ def validate_questions(questions: list[dict], types_list: list[dict] | None = No
             for column in opt.get("show") or []:
                 if column not in REQUIRED_COLUMNS:
                     problems.append(f"{where} 선택지 '{opt.get('id')}'의 show에 적힌 '{column}'은 programs.csv에 없는 열입니다.")
+    # 척도 문항은 한 덩어리로 붙어 있어야 한다. 화면의 진행 표시가 '척도 앞 / 척도 / 척도 뒤' 세 묶음으로 센다
+    survey = [q for q in questions if q.get("where") != "result"]
+    scale_at = [i for i, q in enumerate(survey) if q.get("selection") == "scale"]
+    if scale_at:
+        for q in survey[scale_at[0]:scale_at[-1] + 1]:
+            if q.get("selection") != "scale":
+                problems.append(f"questions.yaml: 문항 '{q.get('id')}'가 척도 문항 사이에 끼어 있습니다. 척도 문항들의 앞이나 뒤로 옮겨 주세요.")
     for qid in QUESTION_IDS:
         if qid not in seen:
             problems.append(f"questions.yaml: 문항 '{qid}'가 없습니다. 이 id는 코드가 쓰므로 지우거나 바꾸면 안 됩니다.")
@@ -300,7 +363,8 @@ def validate_prompt(prompt: str) -> list[str]:
 
 def validate(areas, types_list, questions, programs, prompt, scale, settings) -> list[str]:
     problems = validate_types(areas, types_list) + validate_scale(scale) + validate_questions(questions, types_list)
-    return problems + validate_scoring(settings) + validate_programs(programs, types_list) + validate_prompt(prompt)
+    problems += validate_scoring(settings) + validate_text(settings)
+    return problems + validate_programs(programs, types_list) + validate_prompt(prompt)
 
 
 def load_all(data_dir: Path = DATA_DIR, prompt_path: Path = PROMPT_PATH) -> AppData:

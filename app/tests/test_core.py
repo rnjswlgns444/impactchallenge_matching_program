@@ -8,6 +8,7 @@
 """
 import copy
 import json
+import re
 from datetime import date
 
 import pytest
@@ -403,6 +404,40 @@ def test_bad_scale_setup_gives_korean_messages(data):
                 {"scoring": {"high": 11, "confirm": 7}}, {"scoring": {"high": 8, "confirm": 1}},
                 {"scoring": {"high": "8", "confirm": 7}}):
         assert loader.validate_scoring(bad), bad
+
+
+def test_question_between_scale_questions_is_reported(data):
+    questions = copy.deepcopy(data.questions)
+    barrier = question(questions, "Q_BARRIER")
+    questions.remove(barrier)
+    questions.insert(questions.index(question(questions, "Q05")), barrier)      # 척도 문항 사이로 옮김
+    text = "\n".join(loader.validate_questions(questions, list(data.types.values())))
+    assert "문항 'Q_BARRIER'가 척도 문항 사이에 끼어 있습니다" in text
+
+
+def test_missing_screen_text_is_reported_at_start(data):
+    assert loader.validate_text(data.settings) == []
+    settings = copy.deepcopy(data.settings)
+    del settings["text"]["ai_stale"]                      # 드물게 나오는 문구
+    settings["text"]["more_button"] = "더 보기 ({num}곳)"   # 코드가 채워 주지 않는 자리표시자
+    settings["text"]["next_button"] = "다음 {count"        # 중괄호 짝이 안 맞음
+    del settings["fallback_card"]["phone"]
+    del settings["app_title"]
+    text = "\n".join(loader.validate_text(settings))
+    for expected in ("'ai_stale' 문구가 없습니다", "'more_button'에는 중괄호를 {count} 꼴로만", "'next_button'에는 중괄호를",
+                     "fallback_card에 'phone'", "app_title"):
+        assert expected in text, expected
+    assert loader.validate_text({}) != []
+
+
+def test_text_keys_match_the_screen_code():
+    """loader가 검사하는 문구 목록이 화면 코드가 실제로 쓰는 문구와 같아야 한다."""
+    source = "".join((loader.APP_DIR / name).read_text(encoding="utf-8") for name in ("main.py", "ui/components.py"))
+    used = set(re.findall(r'text\["(\w+)"\]', source))
+    filled = set(re.findall(r'text\["(\w+)"\]\.format', source))
+    assert used == set(loader.TEXT_KEYS) | set(loader.TEXT_FIELDS)
+    assert filled == set(loader.TEXT_FIELDS)
+    assert not set(loader.TEXT_KEYS) & set(loader.TEXT_FIELDS)
 
 
 def test_general_window_may_have_no_type_tag(data):
