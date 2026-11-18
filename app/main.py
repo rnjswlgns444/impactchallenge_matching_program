@@ -125,6 +125,7 @@ def screen_start(data, text) -> None:
     ui.html(f'<p class="app-title">{escape(data.settings["app_title"])}</p>')
     ui.body(text["start_intro"])
     ui.body(f'⏱ {text["start_time"]}')
+    ui.body(text["start_refresh"])                            # 새로고침·뒤로 가기를 하면 답이 지워진다는 안내
     saving = bool(data.settings.get("save_log", False))      # 기록을 켰을 때만 '저장해요'라고 말한다
     ui.notice(text["start_privacy_saving"] if saving else text["start_privacy"], "info")
     st.button(width="stretch", label=text["start_button"], key="start", type="primary", on_click=go, args=("survey",))
@@ -274,8 +275,6 @@ def type_section(data, text, result: candidates.TypeResult, label: str, guides, 
     tid = result.type_id
     type_info = data.types[tid]
     ui.type_header(label, type_info)
-    if intro:
-        ui.body(intro)
 
     if not result.contacts and not result.lists:
         # 안내할 곳이 없으면 세부 질문을 묻지 않고, 함께 찾아 주는 창구를 바로 붙인다
@@ -288,6 +287,8 @@ def type_section(data, text, result: candidates.TypeResult, label: str, guides, 
                 ui.program_card(program, text, None, guides, None, key=f"{tid}_consult_{program['id']}")
         return
 
+    if intro:                                                 # '확인한 곳이에요'는 보여줄 곳이 있을 때만 말한다
+        ui.body(intro)
     detail = sel.detail_of(type_info)
     if detail:
         detail_question(text, type_info, detail)

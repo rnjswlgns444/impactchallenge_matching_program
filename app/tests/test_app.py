@@ -233,6 +233,41 @@ def test_changed_answer_is_an_event_not_a_new_row(app, tmp_path):
     assert len(changed) == 1 and changed[0]["value"] == "cost"
 
 
+def test_type_without_places_does_not_say_confirmed_places(monkeypatch, tmp_path):
+    """대표 유형에 안내할 곳이 없으면 '확인한 곳이에요'라고 말하지 않고, 함께 찾아 주는 창구로 잇는다."""
+    real_load = loader.load_all
+
+    def load_without_t01():
+        # 실제 정보표에 기대지 않도록, 일터찾기형에 해당하는 곳을 모두 뺀다(일반 창구는 남긴다)
+        data = real_load()
+        data.programs[:] = [p for p in data.programs if "T01" not in p["유형태그"] or p["첫상담"] == "Y"]
+        for program in data.programs:
+            program["유형태그"] = "|".join(tag for tag in program["유형태그"].split("|") if tag != "T01")
+        return data
+
+    monkeypatch.setattr(loader, "load_all", load_without_t01)
+    monkeypatch.setattr(logger, "LOG_DIR", tmp_path)
+    monkeypatch.setattr(logger, "set_enabled", lambda on: None)   # 앱이 기록 설정을 바꿔 다른 테스트에 남지 않게 한다
+    at = AppTest.from_file(MAIN, default_timeout=30)
+    at.run()
+    assert not at.exception
+    text = real_load().settings["text"]
+    take_survey(at, T01=(5, 5))
+    page = page_text(at)
+    assert text["type_label"] in page and text["no_program"] in page
+    assert text["result_intro"] not in page
+    assert text["consult_heading"] in page or text["call_button"] in page
+
+
+def test_type_with_places_keeps_the_intro(app):
+    take_survey(app, T01=(5, 5))
+    assert loader.load_all().settings["text"]["result_intro"] in page_text(app)
+
+
+def test_start_screen_warns_that_refresh_clears_answers(app):
+    assert escape(loader.load_all().settings["text"]["start_refresh"]) in page_text(app)
+
+
 def test_start_screen_tells_the_truth_about_saving(app):
     """시작 화면의 저장 안내가 settings.yaml의 save_log 값과 맞는다."""
     settings = loader.load_all().settings
