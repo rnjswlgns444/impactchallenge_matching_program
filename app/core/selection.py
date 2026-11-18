@@ -4,7 +4,7 @@
 이 파일은 어느 문항이 어느 유형에 속하는지(type_questions)만 알려 준다.
 기본정보(P_*)와 걸림돌(Q_BARRIER)은 유형을 바꾸지 않는다. 걸림돌은 결과 카드에서 무엇을 먼저 보여줄지만 정한다.
 
-answers는 {문항 id: 답} 사전이다. 건너뛴 문항은 값이 None이다.
+answers는 {문항 id: 답} 사전이다. 설문 문항은 모두 답해야 넘어가므로 빈 답은 없다.
   multi → 선택지 id 목록 / single → 선택지 id 하나 / scale → 1~5 정수 / number → 정수
 """
 from __future__ import annotations
@@ -33,7 +33,7 @@ def type_questions(questions: list[dict], types: dict[str, dict]) -> dict[str, l
 
 
 def age_band(age) -> str:
-    """기록에 남길 나이대. 나이 숫자를 그대로 남기지 않으려고 쓴다. 답하지 않았으면 빈 글자."""
+    """기록에 남길 나이대. 나이 숫자를 그대로 남기지 않으려고 쓴다. 숫자가 아니면 빈 글자."""
     if type(age) is not int:
         return ""
     if age < 55:
@@ -59,7 +59,7 @@ def survey_questions(questions: list[dict]) -> list[dict]:
 
 
 def next_question(answers: dict, questions: list[dict]) -> dict | None:
-    """다음에 물을 문항. 다 물었으면 None. 건너뛴 문항도 answers에 키가 있으면 물은 것으로 본다."""
+    """다음에 물을 문항. 다 물었으면 None. answers에 키가 있으면 답한 것으로 본다."""
     for q in survey_questions(questions):
         if q["id"] not in answers:
             return q

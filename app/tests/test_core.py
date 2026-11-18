@@ -80,9 +80,8 @@ def test_survey_asks_profile_then_scale_then_barrier(data):
     answers, asked = {}, []
     while (q := next_question(answers, data.questions)) is not None:
         asked.append(q["id"])
-        answers[q["id"]] = None          # 건너뛰어도 다음으로 넘어간다
+        answers[q["id"]] = 3             # 답이 들어가면 다음 문항으로 넘어간다
     assert asked == ["P_GENDER", "P_AGE", "P_WORK"] + [f"Q{n:02d}" for n in range(1, 25)] + ["Q_BARRIER"]
-    assert judge(data, answers).state == "incomplete"            # 전부 건너뛰면 유형을 붙이지 않는다
 
 
 def test_real_questions_lead_to_one_type(data):
@@ -347,13 +346,13 @@ def test_log_has_no_free_text(tmp_path):
 
 def test_response_row_has_age_band_and_no_free_text(tmp_path):
     """기록할 값은 화면이 아니라 logger가 만든다. 나이 숫자와 직접 적은 글은 들어가지 않는다."""
-    answers = {"Q01": 5, "Q13": 4, "Q02": None, "P_GENDER": "female", "P_AGE": 61, "P_WORK": "not_working",
+    answers = {"Q01": 5, "Q13": 4, "Q02": 2, "Q14": 1, "P_GENDER": "female", "P_AGE": 61, "P_WORK": "not_working",
                "Q_BARRIER": ["alone", "cost"], "Q_FREE": "직접 적은 글"}
     judged = score(answers, {"T01": ["Q01", "Q13"], "T05": ["Q02", "Q14"]}, 8, 7)
     fields = logger.response_fields(judged, answers, ["Q13", "Q01", "Q02", "Q14"], ["JOB01"])
     assert set(fields) == set(logger.RESPONSE_FIELDS[2:])           # 정해진 열만, 빠짐없이
-    assert (fields["state"], fields["primary"], fields["scores"]) == (RESULT, "T01", "T01=9")
-    assert fields["answers"] == "Q01=5|Q02=|Q13=4|Q14="             # 건너뛴 문항은 빈칸
+    assert (fields["state"], fields["primary"], fields["scores"]) == (RESULT, "T01", "T01=9|T05=3")
+    assert fields["answers"] == "Q01=5|Q02=2|Q13=4|Q14=1"
     assert (fields["gender"], fields["age_band"], fields["work"]) == ("female", "60~64세", "not_working")
     assert fields["barriers"] == ["alone", "cost"] and fields["program_ids"] == ["JOB01"]
     logger.log_response("sid", fields, tmp_path)

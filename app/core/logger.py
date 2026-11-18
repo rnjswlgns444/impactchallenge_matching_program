@@ -23,7 +23,7 @@ def set_enabled(on: bool) -> None:
 
 
 # state: 판정 상태(scoring.py) / primary·secondary: 대표 유형과 함께 살펴볼 유형 / candidates: 최고점 유형들
-# scores: 'T01=8|T02=4' / answers: 척도 문항 답 'Q01=5|Q02=' (건너뛴 문항은 빈칸)
+# scores: 'T01=8|T02=4' / answers: 척도 문항 답 'Q01=5|Q02=3'
 # gender·work: 고른 선택지 id / age_band: 나이대(나이 숫자는 남기지 않는다)
 RESPONSE_FIELDS = ["session_id", "hour", "state", "primary", "secondary", "candidates", "scores", "answers",
                    "barriers", "gender", "age_band", "work", "program_ids"]
@@ -74,7 +74,7 @@ def response_fields(judged, answers: dict, scale_ids: list[str], shown_ids: list
         "state": judged.state, "primary": judged.primary, "secondary": judged.secondary,
         "candidates": judged.candidates,
         "scores": "|".join(f"{tid}={value}" for tid, value in judged.scores.items()),
-        "answers": "|".join(f"{qid}={answers.get(qid) or ''}" for qid in sorted(scale_ids)),
+        "answers": "|".join(f"{qid}={answers[qid]}" for qid in sorted(scale_ids)),
         "barriers": answers.get(sel.BARRIER_Q) or [], "gender": answers.get(sel.GENDER_Q),
         "age_band": sel.age_band(answers.get(sel.AGE_Q)), "work": answers.get(sel.WORK_Q),
         "program_ids": shown_ids,

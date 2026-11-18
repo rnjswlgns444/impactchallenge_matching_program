@@ -6,7 +6,7 @@
 """
 import pytest
 
-from app.core.scoring import CHOOSE, CONFIRM, EXPLORE, INCOMPLETE, RESULT, score
+from app.core.scoring import CHOOSE, CONFIRM, EXPLORE, RESULT, score
 
 # 유형 12개, 유형마다 문항 2개 (T01: Q01·Q02, T02: Q03·Q04, ...)
 PAIRS = {f"T{n:02d}": [f"Q{2 * n - 1:02d}", f"Q{2 * n:02d}"] for n in range(1, 13)}
@@ -30,9 +30,10 @@ def test_all_neutral_gives_no_type():
     assert result.state == EXPLORE and result.primary is None
 
 
-def test_no_answers_is_incomplete():
-    result = run({})
-    assert result.state == INCOMPLETE and result.incomplete == list(PAIRS)
+def test_no_answers_is_an_error():
+    """모든 문항은 답해야 한다. 답이 없으면 유형을 지어내지 않고 멈춘다."""
+    with pytest.raises(ValueError):
+        run({})
 
 
 def test_single_top_becomes_primary():
@@ -59,10 +60,14 @@ def test_seven_points_needs_confirmation():
     assert (confirmed.state, confirmed.primary) == (RESULT, "T01")
 
 
-def test_one_missing_answer_holds_that_type_only():
-    result = run(answers(T02=(5, None), T06=(5, 5)))
-    assert result.incomplete == ["T02"] and "T02" not in result.scores
-    assert result.primary == "T06"
+def test_one_missing_answer_is_an_error_not_filled_in():
+    """빠진 답을 0점이나 3점으로 채워서 계산하지 않는다."""
+    with pytest.raises(ValueError):
+        run(answers(T02=(5, None), T06=(5, 5)))
+    without_key = answers(T06=(5, 5))
+    del without_key["Q03"]
+    with pytest.raises(ValueError):
+        run(without_key)
 
 
 def test_everything_high_does_not_pick_one():

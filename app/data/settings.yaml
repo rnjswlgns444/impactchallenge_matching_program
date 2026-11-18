@@ -99,9 +99,7 @@ text:
   # 대표 유형이 없을 때
   result_heading: "이런 곳에 물어볼 수 있어요"
   low_interest: "아직 한 가지로 정하기 어려워요. 어떤 도움이 있는지 먼저 둘러볼까요?"
-  incomplete_all: "답하신 질문이 적어서 아직 분야를 정하지 않았어요. 어떤 도움이 있는지 먼저 둘러볼까요?"
   edit_hint: "답을 고치고 싶으면 맨 아래 '← 이전으로'를 눌러 주세요."
-  incomplete_note: "답하지 않은 분야는 아직 판단하지 않았어요."
   detail_label: "조금 더 맞춰 보기 (안 골라도 돼요)"
   contacts_heading: "지금 문의할 수 있는 곳"
   lists_heading: "목록에서 직접 찾아보기"

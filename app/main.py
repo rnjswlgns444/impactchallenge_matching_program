@@ -515,8 +515,6 @@ def result_footer(data, text, judged: scoring.Score) -> None:
         state.answers.pop(sel.PRIORITY_Q, None)
         state.to_top = True
 
-    if judged.incomplete and judged.state != scoring.INCOMPLETE:
-        ui.html(f'<p class="small-note">{escape(text["incomplete_note"])}</p>')
     if sel.PRIORITY_Q in state.answers:
         st.button(width="stretch", label=text["repick_button"], key="repick", type="tertiary", on_click=repick)
     st.button(width="stretch", label=text["back_button"], key="back_result", type="tertiary",
@@ -600,7 +598,7 @@ def screen_result(data, text) -> None:
         if deferred:
             ui.notice(text["unknown_intro"], "info")
         else:
-            ui.notice(text["incomplete_all"] if judged.state == scoring.INCOMPLETE else text["low_interest"], "info")
+            ui.notice(text["low_interest"], "info")
             ui.html(f'<p class="small-note">{escape(text["edit_hint"])}</p>')
         if consults:
             consult_section(data, text, consults, guides)

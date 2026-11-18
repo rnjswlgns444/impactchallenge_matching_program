@@ -55,7 +55,7 @@ TEXT_KEYS = """
     start_intro start_time start_refresh start_privacy start_privacy_saving start_button
     scale_help number_placeholder number_next number_required multi_help next_button back_button
     type_label type_label_other result_intro secondary_heading more_types_button also_heading
-    tie_two tie_many confirm_one repick_button result_heading low_interest incomplete_all edit_hint incomplete_note
+    tie_two tie_many confirm_one repick_button result_heading low_interest edit_hint
     detail_label contacts_heading lists_heading no_program no_program_at_all unknown_intro
     browse_heading browse_help consult_heading
     free_privacy free_button free_empty free_unclear free_wait ai_heading ai_reason ai_stale ai_none ai_fail
