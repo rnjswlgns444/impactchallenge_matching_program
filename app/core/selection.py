@@ -30,6 +30,19 @@ def type_questions(questions: list[dict], types: dict[str, dict]) -> dict[str, l
     return {tid: [q["id"] for q in scale_questions(questions) if q.get("type") == tid] for tid in types}
 
 
+def age_band(age) -> str:
+    """기록에 남길 나이대. 나이 숫자를 그대로 남기지 않으려고 쓴다. 답하지 않았으면 빈 글자."""
+    if type(age) is not int:
+        return ""
+    if age < 55:
+        return "54세 이하"
+    if age < 60:
+        return "55~59세"
+    if age < 65:
+        return "60~64세"
+    return "65세 이상"
+
+
 def options_of(q: dict, types: dict[str, dict], type_ids: list[str] | None = None) -> list[dict]:
     """문항의 선택지. options_from이 candidate_types면 넘겨받은 유형의 설명 문장을 선택지로 만들어 앞에 붙인다."""
     made: list[dict] = []

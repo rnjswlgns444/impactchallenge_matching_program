@@ -16,7 +16,7 @@ from app.core import loader, logger, privacy
 from app.core.candidates import ai_pool, build_result, eligible, first_consult, for_type, unconfirmed_columns
 from app.core.llm_matcher import NO_KEY, NO_TYPE, REASON_LIMIT, build_prompt, parse_answer, recommend
 from app.core.scoring import CHOOSE, EXPLORE, RESULT, score
-from app.core.selection import (DEFER, barrier_guides, chosen_detail_options, detail_of, next_question, options_of,
+from app.core.selection import (DEFER, age_band, barrier_guides, chosen_detail_options, detail_of, next_question, options_of,
                                 question, scale_questions, toggle, type_questions)
 
 TODAY = date(2026, 11, 17)
@@ -329,23 +329,35 @@ def test_scrub_keeps_normal_text():
 
 # ── 기록 ──
 
+LOGGED = {"state": RESULT, "primary": "T02", "secondary": None, "candidates": ["T02", "T05"], "scores": "T02=10|T05=10",
+          "answers": "Q01=1|Q02=", "barriers": ["alone"], "gender": "female", "age_band": "60~64세", "work": "not_working",
+          "program_ids": ["JOB01"]}
+
+
 def test_log_has_no_free_text(tmp_path):
-    logger.log_response("sid", ["T02", "T05"], ["alone"], "prepare", ["JOB01"], tmp_path)
+    logger.log_response("sid", {**LOGGED, "free_text": "직접 적은 글", "age": 61}, tmp_path)
     logger.log_event("sid", "detail", "T02", "wage_required", tmp_path)
     header, line = (tmp_path / "responses.csv").read_text(encoding="utf-8-sig").splitlines()
     assert header.split(",") == logger.RESPONSE_FIELDS
-    assert "text" not in header and "T02|T05" in line
+    assert "text" not in header and "T02|T05" in line and "60~64세" in line
+    assert "직접 적은 글" not in line and "61" not in line          # 정해진 열 밖의 값은 파일에 들어가지 않는다
     assert (tmp_path / "events.csv").read_text(encoding="utf-8-sig").splitlines()[0].split(",") == logger.EVENT_FIELDS
+
+
+@pytest.mark.parametrize("age, band", [(54, "54세 이하"), (55, "55~59세"), (59, "55~59세"), (60, "60~64세"),
+                                       (64, "60~64세"), (65, "65세 이상"), (None, ""), ("60", "")])
+def test_age_is_logged_as_band_only(age, band):
+    assert age_band(age) == band
 
 
 def test_old_format_log_is_set_aside(tmp_path):
     old = tmp_path / "responses.csv"
-    old.write_text("session_id,hour,option_ids,axis_scores\nold,x,y,z\n", encoding="utf-8-sig")
-    logger.log_response("sid", ["T01"], [], None, [], tmp_path)
+    old.write_text("session_id,hour,type_ids,barriers,start,program_ids\nold,x,y,z,w,v\n", encoding="utf-8-sig")
+    logger.log_response("sid", LOGGED, tmp_path)
     lines = old.read_text(encoding="utf-8-sig").splitlines()
     assert lines[0].split(",") == logger.RESPONSE_FIELDS and len(lines) == 2      # 새 파일로 시작
     kept = [p for p in tmp_path.iterdir() if "이전형식" in p.name]
-    assert len(kept) == 1 and "old,x,y,z" in kept[0].read_text(encoding="utf-8-sig")   # 예전 기록은 보관
+    assert len(kept) == 1 and "old,x,y,z,w,v" in kept[0].read_text(encoding="utf-8-sig")   # 예전 기록은 보관
 
 
 # ── 데이터 파일 검사 ──
@@ -426,7 +438,7 @@ def test_log_failure_does_not_break_screen(tmp_path, monkeypatch):
     def locked(*args):
         raise PermissionError("잠김")
     monkeypatch.setattr(logger, "_write", locked)
-    logger.log_response("s1", ["T01"], [], "", ["JOB01"], log_dir=tmp_path)
+    logger.log_response("s1", LOGGED, log_dir=tmp_path)
     logger.log_event("s1", "detail", "T01", "new_work", log_dir=tmp_path)
     assert "기록 실패" in (tmp_path / "errors.log").read_text(encoding="utf-8")
 
@@ -435,6 +447,6 @@ def test_log_switch_off_writes_nothing(tmp_path, monkeypatch):
     """settings.yaml의 save_log가 false면 기록 파일을 만들지 않는다."""
     monkeypatch.setattr(logger, "ENABLED", True)
     logger.set_enabled(False)
-    logger.log_response("s1", ["T01"], [], "", ["JOB01"], log_dir=tmp_path)
+    logger.log_response("s1", LOGGED, log_dir=tmp_path)
     logger.log_event("s1", "detail", "T01", "new_work", log_dir=tmp_path)
     assert not list(tmp_path.iterdir())

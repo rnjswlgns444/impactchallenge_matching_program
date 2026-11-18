@@ -20,7 +20,11 @@ def set_enabled(on: bool) -> None:
     ENABLED = bool(on)
 
 
-RESPONSE_FIELDS = ["session_id", "hour", "type_ids", "barriers", "start", "program_ids"]
+# state: 판정 상태(scoring.py) / primary·secondary: 대표 유형과 함께 살펴볼 유형 / candidates: 최고점 유형들
+# scores: 'T01=8|T02=4' / answers: 척도 문항 답 'Q01=5|Q02=' (건너뛴 문항은 빈칸)
+# gender·work: 고른 선택지 id / age_band: 나이대(나이 숫자는 남기지 않는다)
+RESPONSE_FIELDS = ["session_id", "hour", "state", "primary", "secondary", "candidates", "scores", "answers",
+                   "barriers", "gender", "age_band", "work", "program_ids"]
 EVENT_FIELDS = ["session_id", "hour", "event", "target", "value"]
 
 
@@ -60,16 +64,17 @@ def _write(path: Path, fields: list[str], row: dict) -> None:
         writer.writerow(row)
 
 
-def log_response(session_id, type_ids, barriers, start, program_ids, log_dir: Path | None = None) -> None:
-    """고른 유형, 걸림돌, 시작 방식, 화면에 나온 프로그램을 남긴다."""
-    _append((log_dir or LOG_DIR) / "responses.csv", RESPONSE_FIELDS, {
-        "session_id": session_id,
-        "hour": _hour(),
-        "type_ids": "|".join(type_ids),
-        "barriers": "|".join(barriers),
-        "start": start or "",
-        "program_ids": "|".join(program_ids),
-    })
+def log_response(session_id, fields: dict, log_dir: Path | None = None) -> None:
+    """판정 결과, 척도 답, 걸림돌, 기본정보, 화면에 나온 프로그램을 남긴다.
+
+    fields는 {RESPONSE_FIELDS의 열 이름: 값}. 목록은 '|'로 이어 적고, 없는 열은 빈칸으로 둔다.
+    RESPONSE_FIELDS에 없는 키는 버린다. 그래서 사용자가 적은 글이 실수로 넘어와도 파일에 들어가지 않는다.
+    """
+    row = {"session_id": session_id, "hour": _hour()}
+    for name in RESPONSE_FIELDS[2:]:
+        value = fields.get(name)
+        row[name] = "|".join(value) if isinstance(value, (list, tuple)) else "" if value is None else str(value)
+    _append((log_dir or LOG_DIR) / "responses.csv", RESPONSE_FIELDS, row)
 
 
 def log_event(session_id, event, target="", value="", log_dir: Path | None = None) -> None:

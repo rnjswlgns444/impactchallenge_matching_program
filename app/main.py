@@ -450,18 +450,25 @@ def free_wish_section(data, text, type_ids: list[str], pool: list[dict], guides,
                 ui.program_card(program, text, None, guides, None, key=f"ai_consult_{program['id']}")
 
 
-def log_once(judged: scoring.Score, shown_ids: list[str]) -> None:
+def log_once(data, judged: scoring.Score, shown_ids: list[str]) -> None:
     """결과에 처음 왔을 때 한 행만 남긴다. 돌아가서 답을 바꾸면 행을 늘리지 않고 events.csv에 남긴다.
 
     먼저 볼 유형을 고르거나 다른 유형을 여는 것은 답이 바뀐 것이 아니다. 그건 각각 priority, browse 이벤트로 남는다.
     """
     state = st.session_state
-    barriers = state.answers.get(sel.BARRIER_Q) or []
-    type_ids = [judged.primary] if judged.primary else judged.candidates
+    answers = state.answers
+    barriers = answers.get(sel.BARRIER_Q) or []
     scores = "|".join(f"{tid}={value}" for tid, value in judged.scores.items())
     shape = (scores, "|".join(barriers))
     if state.logged is None:
-        logger.log_response(state.sid, type_ids, barriers, "", shown_ids)
+        scale_ids = [qid for qids in sel.type_questions(data.questions, data.types).values() for qid in qids]
+        logger.log_response(state.sid, {
+            "state": judged.state, "primary": judged.primary, "secondary": judged.secondary,
+            "candidates": judged.candidates, "scores": scores,
+            "answers": "|".join(f"{qid}={answers.get(qid) or ''}" for qid in sorted(scale_ids)),
+            "barriers": barriers, "gender": answers.get("P_GENDER"), "age_band": sel.age_band(answers.get("P_AGE")),
+            "work": answers.get("P_WORK"), "program_ids": shown_ids,
+        })
     elif state.logged != shape:
         logger.log_event(state.sid, "answers_changed", scores, shape[1])
     state.logged = shape
@@ -504,7 +511,7 @@ def screen_result(data, text) -> None:
     consults = candidates.first_consult(data.programs, today)
     guides = sel.barrier_guides(state.answers, data.questions)
     shown_ids = [p["id"] for r in results for p in visible_contacts(r, top_n) + r.lists]
-    log_once(judged, shown_ids or [p["id"] for p in consults])
+    log_once(data, judged, shown_ids or [p["id"] for p in consults])
 
     if judged.state in (scoring.CHOOSE, scoring.CONFIRM) and not deferred:
         # 동점이거나 확인이 필요한 점수: 먼저 볼 유형을 본인이 고른 뒤에 결과를 보여준다

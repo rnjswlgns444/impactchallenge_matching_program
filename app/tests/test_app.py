@@ -1,4 +1,7 @@
-"""화면 테스트. 실제 데이터 파일로 앱을 끝까지 눌러 보고, 오류와 기록 행 수를 확인한다. 실제 AI는 부르지 않는다."""
+"""화면 테스트. 실제 데이터 파일로 앱을 끝까지 눌러 보고, 오류와 기록 행 수를 확인한다. 실제 AI는 부르지 않는다.
+
+설문은 28문항(기본정보 3, 척도 24, 걸림돌 1)을 실제로 하나씩 눌러서 지나간다.
+"""
 from __future__ import annotations
 
 import csv
@@ -10,6 +13,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from app.core import candidates, llm_matcher, loader, logger
+from app.core import selection as sel
 
 MAIN = str(Path(__file__).resolve().parents[1] / "main.py")
 
@@ -39,52 +43,194 @@ def rows(tmp_path: Path, name: str) -> list[dict]:
         return list(csv.DictReader(f))
 
 
-def test_two_types_to_the_end(app, tmp_path):
-    """일터찾기형 + 실력쌓기형: 두 구역이 모두 나오고, 숨긴 프로그램은 없고, 기록은 한 행이다."""
-    data = loader.load_all()
-    for key in ("start", "opt_Q_NEEDS_T01", "opt_Q_NEEDS_T04", "next_Q_NEEDS",
-                "opt_Q_BARRIER_alone", "next_Q_BARRIER", "opt_Q_START_prepare"):
-        click(app, key)
+def take_survey(at: AppTest, base: int | None = 1, barrier: str | None = None, profile: bool = True, **by_type) -> None:
+    """시작 화면에서 결과 화면까지 눌러서 간다.
 
-    text = page_text(app)
-    assert data.types["T01"]["name"] in text and data.types["T04"]["name"] in text
-    assert "혼자 가도 괜찮을까요?" in text                 # 걸림돌이 물어볼 문장으로 이어진다
+    척도 문항은 모두 base점으로 답하고(None이면 건너뜀), 적어 준 유형의 두 문항만 그 값으로 답한다.
+    예) take_survey(at, T01=(5, 5))  /  take_survey(at, base=3)  /  take_survey(at, base=None, profile=False)
+    """
+    data = loader.load_all()
+    values = {q["id"]: base for q in sel.scale_questions(data.questions)}
+    for type_id, pair in by_type.items():
+        values.update(zip(sel.type_questions(data.questions, data.types)[type_id], pair))
+
+    click(at, "start")
+    if profile:
+        click(at, "opt_P_GENDER_female")
+        at.number_input(key="num_P_AGE").set_value(61)
+        click(at, "next_P_AGE")
+        click(at, "opt_P_WORK_not_working")
+    else:
+        for key in ("next_P_GENDER", "skip_P_AGE", "next_P_WORK"):
+            click(at, key)
+    for qid, value in values.items():
+        click(at, f"next_{qid}" if value is None else f"opt_{qid}_{value}")
+    if barrier:
+        click(at, f"opt_Q_BARRIER_{barrier}")
+    click(at, "next_Q_BARRIER")
+
+
+# ── 설문 ──
+
+def test_survey_shows_one_question_at_a_time_without_type_names(app):
+    """척도 문항은 단추 5개와 진행 표시가 나오고, 유형 이름은 보이지 않는다. 돌아가면 앞서 고른 답이 표시된다."""
+    data = loader.load_all()
+    text = data.settings["text"]
+    for key in ("start", "next_P_GENDER", "skip_P_AGE", "next_P_WORK"):
+        click(app, key)
+    page = page_text(app)
+    assert text["progress_scale"].format(number=1, total=24) in page and text["scale_help"] in page
+    assert [b.label for b in app.button][:5] == [opt["label"] for opt in data.scale]
+    assert not [t["name"] for t in data.types.values() if t["name"] in page]
+
+    click(app, "opt_Q01_4")
+    assert text["progress_scale"].format(number=2, total=24) in page_text(app)
+    click(app, "back_survey")
+    assert "✓ " + data.scale[1]["label"] in [b.label for b in app.button]      # 4점 = '그래요'
+    click(app, "opt_Q01_2")                                                      # 고쳐서 답할 수 있다
+    assert app.session_state.answers["Q01"] == 2
+
+
+# ── 결과: 판정 상태별 ──
+
+def test_one_type_to_the_end(app, tmp_path):
+    """일터찾기형만 높음: 대표 유형 하나가 나오고, 숨긴 프로그램은 없고, 기록은 한 행이다."""
+    data = loader.load_all()
+    text = data.settings["text"]
+    take_survey(app, barrier="alone", T01=(5, 5))
+
+    page = page_text(app)
+    assert text["type_label"] in page and data.types["T01"]["name"] in page
+    assert data.types["T04"]["name"] not in page               # 다른 유형은 첫 화면에 늘어놓지 않는다
+    assert "혼자 가도 괜찮을까요?" in page                      # 걸림돌이 물어볼 문장으로 이어진다
+    assert text["call_button"] in page                         # 전화 단추는 접지 않고 보인다
     shown = {p["프로그램명"] for p in data.programs if p["매칭가능"] == "Y"}
     hidden = {p["프로그램명"] for p in data.programs if p["매칭가능"] != "Y"} - shown
-    assert not [name for name in hidden if name in text]
+    assert not [name for name in hidden if name in page]
 
-    # 두 유형에 모두 해당하는 곳은 카드를 되풀이하지 않고 한 줄로 알린다
-    assert escape(data.settings["text"]["seen_note"].format(type=data.types["T01"]["name"])) in text
-    assert data.settings["text"]["call_button"] in text       # 전화 단추는 접지 않고 보인다
-
-    click(app, "priority_T04")                              # 먼저 볼 유형을 고르면 순서만 바뀐다
-    text = page_text(app)
-    assert text.index(data.types["T04"]["name"]) < text.index(data.types["T01"]["name"])
-
-    click(app, "detail_T01_previous_work")                  # 세부 답은 물어볼 문장에 들어간다
+    click(app, "detail_T01_previous_work")                     # 세부 답은 물어볼 문장에 들어간다
     assert "해봤던 일을 다시 하고 싶어요" in page_text(app)
 
+    click(app, "more_types")                                   # 다른 유형은 본인이 눌러야 열린다
+    click(app, "browse_T04")
+    page = page_text(app)
+    assert data.types["T04"]["name"] in page and text["type_label_other"] in page
+    # 두 유형에 모두 해당하는 곳은 카드를 되풀이하지 않고 한 줄로 알린다
+    assert escape(text["seen_note"].format(type=data.types["T01"]["name"])) in page
+
     logged = rows(tmp_path, "responses.csv")
-    assert len(logged) == 1
-    assert logged[0]["type_ids"] == "T01|T04" and logged[0]["barriers"] == "alone" and logged[0]["start"] == "prepare"
+    assert len(logged) == 1                                    # 유형을 더 열어도 행은 늘지 않는다
+    row = logged[0]
+    assert (row["state"], row["primary"], row["secondary"], row["barriers"]) == ("result", "T01", "", "alone")
+    assert "T01=10" in row["scores"] and "Q01=5" in row["answers"] and "Q02=1" in row["answers"]
+    assert (row["gender"], row["age_band"], row["work"]) == ("female", "60~64세", "not_working")
+    assert "age" not in row                                    # 나이 숫자를 담는 열이 없다
+    assert [e["target"] for e in rows(tmp_path, "events.csv") if e["event"] == "browse"] == ["T04"]
 
 
-def test_unknown_browses_all_types(app, tmp_path):
-    """'아직 모르겠어요': 유형을 붙이지 않고 일반 창구와 둘러보기를 보여준다. 누른 유형만 더한다."""
+def test_second_place_is_offered_as_one_button(app):
+    """대표 외에 8점 이상이 하나 더 있으면 단추 하나로 권하고, 누르면 그 아래에 안내가 나온다."""
     data = loader.load_all()
-    for key in ("start", "opt_Q_NEEDS_unknown", "next_Q_NEEDS", "next_Q_BARRIER", "next_Q_START"):
-        click(app, key)
+    text = data.settings["text"]
+    take_survey(app, T09=(5, 5), T10=(4, 4))
+    page = page_text(app)
+    assert data.types["T09"]["name"] in page and text["secondary_heading"] in page
+    assert data.types["T10"]["statement"] not in page
+    click(app, "browse_T10")
+    assert data.types["T10"]["statement"] in page_text(app)
 
-    text = page_text(app)
-    assert data.settings["text"]["consult_heading"] in text
-    assert data.settings["text"]["type_label"] not in text    # 아직 유형 구역이 없다
-    assert rows(tmp_path, "responses.csv")[0]["type_ids"] == ""
 
-    click(app, "browse_T07")                                  # 안내할 곳이 없는 유형도 막다른 화면이 아니다
-    assert data.settings["text"]["no_program"] in page_text(app)
+def test_tie_lets_the_user_choose(app, tmp_path):
+    """최고점이 같으면 자동으로 정하지 않고 묻는다. 고른 뒤에 바꾸거나, 고르지 않고 둘러볼 수 있다."""
+    data = loader.load_all()
+    text = data.settings["text"]
+    take_survey(app, T05=(5, 5), T07=(5, 5))
+
+    page = page_text(app)
+    assert text["tie_two"] in page and text["type_label"] not in page
+    assert [b.label for b in app.button][:2] == [data.types["T05"]["statement"], data.types["T07"]["statement"]]
+    row = rows(tmp_path, "responses.csv")[0]
+    assert (row["state"], row["primary"], row["candidates"]) == ("choose_priority", "", "T05|T07")
+
+    click(app, "priority_T07")
+    page = page_text(app)
+    assert text["type_label"] in page and data.types["T07"]["name"] in page
+    assert text["secondary_heading"] in page                   # 고르지 않은 쪽은 '함께 살펴보세요'로 남는다
+    assert app.button(key="browse_T05")
+
+    click(app, "repick")
+    assert text["tie_two"] in page_text(app)
+    click(app, f"priority_{sel.DEFER}")
+    page = page_text(app)
+    assert text["unknown_intro"] in page and text["also_heading"] in page and text["type_label"] not in page
+
+    assert len(rows(tmp_path, "responses.csv")) == 1           # 고르는 것은 답을 바꾼 것이 아니다
+    events = rows(tmp_path, "events.csv")
+    assert [e["target"] for e in events if e["event"] == "priority"] == ["T07", sel.DEFER]
+    assert not [e for e in events if e["event"] == "answers_changed"]
+
+
+def test_seven_points_is_confirmed_by_the_user(app):
+    data = loader.load_all()
+    text = data.settings["text"]
+    take_survey(app, T01=(4, 3))
+    page = page_text(app)
+    assert text["confirm_one"] in page and text["type_label"] not in page
+    click(app, "priority_T01")
+    page = page_text(app)
+    assert text["type_label"] in page and data.types["T01"]["name"] in page
+
+
+def test_low_scores_browse_all_types(app, tmp_path):
+    """모두 '보통': 유형을 붙이지 않고 일반 창구와 둘러보기를 보여준다. 누른 유형만 연다."""
+    data = loader.load_all()
+    text = data.settings["text"]
+    take_survey(app, base=3)
+
+    page = page_text(app)
+    assert text["low_interest"] in page and text["consult_heading"] in page
+    assert text["type_label"] not in page                      # 대표 유형이 없다
+    row = rows(tmp_path, "responses.csv")[0]
+    assert (row["state"], row["primary"], row["candidates"]) == ("explore", "", "")
+
+    click(app, "browse_T07")                                   # 안내할 곳이 없는 유형도 막다른 화면이 아니다
+    assert text["no_program"] in page_text(app)
     click(app, "browse_T09")
     assert data.types["T09"]["statement"] in page_text(app)
+    click(app, "browse_T09")                                   # 다시 누르면 닫힌다
+    assert data.types["T09"]["statement"] not in page_text(app)
     assert len(rows(tmp_path, "responses.csv")) == 1
+
+
+def test_everything_skipped_is_not_judged(app, tmp_path):
+    """전부 건너뛰어도 끝까지 가고, 답하지 않은 것을 0점이나 3점으로 채우지 않는다."""
+    text = loader.load_all().settings["text"]
+    take_survey(app, base=None, profile=False)
+    page = page_text(app)
+    assert text["incomplete_all"] in page and text["consult_heading"] in page
+    row = rows(tmp_path, "responses.csv")[0]
+    assert (row["state"], row["scores"], row["gender"], row["age_band"], row["work"]) == ("incomplete", "", "", "", "")
+    assert "Q01=|" in row["answers"]
+
+
+def test_one_skipped_question_holds_only_that_type(app, tmp_path):
+    take_survey(app, T01=(5, 5), T09=(5, None))
+    text = loader.load_all().settings["text"]
+    page = page_text(app)
+    assert text["type_label"] in page and text["incomplete_note"] in page
+    row = rows(tmp_path, "responses.csv")[0]
+    assert row["primary"] == "T01" and "T09" not in row["scores"]
+
+
+def test_changed_answer_is_an_event_not_a_new_row(app, tmp_path):
+    """결과에서 돌아가 답을 바꾸면 행을 늘리지 않고 이벤트로 남긴다."""
+    take_survey(app, T01=(5, 5))
+    click(app, "back_result")
+    click(app, "opt_Q_BARRIER_cost")
+    click(app, "next_Q_BARRIER")
+    assert len(rows(tmp_path, "responses.csv")) == 1
+    changed = [e for e in rows(tmp_path, "events.csv") if e["event"] == "answers_changed"]
+    assert len(changed) == 1 and changed[0]["value"] == "cost"
 
 
 def test_start_screen_tells_the_truth_about_saving(app):
@@ -119,8 +265,7 @@ def fake_ai(monkeypatch):
 
 
 def to_result_with_t01(at: AppTest) -> None:
-    for key in ("start", "opt_Q_NEEDS_T01", "next_Q_NEEDS", "next_Q_BARRIER", "next_Q_START"):
-        click(at, key)
+    take_survey(at, T01=(5, 5))
 
 
 def write_wish(at: AppTest, wish: str) -> None:
@@ -144,9 +289,11 @@ def test_free_text_adds_ai_picks_with_reasons(app, fake_ai, tmp_path):
     assert "지어낸 곳이에요." not in text
     assert len(fake_ai["prompts"]) == 1
 
-    # AI에게는 걸러진 후보만, 전화번호를 지운 글만 간다
+    # AI에게는 걸러진 후보만, 전화번호를 지운 글만 간다. 기본정보(성별·나이·일 여부)는 가지 않는다
     prompt = fake_ai["prompts"][0]
     assert prompt.count("- id: ") == len(pool) and "010-1234-5678" not in prompt
+    assert data.types["T01"]["name"] in prompt
+    assert "female" not in prompt and "not_working" not in prompt and "61세" not in prompt
     blocked = [p["프로그램명"] for p in data.programs if p["매칭가능"] != "Y"]
     assert not [name for name in blocked if name in prompt]
 
@@ -158,6 +305,20 @@ def test_free_text_adds_ai_picks_with_reasons(app, fake_ai, tmp_path):
 
     click(app, "detail_T01_previous_work")                   # 다른 단추를 눌러도 AI를 다시 부르지 않는다
     assert len(fake_ai["prompts"]) == 1 and settings["ai_heading"] in page_text(app)
+
+
+def test_opened_type_joins_the_ai_candidates(app, fake_ai):
+    """본인이 연 유형의 프로그램도 AI 후보에 들어간다. 열지 않은 유형은 들어가지 않는다."""
+    data = loader.load_all()
+    fake_ai["reply"] = {"matches": [], "unmatched": []}
+    to_result_with_t01(app)
+    click(app, "more_types")
+    click(app, "browse_T09")
+    write_wish(app, "연금도 궁금해요")
+    pool = candidates.ai_pool(data.programs, data.types, ["T01", "T09"], {}, candidates.today_kst())
+    prompt = fake_ai["prompts"][0]
+    assert prompt.count("- id: ") == len(pool)
+    assert data.types["T01"]["name"] in prompt and data.types["T09"]["name"] in prompt
 
 
 def test_empty_free_text_does_not_call_ai(app, fake_ai):
@@ -181,21 +342,21 @@ def test_ai_failure_keeps_basic_result(app, fake_ai, tmp_path):
 
 
 def test_nothing_matched_leads_to_general_window(app, fake_ai):
-    """맞는 곳이 없으면 못 찾았다고 말하고 함께 찾아 주는 창구로 잇는다. 유형을 정하지 않은 사람도 쓸 수 있다."""
+    """맞는 곳이 없으면 못 찾았다고 말하고 함께 찾아 주는 창구로 잇는다. 대표 유형이 없는 사람도 쓸 수 있다."""
     data = loader.load_all()
     fake_ai["reply"] = {"matches": [], "unmatched": ["해외여행"]}
-    for key in ("start", "opt_Q_NEEDS_unknown", "next_Q_NEEDS", "next_Q_BARRIER", "next_Q_START"):
-        click(app, key)
+    take_survey(app, base=3)
     write_wish(app, "해외여행을 가고 싶어요")
     text = page_text(app)
     assert data.settings["text"]["ai_none"] in text
     assert data.settings["text"]["ai_heading"] not in text     # 찾은 곳이 없으면 제목을 내지 않는다
     everything = candidates.ai_pool(data.programs, data.types, [], {}, candidates.today_kst())
     assert fake_ai["prompts"][0].count("- id: ") == len(everything)
+    assert llm_matcher.NO_TYPE in fake_ai["prompts"][0]
 
 
 def test_picked_place_already_shown_keeps_call_button(app, fake_ai):
-    """AI가 고른 곳이 위에 이미 나온 곳이어도 이유와 전화 단추를 그 자리에서 보여준다. 글을 고치면 옛 결과를 숨긴다."""
+    """AI가 고른 곳이 아래에 이미 나온 곳이어도 이유와 전화 단추를 그 자리에서 보여준다. 글을 고치면 옛 결과를 숨긴다."""
     data = loader.load_all()
     settings = data.settings["text"]
     pool = candidates.ai_pool(data.programs, data.types, ["T01"], {}, candidates.today_kst())
@@ -207,8 +368,8 @@ def test_picked_place_already_shown_keeps_call_button(app, fake_ai):
     assert escape(settings["ai_seen_note"].format(type=data.types["T01"]["name"])) in text
     assert text.count(settings["call_button"]) > calls_before
     assert "해외여행" in text                                  # 일부만 찾았으면 못 찾은 부분을 알려 준다
-    # 직접 적기 구간은 화면 맨 위에 있다: AI가 고른 곳이 결과 제목과 유형 구역보다 먼저 나온다
-    assert text.index(settings["ai_heading"]) < text.index(settings["result_heading"])
+    # 직접 적기 구간은 화면 맨 위에 있다: AI가 고른 곳이 대표 유형 상자와 문의할 곳보다 먼저 나온다
+    assert text.index(settings["ai_heading"]) < text.index(settings["type_label"])
     assert text.index(settings["ai_heading"]) < text.index(settings["contacts_heading"])
 
     app.text_area(key="free_text").set_value("다른 글").run()
