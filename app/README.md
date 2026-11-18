@@ -95,6 +95,8 @@ Claude로 바꾸려면 `llm.provider: anthropic`, `llm.model: claude-opus-5-5`�
 - 척도 문항(`selection: scale`)은 유형마다 정확히 2개여야 한다. 문항의 `type`에 유형 번호를 적어 연결한다. 더하거나 빼면 앱이 켜질 때 어느 유형이 몇 개인지 알려 준다.
 - 척도 선택지(`scale`)의 `value`는 1~5를 한 번씩 쓴다. `label`만 고친다.
 - 기본정보 문항 id(`P_GENDER`, `P_AGE`, `P_WORK`)는 기록 열 이름과 이어져 있다. 바꾸거나 지우면 앱이 켜질 때 알려 준다.
+- 척도 문항 사이에 다른 문항을 넣지 않는다. 다른 문항은 척도 문항들의 앞이나 뒤에 둔다.
+- `settings.yaml`의 `text` 문구는 글만 고치고 줄을 지우지 않는다. `{count}` 같은 중괄호 낱말도 그대로 둔다. 지우거나 잘못 적으면 앱이 켜질 때 알려 준다.
 
 ### 프로그램 정보표(programs.csv)에서 꼭 알아둘 열
 
@@ -136,4 +138,5 @@ Claude로 바꾸려면 `llm.provider: anthropic`, `llm.model: claude-opus-5-5`�
 | `core/candidates.py` | 정보표에서 유형별 후보를 거르고 순서를 정함. 거르기는 여기서만 한다 |
 | `core/llm_matcher.py` | AI 지시문 조립, 호출, 답 검증 |
 | `core/privacy.py` | 글에서 전화번호·이메일 형태를 지움 |
-| `core/logger.py` | 익명 기록 |
+| `core/logger.py` | 익명 기록. 한 행에 무엇을 남길지도 여기서 정한다 |
+| `core/clock.py` | 한국 시각 |
