@@ -547,13 +547,14 @@ def screen_result(data, text) -> None:
         # 다른 유형은 첫 화면에 늘어놓지 않고, 원하는 사람만 펼쳐 본다
         others = [tid for tid in data.types if tid not in (primary, judged.secondary)]
 
-        def toggle_all() -> None:
-            state.show_all = not state.show_all
+        def show_all() -> None:
+            state.show_all = True
 
+        # 한 번 펼치면 단추는 사라지고 목록만 남는다. 다시 접는 단추는 두지 않는다(연 유형이 숨어 버리지 않게)
         showing = state.show_all or any(tid in opened for tid in others)
-        st.button(width="stretch", label=check_label(text["more_types_button"], showing), key="more_types",
-                  on_click=toggle_all, disabled=showing and not state.show_all)
-        if showing:
+        if not showing:
+            st.button(width="stretch", label=text["more_types_button"], key="more_types", on_click=show_all)
+        else:
             tied = [] if judged.secondary else judged.secondary_candidates
             browse_types(data, text, others, tied, opened, draw_section)
     else:
