@@ -65,9 +65,13 @@ def split_multi(value: str) -> list[str]:
     return [part.strip() for part in (value or "").split("|") if part.strip()]
 
 
+# 단추를 누를 때마다 파일을 다시 읽으므로 빠른 C 해석기를 쓴다. 없는 환경에서는 파이썬 해석기로 읽는다(결과는 같다)
+_YAML_LOADER = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
+
+
 def _read_yaml(path: Path, problems: list[str]):
     try:
-        return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        return yaml.load(path.read_text(encoding="utf-8"), Loader=_YAML_LOADER) or {}
     except FileNotFoundError:
         problems.append(f"{path.name}: 파일이 없습니다.")
     except yaml.YAMLError as err:
