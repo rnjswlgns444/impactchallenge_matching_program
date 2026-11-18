@@ -46,6 +46,15 @@ ANSWER_SCHEMA = {
 }
 
 
+def _without_key(schema, key: str):
+    """사전과 목록을 따라 내려가며 key를 뺀 사본을 만든다."""
+    if isinstance(schema, dict):
+        return {k: _without_key(v, key) for k, v in schema.items() if k != key}
+    if isinstance(schema, list):
+        return [_without_key(v, key) for v in schema]
+    return schema
+
+
 @dataclass
 class AiResult:
     status: str
@@ -170,21 +179,7 @@ def make_gemini_caller(api_key: str, model: str, effort: str, timeout: float) ->
     from google.genai import types
 
     client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=int(timeout * 1000)))
-    schema = {
-        "type": "object",
-        "properties": {
-            "matches": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {"id": {"type": "string"}, "reason": {"type": "string"}},
-                    "required": ["id", "reason"],
-                },
-            },
-            "unmatched": {"type": "array", "items": {"type": "string"}},
-        },
-        "required": ["matches", "unmatched"],
-    }
+    schema = _without_key(ANSWER_SCHEMA, "additionalProperties")   # Gemini에는 지금까지처럼 이 키 없이 보낸다
 
     def generate(prompt: str):
         return client.models.generate_content(

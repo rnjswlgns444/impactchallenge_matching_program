@@ -7,7 +7,7 @@ from html import escape
 import streamlit as st
 
 from app.core import candidates
-from app.core.loader import split_multi
+from app.core.loader import KIND_ALWAYS, KIND_LIST, KIND_PERIOD, NATIONWIDE, UNCONFIRMED, split_multi
 
 _RANGE = re.compile(r"~\s*\d+")                                   # '1619~21'의 '~21'
 _NUMBER = re.compile(r"\d{2,4}-\d{3,4}-\d{4}|\d{4}-\d{4}|\d{3,4}")  # 031-481-2919 / 1666-1234 / 129
@@ -86,8 +86,8 @@ def _bullets(items: list[str]) -> None:
 
 
 def _kind_chip(program: dict, text: dict) -> str:
-    labels = {"상시서비스": text["kind_always"], "기간프로그램": text["kind_period"], "목록": text["kind_list"]}
-    label = text["nationwide"] if program["범위"] == candidates.NATIONWIDE else labels.get(program["종류"], "")
+    labels = {KIND_ALWAYS: text["kind_always"], KIND_PERIOD: text["kind_period"], KIND_LIST: text["kind_list"]}
+    label = text["nationwide"] if program["범위"] == NATIONWIDE else labels.get(program["종류"], "")
     return f'<p class="p-kind">{escape(label)}</p>' if label else ""
 
 
@@ -100,7 +100,7 @@ def _card_top(program: dict, text: dict) -> None:
 def _checks(program: dict, text: dict, type_info: dict | None) -> list[str]:
     """본인이 먼저 확인할 점. 개인 자격은 앱이 판정하지 않고 여기에 적어 준다."""
     checks = split_multi(program["확인필요"])
-    if program["55~64세참여"] == candidates.UNCONFIRMED:
+    if program["55~64세참여"] == UNCONFIRMED:
         checks.append(text["age_unconfirmed"])
     if type_info:
         checks += [text["unconfirmed"].format(column=c) for c in candidates.unconfirmed_columns(program, type_info)]
@@ -128,7 +128,7 @@ def program_card(program: dict, text: dict, type_info: dict | None = None, guide
         # ── 이런 곳이에요 ──
         fact_columns = [(text["target_label"], "대상"), ("시간", "시간대"), ("비용", "비용"), ("장소", "장소"),
                         (text["first_visit_label"], "첫방문안내")]
-        if program["종류"] == "기간프로그램":
+        if program["종류"] == KIND_PERIOD:
             fact_columns.insert(1, ("기간", "기간"))
         facts = [f"<b>{escape(name)}</b>: {escape(program[col])}" for name, col in fact_columns if program[col]]
         if facts:
@@ -141,7 +141,7 @@ def program_card(program: dict, text: dict, type_info: dict | None = None, guide
         sentences += list(asked or [])
         for guide in guides or []:
             known = [program[col].replace("|", ", ") for col in guide.get("show") or []
-                     if program.get(col) and program[col] != candidates.UNCONFIRMED]
+                     if program.get(col) and program[col] != UNCONFIRMED]
             if known:
                 worries.append(f'<b>{escape(guide["label"])}</b>: {escape(" / ".join(known))}')
             elif guide.get("ask"):

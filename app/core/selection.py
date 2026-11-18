@@ -13,6 +13,7 @@ BARRIER_Q = "Q_BARRIER"
 PRIORITY_Q = "Q_PRIORITY"
 FREE_Q = "Q_FREE"
 SCALE = "scale"
+CANDIDATE_TYPES = "candidate_types"   # options_from에 적는 값. 넘겨받은 유형들이 선택지가 된다
 DEFER = "none"      # Q_PRIORITY의 '아직 고르지 않을게요' 선택지 id. 유형 id가 아니므로 대표 유형을 만들지 않는다
 
 
@@ -46,7 +47,7 @@ def age_band(age) -> str:
 def options_of(q: dict, types: dict[str, dict], type_ids: list[str] | None = None) -> list[dict]:
     """문항의 선택지. options_from이 candidate_types면 넘겨받은 유형의 설명 문장을 선택지로 만들어 앞에 붙인다."""
     made: list[dict] = []
-    if q.get("options_from") == "candidate_types":
+    if q.get("options_from") == CANDIDATE_TYPES:
         made = [{"id": tid, "label": types[tid]["statement"]} for tid in type_ids or []]
     return made + list(q.get("options") or [])
 

@@ -12,6 +12,9 @@ from pathlib import Path
 
 import yaml
 
+from .scoring import SCALE_MAX, SCALE_MIN
+from .selection import CANDIDATE_TYPES
+
 APP_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = APP_DIR / "data"
 PROMPT_PATH = APP_DIR / "prompts" / "matching.md"
@@ -28,15 +31,20 @@ PLACEHOLDERS = ["{type_name}", "{type_summary}", "{wish_examples}", "{wish_text}
 
 QUESTION_IDS = ["Q_BARRIER", "Q_PRIORITY", "Q_FREE"]   # 코드가 id로 찾는 문항
 SELECTIONS = {"single", "multi", "number", "scale", "text"}
-OPTION_SOURCES = {"candidate_types"}
-SCALE_VALUES = [1, 2, 3, 4, 5]                    # 척도 값. scoring.py의 SCALE_MIN~SCALE_MAX와 같아야 한다
+OPTION_SOURCES = {CANDIDATE_TYPES}
+SCALE_VALUES = list(range(SCALE_MIN, SCALE_MAX + 1))   # 척도 값. 범위는 scoring.py가 정한다
 ITEMS_PER_TYPE = 2                                # 유형마다 척도 문항 수. 점수 기준(8점·7점)이 이 수를 전제한다
 RULE_KEYS = ("exclude", "first", "last")          # 세부 질문에 붙는 후보 규칙
 
-KINDS = {"상시서비스", "기간프로그램", "목록"}
-AGE_VALUES = {"가능", "불가", "미확인"}
-SCOPES = {"안산", "전국"}        # 전국은 안산에 있지 않은 전화·온라인 창구. 안산 기관 뒤에 보여준다
-PAY_VALUES = {"해당없음", "유급", "활동비", "무보수", "미확인"}
+# programs.csv의 칸에 적는 값. 다른 파일은 글자를 다시 적지 않고 이 이름을 가져다 쓴다
+KIND_ALWAYS, KIND_PERIOD, KIND_LIST = "상시서비스", "기간프로그램", "목록"
+UNCONFIRMED = "미확인"
+NATIONWIDE = "전국"            # 안산에 있지 않은 전화·온라인 창구. 안산 기관 뒤에 보여준다
+
+KINDS = {KIND_ALWAYS, KIND_PERIOD, KIND_LIST}
+AGE_VALUES = {"가능", "불가", UNCONFIRMED}
+SCOPES = {"안산", NATIONWIDE}
+PAY_VALUES = {"해당없음", "유급", "활동비", "무보수", UNCONFIRMED}
 TASTE_KINDS = {"", "영상", "공개강좌", "앱체험"}
 DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 

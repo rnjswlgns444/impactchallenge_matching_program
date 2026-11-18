@@ -6,21 +6,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta, timezone
+from datetime import date
 
-from .loader import split_multi
+from . import clock
+from .loader import KIND_ALWAYS, KIND_LIST, KIND_PERIOD, NATIONWIDE, UNCONFIRMED, split_multi
 from .selection import chosen_detail_options, detail_of
 
-LIST_KIND = "목록"
-KIND_ORDER = {"상시서비스": 0, "기간프로그램": 1}   # 언제든 문의할 수 있는 곳을 먼저
-UNCONFIRMED = "미확인"
-NATIONWIDE = "전국"
-KST = timezone(timedelta(hours=9))
+KIND_ORDER = {KIND_ALWAYS: 0, KIND_PERIOD: 1}   # 언제든 문의할 수 있는 곳을 먼저
 
 
 def today_kst() -> date:
     """한국 시각의 오늘 날짜."""
-    return datetime.now(KST).date()
+    return clock.now().date()
 
 
 @dataclass
@@ -74,8 +71,8 @@ def for_type(programs: list[dict], type_info: dict, detail_answer, today: date) 
     candidates.sort(key=sort_key)
     return TypeResult(
         type_info["id"],
-        contacts=[p for p in candidates if p["종류"] != LIST_KIND],
-        lists=[p for p in candidates if p["종류"] == LIST_KIND],
+        contacts=[p for p in candidates if p["종류"] != KIND_LIST],
+        lists=[p for p in candidates if p["종류"] == KIND_LIST],
     )
 
 
@@ -93,7 +90,7 @@ def ai_pool(programs: list[dict], types: dict[str, dict], type_ids: list[str],
     유형을 정하지 않았으면 지금 보여줘도 되는 곳 전체다. 목록(강좌 목록 등)은 넣지 않는다.
     """
     if not type_ids:
-        return [p for p in eligible(programs, today) if p["종류"] != LIST_KIND]
+        return [p for p in eligible(programs, today) if p["종류"] != KIND_LIST]
     pool: dict[str, dict] = {}
     for result in build_result(programs, types, type_ids, details, today):
         for program in result.contacts:

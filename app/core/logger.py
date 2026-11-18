@@ -7,8 +7,10 @@
 from __future__ import annotations
 
 import csv
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from pathlib import Path
+
+from . import clock
 
 LOG_DIR = Path(__file__).resolve().parent.parent / "logs"
 
@@ -28,11 +30,9 @@ RESPONSE_FIELDS = ["session_id", "hour", "state", "primary", "secondary", "candi
 EVENT_FIELDS = ["session_id", "hour", "event", "target", "value"]
 
 
-KST = timezone(timedelta(hours=9))     # 서버가 어디에 있든 한국 시각으로 남긴다
-
 
 def _hour() -> str:
-    return datetime.now(KST).strftime("%Y-%m-%d %H시")
+    return clock.now().strftime("%Y-%m-%d %H시")     # 서버가 어디에 있든 한국 시각으로 남긴다
 
 
 def _append(path: Path, fields: list[str], row: dict) -> None:
