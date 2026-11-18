@@ -474,3 +474,23 @@ def test_find_button_is_drawn_locked_when_pending(app, fake_ai, monkeypatch):
     write_wish(app, WISH)
     assert app.session_state.ai_pending is True
     assert app.button(key="free_find").disabled and app.text_area(key="free_text").disabled
+
+
+def test_detail_question_takes_one_answer(app):
+    """'조금 더 맞춰 보기'는 하나만 고른다. 다른 것을 누르면 앞의 것이 풀리고, '아직 모르겠어요'는 없다."""
+    to_result_with_t01(app)
+    assert "아직 모르겠어요" not in [b.label for b in app.button]
+    click(app, "detail_T01_previous_work")
+    click(app, "detail_T01_new_work")
+    assert app.session_state.details["T01"] == "new_work"
+    labels = [b.label for b in app.button]
+    assert "✓ 새로운 일을 해보고 싶어요" in labels and "✓ 해봤던 일을 다시 하고 싶어요" not in labels
+    click(app, "detail_T01_new_work")                              # 다시 누르면 풀린다
+    assert not app.session_state.details["T01"]
+
+
+def test_no_detail_question_allows_many_answers():
+    for type_info in loader.load_all().types.values():
+        detail = type_info.get("detail") or {}
+        assert detail.get("selection") == "single", type_info["id"]
+        assert not [opt for opt in detail["options"] if opt.get("exclusive")], type_info["id"]
