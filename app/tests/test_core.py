@@ -17,7 +17,7 @@ from app.core import clock, loader, logger, privacy
 from app.core.candidates import ai_pool, build_result, eligible, first_consult, for_type, unconfirmed_columns
 from app.core.llm_matcher import NO_KEY, NO_TYPE, REASON_LIMIT, build_prompt, has_wish, parse_answer, recommend
 from app.core.scoring import CHOOSE, EXPLORE, RESULT, score
-from app.core.selection import (DEFER, age_band, barrier_guides, chosen_detail_options, detail_of, next_question, options_of,
+from app.core.selection import (DEFER, barrier_guides, chosen_detail_options, detail_of, next_question, options_of,
                                 question, scale_questions, toggle, type_questions)
 
 TODAY = date(2026, 11, 17)
@@ -449,22 +449,25 @@ def test_scrub_keeps_normal_text():
 # ── 기록 ──
 
 LOGGED = {"state": RESULT, "primary": "T02", "secondary": None, "candidates": ["T02", "T05"], "scores": "T02=10|T05=10",
-          "answers": "Q01=1|Q02=", "barriers": ["alone"], "gender": "female", "age_band": "60~64세", "work": "not_working",
-          "program_ids": ["JOB01"]}
+          "answers": "Q01=1|Q02=", "barriers": ["alone"], "program_ids": ["JOB01"]}
 
 
 def test_log_has_no_free_text(tmp_path):
-    logger.log_response("sid", {**LOGGED, "free_text": "직접 적은 글", "age": 61}, tmp_path)
+    logger.log_response("sid", {**LOGGED, "free_text": "직접 적은 글", "age": 61, "gender": "female",
+                                "age_band": "60~64세", "work": "not_working"}, tmp_path)
     logger.log_event("sid", "detail", "T02", "wage_required", tmp_path)
     header, line = (tmp_path / "responses.csv").read_text(encoding="utf-8-sig").splitlines()
     assert header.split(",") == logger.RESPONSE_FIELDS
-    assert "text" not in header and "T02|T05" in line and "60~64세" in line
-    assert "직접 적은 글" not in line and "61" not in line          # 정해진 열 밖의 값은 파일에 들어가지 않는다
+    assert "text" not in header and "T02|T05" in line
+    # 정해진 열 밖의 값은 파일에 들어가지 않는다. 기본정보(성별·나이·일 여부)를 담는 열도 없다
+    assert "직접 적은 글" not in line and "61" not in line
+    assert not {"gender", "age", "age_band", "work"} & set(header.split(","))
+    assert "female" not in line and "60~64세" not in line and "not_working" not in line
     assert (tmp_path / "events.csv").read_text(encoding="utf-8-sig").splitlines()[0].split(",") == logger.EVENT_FIELDS
 
 
-def test_response_row_has_age_band_and_no_free_text(tmp_path):
-    """기록할 값은 화면이 아니라 logger가 만든다. 나이 숫자와 직접 적은 글은 들어가지 않는다."""
+def test_response_row_has_no_profile_and_no_free_text(tmp_path):
+    """기록할 값은 화면이 아니라 logger가 만든다. 기본정보(성별·나이·일 여부)와 직접 적은 글은 들어가지 않는다."""
     answers = {"Q01": 5, "Q13": 4, "Q02": 2, "Q14": 1, "P_GENDER": "female", "P_AGE": 61, "P_WORK": "not_working",
                "Q_BARRIER": ["alone", "cost"], "Q_FREE": "직접 적은 글"}
     judged = score(answers, {"T01": ["Q01", "Q13"], "T05": ["Q02", "Q14"]}, 8, 7)
@@ -472,17 +475,12 @@ def test_response_row_has_age_band_and_no_free_text(tmp_path):
     assert set(fields) == set(logger.RESPONSE_FIELDS[2:])           # 정해진 열만, 빠짐없이
     assert (fields["state"], fields["primary"], fields["scores"]) == (RESULT, "T01", "T01=9|T05=3")
     assert fields["answers"] == "Q01=5|Q02=2|Q13=4|Q14=1"
-    assert (fields["gender"], fields["age_band"], fields["work"]) == ("female", "60~64세", "not_working")
+    assert not {"gender", "age", "age_band", "work"} & set(fields)
     assert fields["barriers"] == ["alone", "cost"] and fields["program_ids"] == ["JOB01"]
     logger.log_response("sid", fields, tmp_path)
     line = (tmp_path / "responses.csv").read_text(encoding="utf-8-sig").splitlines()[1]
-    assert "61" not in line and "직접 적은 글" not in line and "60~64세" in line
-
-
-@pytest.mark.parametrize("age, band", [(54, "54세 이하"), (55, "55~59세"), (59, "55~59세"), (60, "60~64세"),
-                                       (64, "60~64세"), (65, "65세 이상"), (None, ""), ("60", "")])
-def test_age_is_logged_as_band_only(age, band):
-    assert age_band(age) == band
+    assert "61" not in line and "직접 적은 글" not in line
+    assert "female" not in line and "not_working" not in line
 
 
 def test_old_format_log_is_set_aside(tmp_path):

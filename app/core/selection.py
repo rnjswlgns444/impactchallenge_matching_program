@@ -12,7 +12,7 @@ from __future__ import annotations
 BARRIER_Q = "Q_BARRIER"
 PRIORITY_Q = "Q_PRIORITY"
 FREE_Q = "Q_FREE"
-GENDER_Q, AGE_Q, WORK_Q = "P_GENDER", "P_AGE", "P_WORK"   # 기본정보. 유형은 바꾸지 않는다. 후보 거르기와 기록에 쓴다
+GENDER_Q, AGE_Q, WORK_Q = "P_GENDER", "P_AGE", "P_WORK"   # 기본정보. 유형은 바꾸지 않는다. 후보 거르기에만 쓰고 저장하지 않는다
 # 기본정보 답과 견주는 정보표 열: (문항 id, 열 이름, 그 열에 적을 수 있는 선택지 id). 빈칸은 '조건 없음'이다
 PROFILE_CHOICES = (
     (GENDER_Q, "대상성별", ("male", "female")),
@@ -36,19 +36,6 @@ def scale_questions(questions: list[dict]) -> list[dict]:
 def type_questions(questions: list[dict], types: dict[str, dict]) -> dict[str, list[str]]:
     """{유형 id: [그 유형의 척도 문항 id]}. 유형은 types.yaml에 적힌 순서다. scoring.score()에 그대로 넘긴다."""
     return {tid: [q["id"] for q in scale_questions(questions) if q.get("type") == tid] for tid in types}
-
-
-def age_band(age) -> str:
-    """기록에 남길 나이대. 나이 숫자를 그대로 남기지 않으려고 쓴다. 숫자가 아니면 빈 글자."""
-    if type(age) is not int:
-        return ""
-    if age < 55:
-        return "54세 이하"
-    if age < 60:
-        return "55~59세"
-    if age < 65:
-        return "60~64세"
-    return "65세 이상"
 
 
 def options_of(q: dict, types: dict[str, dict], type_ids: list[str] | None = None) -> list[dict]:

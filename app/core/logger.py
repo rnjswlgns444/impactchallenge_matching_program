@@ -24,9 +24,9 @@ def set_enabled(on: bool) -> None:
 
 # state: 판정 상태(scoring.py) / primary·secondary: 대표 유형과 함께 살펴볼 유형 / candidates: 최고점 유형들
 # scores: 'T01=8|T02=4' / answers: 척도 문항 답 'Q01=5|Q02=3'
-# gender·work: 고른 선택지 id / age_band: 나이대(나이 숫자는 남기지 않는다)
+# 기본정보(성별·나이·일 여부)는 남기지 않는다. 맞는 곳을 고르는 데만 쓰고 저장하지 않기로 했다(11/22)
 RESPONSE_FIELDS = ["session_id", "hour", "state", "primary", "secondary", "candidates", "scores", "answers",
-                   "barriers", "gender", "age_band", "work", "program_ids"]
+                   "barriers", "program_ids"]
 EVENT_FIELDS = ["session_id", "hour", "event", "target", "value"]
 
 
@@ -68,15 +68,14 @@ def response_fields(judged, answers: dict, scale_ids: list[str], shown_ids: list
     """responses.csv 한 행에 넣을 값을 만든다. 화면과 무관한 순수 함수다.
 
     judged는 scoring.Score, scale_ids는 척도 문항 id, shown_ids는 화면에 나온 프로그램 id다.
-    나이는 숫자 대신 나이대로 바꾼다. 여기 적힌 문항만 읽으므로 주관식(Q_FREE)은 들어가지 않는다.
+    여기 적힌 문항만 읽으므로 기본정보(성별·나이·일 여부)와 주관식(Q_FREE)은 들어가지 않는다.
     """
     return {
         "state": judged.state, "primary": judged.primary, "secondary": judged.secondary,
         "candidates": judged.candidates,
         "scores": "|".join(f"{tid}={value}" for tid, value in judged.scores.items()),
         "answers": "|".join(f"{qid}={answers[qid]}" for qid in sorted(scale_ids)),
-        "barriers": answers.get(sel.BARRIER_Q) or [], "gender": answers.get(sel.GENDER_Q),
-        "age_band": sel.age_band(answers.get(sel.AGE_Q)), "work": answers.get(sel.WORK_Q),
+        "barriers": answers.get(sel.BARRIER_Q) or [],
         "program_ids": shown_ids,
     }
 

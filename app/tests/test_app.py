@@ -139,8 +139,9 @@ def test_one_type_to_the_end(app, tmp_path):
     row = logged[0]
     assert (row["state"], row["primary"], row["secondary"], row["barriers"]) == ("result", "T01", "", "alone")
     assert "T01=10" in row["scores"] and "Q01=5" in row["answers"] and "Q02=1" in row["answers"]
-    assert (row["gender"], row["age_band"], row["work"]) == ("female", "60~64세", "not_working")
-    assert "age" not in row                                    # 나이 숫자를 담는 열이 없다
+    # 기본정보(성별·나이·일 여부)는 맞는 곳을 고르는 데만 쓰고 기록하지 않는다
+    assert not {"gender", "age", "age_band", "work"} & set(row)
+    assert "female" not in row.values() and "not_working" not in row.values()
     assert [e["target"] for e in rows(tmp_path, "events.csv") if e["event"] == "browse"] == ["T04"]
 
 
