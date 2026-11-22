@@ -72,13 +72,13 @@ questions:
   - {id: Q14, type: T01, selection: scale, text: "오래 일할 수 있는 일자리를 소개받고 싶어요."}
   - {id: Q15, type: T10, selection: scale, text: "내가 신청할 수 있는 지원금이나 요금 할인을 알아보고 싶어요."}
   - {id: Q16, type: T05, selection: scale, text: "만들기든 운동이든 공연 구경이든, 재미 삼아 해 보고 싶어요."}
-  - {id: Q17, type: T11, selection: scale, text: "돌봄에 필요한 도움을 어디서 받을 수 있는지 알아보고 싶어요."}
+  - {id: Q17, type: T11, selection: scale, text: "돌봄에 필요한 도움을 어디서 받을 수 있는지 알고 싶어요."}
   - {id: Q18, type: T04, selection: scale, text: "취업이나 부업에 도움이 되는 교육을 찾아보고 싶어요."}
   - {id: Q19, type: T09, selection: scale, text: "은퇴 전후에 들어올 돈과 나갈 돈을 짚어 보며 상담받고 싶어요."}
   - {id: Q20, type: T02, selection: scale, text: "내 시간에 맞춰 조금씩 할 수 있는 일이나 활동을 찾고 싶어요."}
   - {id: Q21, type: T12, selection: scale, text: "운동이나 식습관 등 건강관리에 도움을 받고 싶어요."}
   - {id: Q22, type: T03, selection: scale, text: "창업이나 가게 운영에 필요한 도움을 알아보고 싶어요."}
-  - {id: Q23, type: T08, selection: scale, text: "마음이나 관계에 관한 고민을 정리하는 데 상담 도움을 받고 싶어요."}
+  - {id: Q23, type: T08, selection: scale, text: "복잡한 마음이나 사람 사이의 고민을 상담으로 풀어 보고 싶어요."}
   - {id: Q24, type: T06, selection: scale, text: "일자리와 관계없이, 관심 있는 분야를 공부해보고 싶어요."}
 
   # ── 걸림돌 ──
@@ -86,7 +86,7 @@ questions:
   #   show : 이 걸림돌을 고른 사람에게 카드에서 먼저 보여줄 programs.csv의 열. 그 열에 내용이 있으면 그대로 보여줍니다.
   #   ask  : 그 열이 비어 있을 때 '기관에 이렇게 물어보세요'로 보여줄 문장. (초안입니다. 팀 검토 필요)
   - id: Q_BARRIER
-    text: "시작하기 전에 마음에 걸리는 게 있나요?"
+    text: "처음 참여할 때 마음에 걸리는 점이 있으세요?"
     selection: multi
     options:
       - id: fit
@@ -131,7 +131,7 @@ questions:
 
   - id: Q_FREE
     where: result
-    text: "조금 더 원하는 점이 있나요?"
+    text: "더 바라는 점이 있으면 적어 주세요."
     help: "해보고 싶은 일이나 시작하기 전에 걱정되는 점을 편하게 적어주세요. 적지 않고 넘어가도 괜찮아요."
     selection: text
     max_characters: 500

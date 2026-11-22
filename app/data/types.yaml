@@ -49,7 +49,7 @@ types:
     area: work
     name: 보탬활동형
     purpose: 단시간 일·사회참여
-    statement: "짧게 일하거나 동네에 보탬이 되고 싶어요."
+    statement: "짧게 일하거나 동네에서 봉사하고 싶어요."
     definition: "단시간 유급 일, 활동비가 있는 참여, 무보수 봉사를 구분. 급여 필요 응답에 봉사를 대체 추천하지 않음."
     detail:
       id: D02
@@ -69,7 +69,7 @@ types:
     area: work
     name: 내일사장형
     purpose: 창업 준비·사업 운영
-    statement: "작은 장사나 내 사업을 해보고 싶어요."
+    statement: "가게를 열거나 내 사업을 꾸려 가고 싶어요."
     definition: "창업·사업 운영 욕구. 예비창업자와 기존 사업자 전용 지원을 구분."
     detail:
       id: D03
@@ -100,7 +100,7 @@ types:
     area: leisure
     name: 취미발견형
     purpose: 취미·문화활동
-    statement: "즐거운 취미나 문화생활을 찾고 싶어요."
+    statement: "새 취미나 즐길 거리를 찾고 싶어요."
     definition: "활동 자체의 즐거움이 중심. 지속적인 사람·소속이 중심이면 T07도 선택."
     detail:
       id: D05
@@ -116,7 +116,7 @@ types:
     area: leisure
     name: 배움산책형
     purpose: 생활·교양 배움
-    statement: "새로운 지식이나 생활에 필요한 것을 배우고 싶어요."
+    statement: "새로운 지식이나 생활에 쓸 만한 걸 배우고 싶어요."
     definition: "취업 외 생활 기능·지식 학습. 디지털에 한정하지 않고, 취업 목적도 있으면 T04 추가 여부 확인."
     detail:
       id: D06
@@ -132,7 +132,7 @@ types:
     area: leisure
     name: 동네친구형
     purpose: 정기 모임·교류
-    statement: "꾸준히 만나고 함께할 사람들을 찾고 싶어요."
+    statement: "꾸준히 만날 사람들이나 모임을 찾고 싶어요."
     definition: "정기적인 교류·관계가 목적. 일회 행사·공연 또는 단체 공모를 개인이 가입할 모임으로 추천하지 않음."
     detail:
       id: D07
@@ -196,7 +196,7 @@ types:
     area: life
     name: 돌봄동행형
     purpose: 본인·가족 돌봄
-    statement: "나나 가족을 돌보는 데 도움이 필요해요."
+    statement: "나나 가족을 돌보는 데 도움받을 곳을 찾고 싶어요."
     definition: "응답자와 돌봄 대상자를 구분. 대상자의 나이·필요도를 확인하고 사업별 대상 조건 적용."
     detail:
       id: D11
