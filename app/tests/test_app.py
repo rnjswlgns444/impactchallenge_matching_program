@@ -126,6 +126,11 @@ def test_one_type_to_the_end(app, tmp_path):
     click(app, "browse_T04")
     page = page_text(app)
     assert data.types["T04"]["name"] in page and text["type_label_other"] in page
+    # 유형마다 한 곳만 먼저 보이므로(top_n 1), 겹치는 곳을 보려면 '더 보기'로 두 유형을 모두 펼친다
+    for key in ("more_T01", "more_T04"):
+        if key in [b.key for b in app.button]:
+            click(app, key)
+    page = page_text(app)
     # 두 유형에 모두 해당하는 곳은 카드를 되풀이하지 않고 한 줄로 알린다
     assert escape(text["seen_note"].format(type=data.types["T01"]["name"])) in page
 

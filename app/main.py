@@ -401,7 +401,7 @@ def ask_ai(data, type_ids: list[str], pool: list[dict], wish: str) -> llm_matche
     except Exception as err:  # AI 라이브러리가 없는 등 호출 함수를 만들지 못했을 때
         return llm_matcher.AiResult("fail", error=llm_matcher.error_kind(err))
     return llm_matcher.recommend(data.prompt, [data.types[tid] for tid in type_ids], wish_examples(data, type_ids),
-                                 wish, pool, int(data.settings.get("top_n", 3)), caller)
+                                 wish, pool, int(data.settings.get("ai_top_n", 3)), caller)
 
 
 def free_wish_form(data, text) -> None:
@@ -544,7 +544,7 @@ def screen_result(data, text) -> None:
         go("survey")
         st.rerun()
     today = clock.now()                                       # 시각까지 넘겨야 종료시각이 지난 회차가 빠진다
-    top_n = int(data.settings.get("top_n", 3))
+    top_n = int(data.settings.get("top_n", 1))
 
     # 유형 판정. 점수는 화면에 보여주지 않는다. 본인이 고른 것(Q_PRIORITY)은 지금 후보에 있을 때만 쓰인다.
     setting = data.settings["scoring"]

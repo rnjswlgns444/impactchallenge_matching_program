@@ -70,7 +70,7 @@ def main() -> None:
     check_only = "--check" in sys.argv[1:]
     data = loader.load_all()
     llm = data.settings["llm"]
-    top_n = int(data.settings.get("top_n", 3))
+    top_n = int(data.settings.get("ai_top_n", 3))      # AI가 고르는 개수. 화면에 먼저 보여 주는 개수(top_n)와 다르다
     today = clock.now()
     cases = yaml.safe_load((Path(__file__).parent / "matching_cases.yaml").read_text(encoding="utf-8"))["cases"]
 
