@@ -14,7 +14,8 @@ from string import Formatter
 import yaml
 
 from .scoring import SCALE_MAX, SCALE_MIN
-from .selection import AGE_Q, BARRIER_Q, CANDIDATE_TYPES, FREE_Q, GENDER_Q, PRIORITY_Q, WORK_Q
+from .selection import (AGE_MAX_COLUMN, AGE_MIN_COLUMN, AGE_Q, BARRIER_Q, CANDIDATE_TYPES, FREE_Q, GENDER_Q,
+                        PRIORITY_Q, PROFILE_CHOICES, WORK_Q)
 
 APP_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = APP_DIR / "data"
@@ -23,7 +24,8 @@ PROMPT_PATH = APP_DIR / "prompts" / "matching.md"
 # 코드가 읽는 열. 재확인일·운영근거·비고는 팀 점검용이라 없어도 된다.
 REQUIRED_COLUMNS = [
     "id", "기관명", "프로그램명", "종류", "범위", "한줄설명", "상세설명", "키워드", "유형태그", "세부태그", "첫상담",
-    "55~64세참여", "대상", "확인필요", "보수", "운영상태", "매칭가능", "표시종료일", "종료시각",
+    "55~64세참여", "대상", "대상성별", "최소나이", "최대나이", "대상재직상태",
+    "확인필요", "보수", "운영상태", "매칭가능", "표시종료일", "종료시각",
     "시간대", "기간", "비용", "장소", "신청방법", "공식연락처", "홈페이지URL", "상세페이지URL", "신청URL",
     "진행방식", "첫방문안내", "혼자참여", "초보참여", "첫연락문장",
     "체험유형", "체험제목", "체험URL", "체험내용", "확인날짜", "출처URL",
@@ -294,6 +296,11 @@ def validate_questions(questions: list[dict], types_list: list[dict] | None = No
     for qid in QUESTION_IDS:
         if qid not in seen:
             problems.append(f"questions.yaml: 문항 '{qid}'가 없습니다. 이 id는 코드가 쓰므로 지우거나 바꾸면 안 됩니다.")
+    for qid, column, allowed in PROFILE_CHOICES:        # 정보표의 대상 조건 칸이 이 선택지 id로 적혀 있다
+        found = next((q for q in questions if q.get("id") == qid), None)
+        if found and {opt.get("id") for opt in found.get("options") or []} != set(allowed):
+            problems.append(f"questions.yaml: 문항 '{qid}'의 선택지 id는 {' / '.join(allowed)}여야 합니다. "
+                            f"programs.csv의 '{column}' 칸이 이 값으로 적혀 있습니다.")
     if types_list is not None:
         type_ids = [t.get("id") for t in types_list if t.get("id")]
         for tid in per_type:
@@ -351,6 +358,14 @@ def validate_programs(programs: list[dict], types_list: list[dict]) -> list[str]
             problems.append(f"{where}: 표시종료일은 비워 두거나 2026-11-20 같은 형식으로 적습니다.")
         if row["종료시각"] and not (row["표시종료일"] and CLOCK_TIME.fullmatch(row["종료시각"])):
             problems.append(f"{where}: 종료시각은 표시종료일과 함께, 16:00 같은 형식(한국 시각)으로 적습니다. 모르면 비워 둡니다.")
+        for _, column, allowed in PROFILE_CHOICES:
+            if set(split_multi(row[column])) - set(allowed):
+                problems.append(f"{where}: '{column}' 칸은 비워 두거나 {' / '.join(allowed)} 중에서 적습니다. (지금: '{row[column]}')")
+        limits = [row[AGE_MIN_COLUMN], row[AGE_MAX_COLUMN]]
+        if any(value and not re.fullmatch(r"[0-9]{1,3}", value) for value in limits):
+            problems.append(f"{where}: 최소나이·최대나이는 만 나이를 숫자로만 적습니다. 제한이 없으면 비워 둡니다.")
+        elif all(limits) and int(limits[0]) > int(limits[1]):
+            problems.append(f"{where}: 최소나이가 최대나이보다 큽니다.")
         if row["매칭가능"] == "Y" and not row["출처URL"]:
             problems.append(f"{where}: 매칭가능이 Y이면 출처URL이 있어야 합니다. 확인한 공식 페이지 주소를 적어 주세요.")
 

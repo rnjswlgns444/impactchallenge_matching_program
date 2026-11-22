@@ -245,7 +245,7 @@ def priority_question(data, text, type_ids: list[str], today) -> None:
     ui.body(lead)
     ui.heading(question["text"])
     # 예로 드는 곳도 candidates가 걸러 준 후보에서만 고른다
-    previews = candidates.build_result(data.programs, data.types, type_ids, state.details, today)
+    previews = candidates.build_result(data.programs, data.types, type_ids, state.details, today, state.answers)
     examples = {r.type_id: (r.contacts or r.lists)[0] for r in previews if r.contacts or r.lists}
     for option in sel.options_of(question, data.types, type_ids):
         st.button(width="stretch", label=option["label"], key=f"priority_{option['id']}",
@@ -557,8 +557,8 @@ def screen_result(data, text) -> None:
     shown_types = ([primary] if primary else []) + opened
 
     # 기본 결과는 저장해 두지 않고 화면을 그릴 때마다 정보표에서 다시 만든다
-    results = candidates.build_result(data.programs, data.types, shown_types, state.details, today)
-    consults = candidates.first_consult(data.programs, today)
+    results = candidates.build_result(data.programs, data.types, shown_types, state.details, today, state.answers)
+    consults = candidates.first_consult(data.programs, today, state.answers)
     guides = sel.barrier_guides(state.answers, data.questions)
     shown_ids = [p["id"] for r in results for p in visible_contacts(r, top_n) + r.lists]
     log_once(data, judged, shown_ids or [p["id"] for p in consults])
@@ -571,7 +571,7 @@ def screen_result(data, text) -> None:
 
     seen: dict[str, str] = {}
     by_type = {r.type_id: r for r in results}
-    pool = candidates.ai_pool(data.programs, data.types, shown_types, state.details, today)
+    pool = candidates.ai_pool(data.programs, data.types, shown_types, state.details, today, state.answers)
 
     def draw_section(type_id: str) -> None:
         type_section(data, text, by_type[type_id], text["type_label_other"], guides, top_n, seen, consults)

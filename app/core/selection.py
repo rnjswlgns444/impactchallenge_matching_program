@@ -12,7 +12,13 @@ from __future__ import annotations
 BARRIER_Q = "Q_BARRIER"
 PRIORITY_Q = "Q_PRIORITY"
 FREE_Q = "Q_FREE"
-GENDER_Q, AGE_Q, WORK_Q = "P_GENDER", "P_AGE", "P_WORK"   # 기본정보. 기록(responses.csv)에만 쓴다
+GENDER_Q, AGE_Q, WORK_Q = "P_GENDER", "P_AGE", "P_WORK"   # 기본정보. 유형은 바꾸지 않는다. 후보 거르기와 기록에 쓴다
+# 기본정보 답과 견주는 정보표 열: (문항 id, 열 이름, 그 열에 적을 수 있는 선택지 id). 빈칸은 '조건 없음'이다
+PROFILE_CHOICES = (
+    (GENDER_Q, "대상성별", ("male", "female")),
+    (WORK_Q, "대상재직상태", ("employed", "self_employed", "not_working")),
+)
+AGE_MIN_COLUMN, AGE_MAX_COLUMN = "최소나이", "최대나이"     # 만 나이. 빈칸은 '제한 없음'이다
 SCALE = "scale"
 CANDIDATE_TYPES = "candidate_types"   # options_from에 적는 값. 넘겨받은 유형들이 선택지가 된다
 DEFER = "none"      # Q_PRIORITY의 '아직 고르지 않을게요' 선택지 id. 유형 id가 아니므로 대표 유형을 만들지 않는다

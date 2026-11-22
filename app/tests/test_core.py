@@ -160,6 +160,43 @@ def test_end_time_needs_an_end_date_and_clock_format(data):
         assert any("종료시각" in line for line in loader.validate_programs([row("a", "T01", **bad)], types_list)), bad
 
 
+def test_profile_filters_by_gender_age_and_work(data):
+    """답한 성별·나이·일 여부가 대상 조건에 안 맞는 곳은 뺀다. 빈칸은 조건 없음, 답이 없으면 거르지 않는다."""
+    programs = [row("all", "T01", 첫상담="Y"), row("women", "T01", 대상성별="female", 첫상담="Y"),
+                row("mid", "T01", 최소나이="50", 최대나이="69"),
+                row("rest", "T01", 대상재직상태="not_working|self_employed")]
+    who = lambda gender, age, work: {"P_GENDER": gender, "P_AGE": age, "P_WORK": work, "Q01": 5}   # noqa: E731
+
+    assert ids(eligible(programs, TODAY, who("female", 61, "not_working"))) == ["all", "women", "mid", "rest"]
+    assert ids(eligible(programs, TODAY, who("male", 61, "not_working"))) == ["all", "mid", "rest"]
+    assert ids(eligible(programs, TODAY, who("female", 70, "self_employed"))) == ["all", "women", "rest"]   # 최대나이 초과
+    assert ids(eligible(programs, TODAY, who("female", 49, "employed"))) == ["all", "women"]                # 최소나이 미만, 재직 중
+    assert ids(eligible(programs, TODAY, who("female", 50, "not_working"))) == ["all", "women", "mid", "rest"]  # 경계 나이는 포함
+    assert ids(eligible(programs, TODAY)) == ["all", "women", "mid", "rest"]             # 설문 없이 볼 때는 거르지 않는다
+    assert ids(eligible(programs, TODAY, {})) == ["all", "women", "mid", "rest"]
+
+    # 유형 결과, AI 후보, 일반 창구 모두 같은 거르기를 거친다
+    man = who("male", 61, "not_working")
+    assert ids(for_type(programs, data.types["T01"], None, TODAY, man).contacts) == ["all", "mid", "rest"]
+    assert ids(ai_pool(programs, data.types, ["T01"], {}, TODAY, man)) == ["all", "mid", "rest"]
+    assert ids(ai_pool(programs, data.types, [], {}, TODAY, man)) == ["all", "mid", "rest"]
+    assert ids(first_consult(programs, TODAY, man)) == ["all"]
+
+
+def test_target_columns_are_checked(data):
+    types_list = list(data.types.values())
+    fine = row("a", "T01", 대상성별="female", 최소나이="50", 최대나이="69", 대상재직상태="not_working|employed")
+    assert loader.validate_programs([fine], types_list) == []
+    for column, bad in (("대상성별", dict(대상성별="여성")), ("대상재직상태", dict(대상재직상태="무직")),
+                        ("최소나이", dict(최소나이="50세")), ("최소나이", dict(최소나이="70", 최대나이="60"))):
+        assert any(column in line for line in loader.validate_programs([row("a", "T01", **bad)], types_list)), bad
+
+    # 정보표의 조건 칸은 기본정보 문항의 선택지 id로 적으므로, 그 id를 바꾸면 알려준다
+    questions = copy.deepcopy(data.questions)
+    question(questions, "P_GENDER")["options"][0]["id"] = "man"
+    assert any("P_GENDER" in line for line in loader.validate_questions(questions, types_list))
+
+
 def test_unknown_age_is_not_treated_as_blocked():   # 규칙 R05
     assert ids(eligible([row("a", "T01", **{"55~64세참여": "미확인"})], TODAY)) == ["a"]
 
