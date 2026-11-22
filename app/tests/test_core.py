@@ -9,11 +9,11 @@
 import copy
 import json
 import re
-from datetime import date
+from datetime import date, datetime, timezone
 
 import pytest
 
-from app.core import loader, logger, privacy
+from app.core import clock, loader, logger, privacy
 from app.core.candidates import ai_pool, build_result, eligible, first_consult, for_type, unconfirmed_columns
 from app.core.llm_matcher import NO_KEY, NO_TYPE, REASON_LIMIT, build_prompt, has_wish, parse_answer, recommend
 from app.core.scoring import CHOOSE, EXPLORE, RESULT, score
@@ -137,6 +137,27 @@ def test_closed_blocked_and_expired_never_pass():   # 검증 사례 10
     ]
     assert ids(eligible(programs, TODAY)) == ["ok", "today"]      # 종료일 당일까지는 보인다
     assert ids(eligible(programs, date(2026, 11, 18))) == ["ok"]
+
+
+def test_end_time_hides_a_row_on_its_last_day():
+    """종료일 당일에는 종료시각부터 빠진다. 시각을 모르면(날짜만 주면) 그날 끝까지 보인다."""
+    programs = [row("talk", "T01", 표시종료일="2026-11-17", 종료시각="14:00"), row("allday", "T01", 표시종료일="2026-11-17")]
+    at = lambda day, hour, minute: datetime(2026, 11, day, hour, minute, tzinfo=clock.KST)   # noqa: E731
+    assert ids(eligible(programs, at(17, 13, 59))) == ["talk", "allday"]
+    assert ids(eligible(programs, at(17, 14, 0))) == ["allday"]
+    assert ids(eligible(programs, at(16, 23, 0))) == ["talk", "allday"]       # 전날에는 시각과 상관없이 보인다
+    assert ids(eligible(programs, at(18, 0, 0))) == []
+    assert ids(eligible(programs, TODAY)) == ["talk", "allday"]               # 날짜만 주면 시각을 보지 않는다
+    # 서버가 다른 시간대여도 한국 시각으로 바꿔서 본다: UTC 05:00 = 한국 14:00
+    assert ids(eligible(programs, datetime(2026, 11, 17, 5, 0, tzinfo=timezone.utc))) == ["allday"]
+
+
+def test_end_time_needs_an_end_date_and_clock_format(data):
+    types_list = list(data.types.values())
+    assert loader.validate_programs([row("a", "T01", 표시종료일="2026-11-19", 종료시각="14:00")], types_list) == []
+    for bad in (dict(종료시각="14:00"), dict(표시종료일="2026-11-19", 종료시각="오후 2시"),
+                dict(표시종료일="2026-11-19", 종료시각="24:00")):
+        assert any("종료시각" in line for line in loader.validate_programs([row("a", "T01", **bad)], types_list)), bad
 
 
 def test_unknown_age_is_not_treated_as_blocked():   # 규칙 R05

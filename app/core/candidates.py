@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 
 from . import clock
 from .loader import KIND_ALWAYS, KIND_LIST, KIND_PERIOD, NATIONWIDE, UNCONFIRMED, split_multi
@@ -28,12 +28,30 @@ class TypeResult:
     lists: list[dict] = field(default_factory=list)      # 목록에서 직접 찾아볼 곳
 
 
-def eligible(programs: list[dict], today: date) -> list[dict]:
-    """지금 보여줘도 되는 프로그램: 매칭가능 Y, 55~64세 참여 불가가 아님, 표시종료일이 지나지 않음."""
-    limit = today.isoformat()
+def _still_open(program: dict, day: str, time: str) -> bool:
+    """표시종료일(과 종료시각)이 아직 지나지 않았는지. day는 '2026-11-19', time은 '14:00' 꼴이거나 빈 글자다."""
+    end = program["표시종료일"]
+    if not end or end > day:
+        return True
+    if end < day:
+        return False
+    # 종료일 당일: 시각을 모르거나(날짜만 넘겨받음) 종료시각이 비어 있으면 그날 끝까지 보여준다
+    return not (time and program["종료시각"] and time >= program["종료시각"])
+
+
+def eligible(programs: list[dict], today: date | datetime) -> list[dict]:
+    """지금 보여줘도 되는 프로그램: 매칭가능 Y, 55~64세 참여 불가가 아님, 표시종료일·종료시각이 지나지 않음.
+
+    today에 날짜만 주면 날짜로만 판단한다. 시각까지 주면(clock.now()) 종료일 당일의 종료시각부터 뺀다.
+    """
+    time = ""
+    if isinstance(today, datetime):
+        local = today.astimezone(clock.KST) if today.tzinfo else today
+        time, today = local.strftime("%H:%M"), local.date()
+    day = today.isoformat()
     return [
         p for p in programs
-        if p["매칭가능"] == "Y" and p["55~64세참여"] != "불가" and (not p["표시종료일"] or p["표시종료일"] >= limit)
+        if p["매칭가능"] == "Y" and p["55~64세참여"] != "불가" and _still_open(p, day, time)
     ]
 
 

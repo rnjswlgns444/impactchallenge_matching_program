@@ -17,7 +17,7 @@ import yaml
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
-from app.core import candidates, loader  # noqa: E402
+from app.core import candidates, clock, loader  # noqa: E402
 from app.core.llm_matcher import make_caller, recommend  # noqa: E402
 from app.core.selection import chosen_detail_options  # noqa: E402
 
@@ -71,7 +71,7 @@ def main() -> None:
     data = loader.load_all()
     llm = data.settings["llm"]
     top_n = int(data.settings.get("top_n", 3))
-    today = candidates.today_kst()
+    today = clock.now()
     cases = yaml.safe_load((Path(__file__).parent / "matching_cases.yaml").read_text(encoding="utf-8"))["cases"]
 
     prepared, broken = [], 0
@@ -96,7 +96,7 @@ def main() -> None:
     key = tomllib.loads((ROOT / ".streamlit" / "secrets.toml").read_text(encoding="utf-8"))[KEY_NAMES[provider]]
     caller = make_caller(provider, key, model, effort, float(llm.get("timeout_seconds", 60)))
 
-    print(f"{provider} / 모델 {model} / 생각 깊이 {effort} / 기준일 {today}")
+    print(f"{provider} / 모델 {model} / 생각 깊이 {effort} / 기준일 {today:%Y-%m-%d %H:%M}")
     passed, times = 0, []
     for i, (case, type_ids, details, pool) in enumerate(prepared, 1):
         examples = [opt["label"] for tid in type_ids for opt in chosen_detail_options(data.types[tid], details.get(tid))]

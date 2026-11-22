@@ -23,7 +23,7 @@ PROMPT_PATH = APP_DIR / "prompts" / "matching.md"
 # 코드가 읽는 열. 재확인일·운영근거·비고는 팀 점검용이라 없어도 된다.
 REQUIRED_COLUMNS = [
     "id", "기관명", "프로그램명", "종류", "범위", "한줄설명", "상세설명", "키워드", "유형태그", "세부태그", "첫상담",
-    "55~64세참여", "대상", "확인필요", "보수", "운영상태", "매칭가능", "표시종료일",
+    "55~64세참여", "대상", "확인필요", "보수", "운영상태", "매칭가능", "표시종료일", "종료시각",
     "시간대", "기간", "비용", "장소", "신청방법", "공식연락처", "홈페이지URL", "상세페이지URL", "신청URL",
     "진행방식", "첫방문안내", "혼자참여", "초보참여", "첫연락문장",
     "체험유형", "체험제목", "체험URL", "체험내용", "확인날짜", "출처URL",
@@ -48,6 +48,7 @@ SCOPES = {"안산", NATIONWIDE}
 PAY_VALUES = {"해당없음", "유급", "활동비", "무보수", UNCONFIRMED}
 TASTE_KINDS = {"", "영상", "공개강좌", "앱체험"}
 DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+CLOCK_TIME = re.compile(r"(?:[01]\d|2[0-3]):[0-5]\d")     # 09:00, 16:30 (24시간, 한국 시각)
 
 # 화면(main.py, ui/components.py)이 쓰는 settings.yaml의 text 문구. 화면에 문구를 더하면 여기에도 적는다
 # (test_text_keys_match_the_screen_code가 둘이 어긋나면 알려 준다)
@@ -348,6 +349,8 @@ def validate_programs(programs: list[dict], types_list: list[dict]) -> list[str]
             problems.append(f"{where}: 확인날짜는 2026-11-15 같은 형식이어야 합니다.")
         if row["표시종료일"] and not DATE.fullmatch(row["표시종료일"]):
             problems.append(f"{where}: 표시종료일은 비워 두거나 2026-11-20 같은 형식으로 적습니다.")
+        if row["종료시각"] and not (row["표시종료일"] and CLOCK_TIME.fullmatch(row["종료시각"])):
+            problems.append(f"{where}: 종료시각은 표시종료일과 함께, 16:00 같은 형식(한국 시각)으로 적습니다. 모르면 비워 둡니다.")
         if row["매칭가능"] == "Y" and not row["출처URL"]:
             problems.append(f"{where}: 매칭가능이 Y이면 출처URL이 있어야 합니다. 확인한 공식 페이지 주소를 적어 주세요.")
 

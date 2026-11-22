@@ -19,7 +19,7 @@ import streamlit as st
 # 'streamlit run app/main.py'로 실행해도 app 패키지를 찾을 수 있게 프로젝트 루트를 경로에 넣는다
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.core import candidates, llm_matcher, loader, logger, scoring  # noqa: E402
+from app.core import candidates, clock, llm_matcher, loader, logger, scoring  # noqa: E402
 from app.core import selection as sel  # noqa: E402
 from app.ui import components as ui  # noqa: E402
 from app.ui import style  # noqa: E402
@@ -539,7 +539,7 @@ def screen_result(data, text) -> None:
         # 결과를 보는 동안 문항 파일이 바뀌어 답이 빠진 문항이 생겼으면, 오류 화면 대신 그 문항을 다시 묻는다
         go("survey")
         st.rerun()
-    today = candidates.today_kst()
+    today = clock.now()                                       # 시각까지 넘겨야 종료시각이 지난 회차가 빠진다
     top_n = int(data.settings.get("top_n", 3))
 
     # 유형 판정. 점수는 화면에 보여주지 않는다. 본인이 고른 것(Q_PRIORITY)은 지금 후보에 있을 때만 쓰인다.
