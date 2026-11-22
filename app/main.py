@@ -378,7 +378,7 @@ def browse_types(data, text, type_ids: list[str], first: list[str], opened: list
     for area in data.areas:
         in_area = [tid for tid in type_ids if data.types[tid].get("area") == area["id"] and tid not in first]
         if in_area:
-            ui.html(f'<p class="area">{escape(area["label"])}</p>')
+            ui.html(f'<p class="area" data-area="{escape(area["id"], quote=True)}">{escape(area["label"])}</p>')
             type_buttons(data, in_area, opened, draw_section)
 
 
@@ -637,6 +637,8 @@ def main() -> None:
     logger.set_enabled(data.settings.get("save_log", False))
     st.set_page_config(page_title=data.settings["app_title"], page_icon="🌿", layout="centered",
                        initial_sidebar_state="collapsed")
+    # 화면 읽기 도구가 한국어로 읽도록 페이지 언어를 알려 준다(Streamlit 기본값은 영어)
+    st.html("<script>document.documentElement.lang = 'ko';</script>", unsafe_allow_javascript=True)
     style.apply()
     init_state()
     scroll_to_top()

@@ -29,7 +29,7 @@ def notice(message: str, kind: str = "") -> None:
 
 
 def heading(value: str) -> None:
-    html(f'<p class="q-title">{escape(value)}</p>')
+    html(f'<h2 class="q-title">{escape(value)}</h2>')
 
 
 def topbar(title: str, team: str) -> None:
@@ -88,17 +88,21 @@ def share_box(text: dict, title: str, url: str = "") -> None:
 
 
 def progress(label: str, fraction: float) -> None:
-    """label은 '질문 3 / 24' 같은 진행 글자, fraction은 전체 설문에서 지금까지 온 비율(0~1)이다."""
+    """label은 '질문 3 / 28' 같은 진행 글자, fraction은 전체 설문에서 지금까지 온 비율(0~1)이다.
+
+    화면 읽기 도구에도 퍼센트 대신 같은 진행 글자를 읽어 준다(aria-valuetext).
+    """
     percent = round(fraction * 100)
     # 퍼센트 숫자는 보여주지 않는다. 진행 글자('질문 1 / 24')와 기준이 달라 어긋나 보인다
-    html(f'<p class="q-progress">{escape(label)}</p>'
+    html(f'<p class="q-progress" aria-live="polite">{escape(label)}</p>'
          f'<div class="bar" role="progressbar" aria-label="진행 정도" aria-valuemin="0" aria-valuemax="100" '
-         f'aria-valuenow="{percent}">'
+         f'aria-valuenow="{percent}" aria-valuetext="{escape(label, quote=True)}">'
          f'<i style="width:{percent}%"></i></div>')
 
 
 def question_text(text: str, help_text: str = "") -> None:
-    heading(text)
+    # 문항은 그 화면의 가장 큰 제목이다. 문항이 바뀌면 화면 읽기 도구가 새 문항을 읽어 준다
+    html(f'<h1 class="q-title" aria-live="polite">{escape(text)}</h1>')
     if help_text:
         html(f'<p class="q-help">{escape(help_text)}</p>')
 
@@ -106,9 +110,10 @@ def question_text(text: str, help_text: str = "") -> None:
 def type_header(label: str, type_info: dict) -> None:
     """유형 구역의 머리말: 작은 글(label), 유형 이름, 유형 설명 문장."""
     html(
-        f'<div class="type-box"><p class="type-label">{escape(label)}</p>'
-        f'<p class="type-name">{escape(type_info["name"])}</p>'
-        f'<p>{escape(type_info["statement"])}</p></div>'
+        f'<div class="type-box" data-area="{escape(type_info.get("area", ""), quote=True)}">'
+        f'<p class="type-label">{escape(label)}</p>'
+        f'<h2 class="type-name">{escape(type_info["name"])}</h2>'
+        f'<p class="type-statement">{escape(type_info["statement"])}</p></div>'
     )
 
 
@@ -155,7 +160,7 @@ def _kind_chip(program: dict, text: dict) -> str:
 
 
 def _card_top(program: dict, text: dict) -> None:
-    html(f'{_kind_chip(program, text)}<p class="p-name">{escape(program["프로그램명"])}</p>'
+    html(f'{_kind_chip(program, text)}<h3 class="p-name">{escape(program["프로그램명"])}</h3>'
          f'<p class="p-org">{escape(program["기관명"])}</p>')
     body(program["한줄설명"])
 
@@ -245,7 +250,7 @@ def ai_reason(label: str, reason: str) -> None:
 def picked_card(program: dict, text: dict, reason: str, type_name: str) -> None:
     """직접 적기 구간(화면 맨 위)에 나오는 곳인데 아래쪽 구역에 이미 카드가 있는 경우. 이유, 물어볼 문장, 전화 단추만 다시 보여준다."""
     with st.container(border=True):
-        html(f'<p class="p-name">{escape(program["프로그램명"])}</p><p class="p-org">{escape(program["기관명"])}</p>')
+        html(f'<h3 class="p-name">{escape(program["프로그램명"])}</h3><p class="p-org">{escape(program["기관명"])}</p>')
         if reason:
             ai_reason(text["ai_reason"], reason)
         if program["첫연락문장"]:
@@ -258,7 +263,7 @@ def picked_card(program: dict, text: dict, reason: str, type_name: str) -> None:
 def seen_card(program: dict, text: dict, type_name: str) -> None:
     """위쪽 유형 구역에 이미 나온 곳. 같은 카드를 되풀이하지 않고 한 줄로 알려 준다."""
     with st.container(border=True):
-        html(f'<p class="p-name">{escape(program["프로그램명"])}</p><p class="p-org">{escape(program["기관명"])}</p>')
+        html(f'<h3 class="p-name">{escape(program["프로그램명"])}</h3><p class="p-org">{escape(program["기관명"])}</p>')
         body(text["seen_note"].format(type=type_name))
 
 
@@ -281,7 +286,7 @@ def list_card(program: dict, text: dict) -> None:
 def fallback_card(card: dict, text: dict) -> None:
     """정보표에서 안내할 곳을 하나도 찾지 못했을 때 보여주는 기본 창구."""
     with st.container(border=True):
-        html(f'<p class="p-name">{escape(card["name"])}</p><p class="p-org">{escape(card["org"])}</p>')
+        html(f'<h3 class="p-name">{escape(card["name"])}</h3><p class="p-org">{escape(card["org"])}</p>')
         body(card["description"])
         _call_buttons(card["phone"], text)
         html(f'<div class="say"><b>{escape(text["say_prefix"])}</b><br>“{escape(card["say"])}”</div>')

@@ -67,6 +67,8 @@ CSS = """
 .stApp .app-title, .stApp .q-title, .stApp .area, .stApp .sec, .stApp .p-name, .stApp .type-name {
   color: var(--ink); margin: 0; padding: 0; line-height: 1.4; font-weight: 750;
 }
+/* 제목 태그(h1~h3) 옆에 Streamlit이 붙이는 '링크 복사' 아이콘은 숨긴다. 잘못 누르면 주소만 바뀌어 헷갈린다 */
+.stApp [data-testid="stHeaderActionElements"] { display: none; }
 .stApp .app-title { font-size: clamp(1.9rem, 5vw, 2.65rem); }
 .stApp .q-title { font-size: clamp(1.55rem, 4.5vw, 2rem); }
 .stApp .area, .stApp .sec { margin-top: .6rem; font-size: 1.25rem; }
