@@ -407,8 +407,9 @@ def ask_ai(data, type_ids: list[str], pool: list[dict], wish: str) -> llm_matche
 def free_wish_form(data, text) -> None:
     """원하는 점을 직접 적는 칸(Q_FREE)과 '찾아보기' 단추. 결과 화면 맨 위에 먼저 그린다.
 
-    단추는 AI를 바로 부르지 않고 '찾는 중'(ai_pending)만 켠다. 찾는 동안에는 단추와 글 상자가 잠겨서
+    단추는 AI를 바로 부르지 않고 '찾는 중'(ai_pending)만 켠다. 찾는 동안에는 단추가 잠겨서
     다시 눌러도 AI를 또 부르지 않는다. 실제 호출은 free_wish_result가 한다. 적은 글은 기록하지 않는다.
+    글 상자와 단추는 한 폼이다. 글은 단추를 누를 때만 넘어오므로, 찾는 동안 글을 고쳐도 실행이 끊기지 않는다.
     """
     state = st.session_state
     question = sel.question(data.questions, sel.FREE_Q)
@@ -432,11 +433,14 @@ def free_wish_form(data, text) -> None:
     if question.get("help"):
         ui.html(f'<p class="q-help">{escape(question["help"])}</p>')
     ui.notice(text["free_privacy"], "info")                # 적기 전에 읽도록 글 상자 위에, 작은 글이 아니라 상자로 둔다
-    # 찾는 동안 글을 고치면 실행이 끊겨 AI를 다시 부르게 되므로 글 상자도 함께 잠근다
-    st.text_area(question["text"], key="free_text", max_chars=int(question.get("max_characters", 500)),
-                 label_visibility="collapsed", disabled=state.ai_pending)
-    st.button(width="stretch", label=text["free_button"], key="free_find", type="primary",
-              on_click=find, disabled=state.ai_pending)
+    # 폼으로 묶어야, 단추를 누르는 순간의 글이 단추와 함께 넘어온다. 묶지 않으면 휴대폰(한글 자판)에서
+    # 단추 누름이 먼저 오고 마지막 글자가 뒤늦게 와서, '글을 고치셨으면…'(ai_stale)만 뜨고 결과가 가려진다.
+    # 글 상자는 잠그지 않는다. 폼 안에서 잠그면 적은 글이 지워져서 같은 문제가 다시 생긴다(11/22 브라우저에서 확인)
+    with st.form(key="free_form", border=False):
+        st.text_area(question["text"], key="free_text", max_chars=int(question.get("max_characters", 500)),
+                     label_visibility="collapsed")
+        st.form_submit_button(text["free_button"], key="free_find", type="primary", width="stretch",
+                              on_click=find, disabled=state.ai_pending)
     if state.free_empty:
         ui.notice(text["free_empty"])
 

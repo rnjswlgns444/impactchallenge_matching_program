@@ -169,6 +169,8 @@ CSS = """
 }
 .stApp .stNumberInput input { min-height: 3.25rem; }
 .stApp .stTextArea label p, .stApp [data-testid="stSelectbox"] label p { font-size: 1.125rem; }
+/* 입력칸 구석에 뜨는 영어 안내('Press Ctrl+Enter to submit form')는 숨긴다 */
+.stApp [data-testid="InputInstructions"] { display: none; }
 
 /* 결과 안내 */
 .stApp .type-box {

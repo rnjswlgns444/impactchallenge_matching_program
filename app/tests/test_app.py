@@ -353,8 +353,23 @@ def to_result_with_t01(at: AppTest) -> None:
 
 
 def write_wish(at: AppTest, wish: str) -> None:
-    at.text_area(key="free_text").set_value(wish).run()
+    """글을 적고 '찾아보기'를 누른다. 글 상자와 단추는 한 폼이라, 글은 단추를 누를 때 함께 넘어간다."""
+    at.text_area(key="free_text").set_value(wish)
     click(at, "free_find")
+
+
+def test_free_text_and_find_button_share_one_form(app):
+    """글 상자와 '찾아보기'는 같은 폼에 있어야 한다.
+
+    따로 두면 휴대폰(한글 자판)에서 단추 누름이 먼저 오고 마지막 글자가 뒤늦게 와서,
+    AI가 답을 줘도 '글을 고치셨으면…'만 뜨고 결과가 가려진다.
+    """
+    to_result_with_t01(app)
+    form = app.text_area(key="free_text").proto.form_id
+    assert form and form == app.button(key="free_find").proto.form_id
+    # 글만 적고 단추를 누르지 않으면 아무것도 넘어가지 않는다
+    app.text_area(key="free_text").set_value(WISH).run()
+    assert not app.session_state.free_text and app.session_state.ai is None
 
 
 def test_free_text_adds_ai_picks_with_reasons(app, fake_ai, tmp_path):
@@ -472,14 +487,15 @@ def test_picked_place_already_shown_keeps_call_button(app, fake_ai):
     assert text.index(settings["ai_heading"]) < text.index(settings["type_label"])
     assert text.index(settings["ai_heading"]) < text.index(settings["contacts_heading"])
 
+    # 글만 고치고 '찾아보기'를 다시 누르지 않으면: 예전 결과가 그대로 있고 AI를 또 부르지 않는다
     app.text_area(key="free_text").set_value("다른 글").run()
     text = page_text(app)
-    assert escape(settings["ai_stale"]) in text and "가까운 곳이라 골랐어요." not in text
+    assert "가까운 곳이라 골랐어요." in text and escape(settings["ai_stale"]) not in text
     assert len(fake_ai["prompts"]) == 1
 
 
 def test_find_button_is_locked_while_searching(app, fake_ai, monkeypatch):
-    """찾는 동안에는 '찾는 중'이 켜져 단추와 글 상자가 잠기고, 답이 나오면 풀려서 다시 찾을 수 있다."""
+    """찾는 동안에는 '찾는 중'이 켜져 단추가 잠기고, 답이 나오면 풀려서 다시 찾을 수 있다. 적은 글은 그대로 남는다."""
     import streamlit as st
 
     pool = candidates.ai_pool(loader.load_all().programs, loader.load_all().types, ["T01"], {}, clock.now())
@@ -497,12 +513,13 @@ def test_find_button_is_locked_while_searching(app, fake_ai, monkeypatch):
 
     monkeypatch.setattr(llm_matcher, "make_caller", make_caller)
     to_result_with_t01(app)
-    assert not app.button(key="free_find").disabled and not app.text_area(key="free_text").disabled
+    assert not app.button(key="free_find").disabled
 
     write_wish(app, WISH)
     assert during == [True] and len(fake_ai["prompts"]) == 1      # 한 번 눌러서 한 번만 부른다
     assert app.session_state.ai_pending is False                   # 답이 나오면 풀린다
-    assert not app.button(key="free_find").disabled and not app.text_area(key="free_text").disabled
+    assert not app.button(key="free_find").disabled
+    assert app.text_area(key="free_text").value == WISH           # 찾고 난 뒤에도 적은 글이 지워지지 않는다
     assert "첫 번째 답이에요." in page_text(app)
 
     fake_ai["reply"] = {"matches": [{"id": pool[0]["id"], "reason": "두 번째 답이에요."}], "unmatched": []}
@@ -512,7 +529,7 @@ def test_find_button_is_locked_while_searching(app, fake_ai, monkeypatch):
 
 
 def test_find_button_is_drawn_locked_when_pending(app, fake_ai, monkeypatch):
-    """'찾는 중'인 화면은 단추와 글 상자를 잠근 채로 그린다. (AI의 답을 기다리는 동안 보이는 화면)"""
+    """'찾는 중'인 화면은 단추를 잠근 채로 그린다. 글 상자는 잠그지 않는다(폼 안에서 잠그면 적은 글이 지워진다)."""
     import streamlit as st
 
     def never_answers(*args, **kwargs):
@@ -522,7 +539,8 @@ def test_find_button_is_drawn_locked_when_pending(app, fake_ai, monkeypatch):
     to_result_with_t01(app)
     write_wish(app, WISH)
     assert app.session_state.ai_pending is True
-    assert app.button(key="free_find").disabled and app.text_area(key="free_text").disabled
+    assert app.button(key="free_find").disabled and not app.text_area(key="free_text").disabled
+    assert app.text_area(key="free_text").value == WISH
 
 
 def test_detail_question_takes_one_answer(app):
