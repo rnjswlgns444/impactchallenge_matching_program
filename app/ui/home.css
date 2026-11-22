@@ -35,11 +35,11 @@
   word-break: keep-all;
 }
 .stApp .st-key-home_actions { gap: .48rem; }
-.stApp .survey-length, .stApp .home-privacy {
-  margin: 0; color: var(--muted); font-size: 1rem; line-height: 1.5;
+/* 소요 시간은 시작할지 정하는 정보라 본문 색으로, 18px로 보여준다. 시작 단추 크기는 style.py의 기준(62px)을 그대로 쓴다 */
+.stApp .survey-length {
+  margin: 0; color: var(--body); font-size: 1.125rem; line-height: 1.5;
 }
-.stApp .st-key-home_actions button { min-height: 3.5rem; border-radius: 1rem; }
-.stApp .st-key-home_actions button p { font-size: 1.2rem; }
+.stApp .st-key-home_actions button { border-radius: 1rem; }
 .stApp .st-key-start_browse button { background: var(--surface); border-color: var(--teal); }
 .stApp .st-key-start_browse button p { color: var(--teal); }
 .stApp .st-key-landing [data-testid="stExpander"] details { background: var(--surface); }

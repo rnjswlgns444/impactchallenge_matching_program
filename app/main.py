@@ -253,7 +253,7 @@ def priority_question(data, text, type_ids: list[str], today) -> None:
         example = examples.get(option["id"])
         if example:
             line = text["priority_example"].format(org=example["기관명"], program=example["프로그램명"])
-            ui.html(f'<p class="small-note">{escape(line)}</p>')
+            ui.html(f'<p class="small-note example-note">{escape(line)}</p>')
 
 
 def detail_question(text, type_info: dict, detail: dict) -> None:
@@ -431,7 +431,7 @@ def free_wish_form(data, text) -> None:
     ui.heading(question["text"])
     if question.get("help"):
         ui.html(f'<p class="q-help">{escape(question["help"])}</p>')
-    ui.html(f'<p class="small-note">{escape(text["free_privacy"])}</p>')     # 적기 전에 읽도록 글 상자 위에 둔다
+    ui.notice(text["free_privacy"], "info")                # 적기 전에 읽도록 글 상자 위에, 작은 글이 아니라 상자로 둔다
     # 찾는 동안 글을 고치면 실행이 끊겨 AI를 다시 부르게 되므로 글 상자도 함께 잠근다
     st.text_area(question["text"], key="free_text", max_chars=int(question.get("max_characters", 500)),
                  label_visibility="collapsed", disabled=state.ai_pending)

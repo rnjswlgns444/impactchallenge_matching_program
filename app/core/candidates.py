@@ -43,6 +43,7 @@ def eligible(programs: list[dict], today: date | datetime) -> list[dict]:
     """지금 보여줘도 되는 프로그램: 매칭가능 Y, 55~64세 참여 불가가 아님, 표시종료일·종료시각이 지나지 않음.
 
     today에 날짜만 주면 날짜로만 판단한다. 시각까지 주면(clock.now()) 종료일 당일의 종료시각부터 뺀다.
+    시각은 clock.now()처럼 시간대가 붙은 것을 넘긴다. 시간대가 없는 시각은 바꾸지 않고 한국 시각으로 본다.
     """
     time = ""
     if isinstance(today, datetime):

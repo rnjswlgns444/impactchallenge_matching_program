@@ -43,8 +43,10 @@ CSS = """
 .stApp .body, .stApp .q-help, .stApp .small-note { padding: 0; margin: 0; }
 .stApp .q-help { font-size: 1.1875rem; line-height: 1.6; color: var(--muted); }
 .stApp .small-note, .stApp [data-testid="stCaptionContainer"] p {
-  font-size: 1.0625rem; color: var(--muted); line-height: 1.6;
+  font-size: 1.125rem; color: var(--muted); line-height: 1.6;
 }
+/* 동점 선택지 아래의 '예: 기관 · 프로그램'. 어느 단추의 예인지 알 수 있게 위 단추에 붙인다 */
+.stApp .example-note { margin: -.4rem 0 .5rem; padding-left: .3rem; }
 
 /* 해와 물결 표식은 홈, 질문, 결과에서 같은 크기 비율로 쓴다. */
 .stApp .logo {
@@ -104,7 +106,7 @@ CSS = """
   width: 100%; min-height: 3rem; border: 1px solid transparent; background: transparent;
 }
 .stApp .stButton > button[kind="tertiary"] p {
-  color: var(--teal); font-size: 1.125rem; text-decoration: underline; text-underline-offset: .2em;
+  color: var(--teal); font-size: 1.1875rem; text-decoration: underline; text-underline-offset: .2em;
 }
 .stApp :is(.stButton,.stFormSubmitButton) > button:disabled {
   background: #EBEBE2; border-color: var(--rule); color: #58645D;
@@ -174,14 +176,14 @@ CSS = """
   border: 1px solid #B8D0C2; border-inline-start: .32rem solid var(--teal);
   padding: .8rem 1.1rem;
 }
-.stApp .type-label { margin: 0; font-size: 1.0625rem; font-weight: 700; color: var(--teal); }
+.stApp .type-label { margin: 0; font-size: 1.125rem; font-weight: 700; color: var(--teal); }
 .stApp .type-name { font-size: clamp(1.65rem, 4.7vw, 1.95rem); margin: .13rem 0; }
 .stApp .type-statement { margin: 0; font-size: 1.1875rem; line-height: 1.5; color: var(--ink); }
 .stApp .p-name { font-size: clamp(1.4rem, 4vw, 1.65rem); }
 .stApp .p-org { margin: .18rem 0 0; color: var(--teal); font-weight: 650; font-size: 1.125rem; }
 .stApp .p-kind {
-  display: inline-block; margin: .38rem 0 0; padding: .15rem .55rem; border-radius: .4rem;
-  color: #6F432F; background: #F6E9D8; font-size: 1.02rem; font-weight: 650;
+  display: inline-block; margin: .38rem 0 0; padding: .2rem .6rem; border-radius: .4rem;
+  color: #6F432F; background: #F6E9D8; font-size: 1.125rem; font-weight: 650;
 }
 .stApp .card-facts {
   display: grid; grid-template-columns: minmax(4.5em, max-content) minmax(0,1fr);

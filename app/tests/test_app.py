@@ -6,16 +6,26 @@ from __future__ import annotations
 
 import csv
 import json
+from datetime import datetime
 from html import escape
 from pathlib import Path
 
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from app.core import candidates, llm_matcher, loader, logger
+from app.core import candidates, clock, llm_matcher, loader, logger
 from app.core import selection as sel
 
 MAIN = str(Path(__file__).resolve().parents[1] / "main.py")
+
+
+NOW = datetime(2026, 11, 22, 12, 0, tzinfo=clock.KST)
+
+
+@pytest.fixture(autouse=True)
+def fixed_clock(monkeypatch):
+    """앱과 테스트가 같은 시각을 보게 시계를 고정한다. 그러지 않으면 종료시각이 있는 행 때문에 날짜·시각에 따라 결과가 달라진다."""
+    monkeypatch.setattr(clock, "now", lambda: NOW)
 
 
 @pytest.fixture
@@ -151,7 +161,7 @@ def test_tie_lets_the_user_choose(app, tmp_path):
     assert text["tie_two"] in page and text["type_label"] not in page
     assert [b.label for b in app.button][:2] == [data.types["T05"]["statement"], data.types["T07"]["statement"]]
     # 선택지 아래의 예시는 그 유형에서 지금 안내할 수 있는 곳(걸러진 후보의 첫 번째)이다
-    first = candidates.for_type(data.programs, data.types["T05"], None, candidates.today_kst())
+    first = candidates.for_type(data.programs, data.types["T05"], None, clock.now())
     example = (first.contacts or first.lists)[0]
     assert escape(text["priority_example"].format(org=example["기관명"], program=example["프로그램명"])) in page
     row = rows(tmp_path, "responses.csv")[0]
@@ -281,6 +291,28 @@ def test_type_with_places_keeps_the_intro(app):
     assert loader.load_all().settings["text"]["result_intro"] in page_text(app)
 
 
+def test_row_disappears_from_the_screen_at_its_end_time(app, monkeypatch):
+    """화면이 날짜만이 아니라 시각까지 넘겨서, 종료일 당일 종료시각이 되면 그 행이 결과에서 빠진다."""
+    data = loader.load_all()
+    timed = next(p for p in data.programs if p["매칭가능"] == "Y" and p["종료시각"])      # 지금은 창업 특강(JOB03)
+    type_id = timed["유형태그"].split("|")[0]
+    year, month, day = map(int, timed["표시종료일"].split("-"))
+    hour, minute = map(int, timed["종료시각"].split(":"))
+    end = datetime(year, month, day, hour, minute, tzinfo=clock.KST)
+
+    def shown() -> bool:
+        if [b for b in app.button if b.key == f"more_{type_id}"]:
+            click(app, f"more_{type_id}")
+        return timed["프로그램명"] in page_text(app)
+
+    monkeypatch.setattr(clock, "now", lambda: end.replace(hour=0, minute=0))        # 종료일 0시: 아직 보인다
+    take_survey(app, **{type_id: (5, 5)})
+    assert shown()
+    monkeypatch.setattr(clock, "now", lambda: end)                                   # 종료시각: 빠진다
+    app.run()
+    assert not app.exception and not shown()
+
+
 def test_start_screen_warns_that_refresh_clears_answers(app):
     assert escape(loader.load_all().settings["text"]["start_refresh"]) in page_text(app)
 
@@ -329,7 +361,7 @@ def test_free_text_adds_ai_picks_with_reasons(app, fake_ai, tmp_path):
     """글을 적고 찾아보기를 누르면 AI가 고른 곳과 이유가 나온다. 지어낸 id는 나오지 않고, 글은 남지 않는다."""
     data = loader.load_all()
     settings = data.settings["text"]
-    pool = candidates.ai_pool(data.programs, data.types, ["T01"], {}, candidates.today_kst())
+    pool = candidates.ai_pool(data.programs, data.types, ["T01"], {}, clock.now())
     fake_ai["reply"] = {"matches": [{"id": pool[-1]["id"], "reason": "오전에 사무 일을 찾으신다고 해서 골랐어요."},
                                     {"id": "없는id", "reason": "지어낸 곳이에요."}], "unmatched": []}
     to_result_with_t01(app)
@@ -367,7 +399,7 @@ def test_opened_type_joins_the_ai_candidates(app, fake_ai):
     click(app, "more_types")
     click(app, "browse_T09")
     write_wish(app, "연금도 궁금해요")
-    pool = candidates.ai_pool(data.programs, data.types, ["T01", "T09"], {}, candidates.today_kst())
+    pool = candidates.ai_pool(data.programs, data.types, ["T01", "T09"], {}, clock.now())
     prompt = fake_ai["prompts"][0]
     assert prompt.count("- id: ") == len(pool)
     assert data.types["T01"]["name"] in prompt and data.types["T09"]["name"] in prompt
@@ -418,7 +450,7 @@ def test_nothing_matched_leads_to_general_window(app, fake_ai):
     text = page_text(app)
     assert data.settings["text"]["ai_none"] in text
     assert data.settings["text"]["ai_heading"] not in text     # 찾은 곳이 없으면 제목을 내지 않는다
-    everything = candidates.ai_pool(data.programs, data.types, [], {}, candidates.today_kst())
+    everything = candidates.ai_pool(data.programs, data.types, [], {}, clock.now())
     assert fake_ai["prompts"][0].count("- id: ") == len(everything)
     assert llm_matcher.NO_TYPE in fake_ai["prompts"][0]
 
@@ -427,7 +459,7 @@ def test_picked_place_already_shown_keeps_call_button(app, fake_ai):
     """AI가 고른 곳이 아래에 이미 나온 곳이어도 이유와 전화 단추를 그 자리에서 보여준다. 글을 고치면 옛 결과를 숨긴다."""
     data = loader.load_all()
     settings = data.settings["text"]
-    pool = candidates.ai_pool(data.programs, data.types, ["T01"], {}, candidates.today_kst())
+    pool = candidates.ai_pool(data.programs, data.types, ["T01"], {}, clock.now())
     fake_ai["reply"] = {"matches": [{"id": pool[0]["id"], "reason": "가까운 곳이라 골랐어요."}], "unmatched": ["해외여행"]}
     to_result_with_t01(app)
     calls_before = page_text(app).count(settings["call_button"])
@@ -450,7 +482,7 @@ def test_find_button_is_locked_while_searching(app, fake_ai, monkeypatch):
     """찾는 동안에는 '찾는 중'이 켜져 단추와 글 상자가 잠기고, 답이 나오면 풀려서 다시 찾을 수 있다."""
     import streamlit as st
 
-    pool = candidates.ai_pool(loader.load_all().programs, loader.load_all().types, ["T01"], {}, candidates.today_kst())
+    pool = candidates.ai_pool(loader.load_all().programs, loader.load_all().types, ["T01"], {}, clock.now())
     fake_ai["reply"] = {"matches": [{"id": pool[0]["id"], "reason": "첫 번째 답이에요."}], "unmatched": []}
     during = []
     real_make = llm_matcher.make_caller

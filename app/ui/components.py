@@ -76,9 +76,9 @@ _SHARE_CODE = """(function (cfg) {
 
 def share_box(text: dict, title: str, url: str = "") -> None:
     """결과 화면 맨 아래의 '친구에게 공유하기'. 답이나 결과는 보내지 않는다."""
-    html(f'<div class="share"><p class="q-title">{escape(text["share_heading"])}</p>'
+    html(f'<div class="share"><h2 class="q-title">{escape(text["share_heading"])}</h2>'
          f'<p class="q-help">{escape(text["share_help"])}</p>'
-         f'<a class="a-btn fill share-btn" href="#" role="button">💬 {escape(text["share_button"])}</a>'
+         f'<a class="a-btn share-btn" href="#" role="button">💬 {escape(text["share_button"])}</a>'
          f'<p class="small-note share-status" aria-live="polite"></p><p class="share-url"></p></div>')
     config = {"title": title, "message": text["share_message"], "copied": text["share_copied"],
               "failed": text["share_failed"], "url": url}
@@ -147,9 +147,11 @@ def phones(contact: str) -> list[tuple[str, str]]:
 
 def _call_buttons(contact: str, text: dict) -> None:
     for number, shown in phones(contact):
-        # 전화번호가 줄 중간에서 끊기지 않게 번호는 한 덩어리로 둔다. 노란 단추는 공식 안내 하나만 쓴다
-        html(f'<a class="a-btn line phone-link" href="tel:{number}">'
-             f'<span>📞 {escape(text["call_button"])}</span><span class="nowrap">{escape(shown)}</span></a>')
+        # 전화번호가 줄 중간에서 끊기지 않게 번호만 한 덩어리로 둔다. 뒤의 괄호 설명은 길면 줄이 바뀐다
+        digits, bracket, rest = shown.partition("(")
+        note = f" {escape(bracket + rest)}" if bracket else ""
+        html(f'<a class="a-btn line phone-link" href="tel:{number}"><span>📞 {escape(text["call_button"])}</span>'
+             f'<span><span class="nowrap">{escape(digits.strip())}</span>{note}</span></a>')
 
 
 def _bullets(items: list[str]) -> None:
@@ -212,8 +214,9 @@ def program_card(program: dict, text: dict, type_info: dict | None = None, guide
                  asked: list[str] | None = None, key: str = "") -> None:
     """문의할 수 있는 곳 한 곳. 카드를 펴지 않아도 무엇을 어디서 하는지 읽고 공식 안내·전화로 갈 수 있다.
 
-    순서: 이름·기관·한 줄 설명 → 공식 안내·신청·전화 단추 → 장소·처음 이용할 때·대상·시간·비용
-          → 이렇게 물어보세요 → (접힘) 물어볼 준비 → 확인 날짜
+    순서: 이름·기관·한 줄 설명 → 공식 안내·신청 단추 → 이렇게 물어보세요 → 전화 단추
+          → 장소·처음 이용할 때·대상·시간·비용 → (접힘) 물어볼 준비 → 확인 날짜
+    물어볼 문장은 전화 단추 바로 위에 둔다. 전화를 누르는 순간에 문장이 눈에 보여야 한다.
     guides: 사용자가 고른 걸림돌(selection.barrier_guides). 정보표에 확인된 내용이 있으면 그 내용을,
             없으면 기관에 물어볼 문장을 보여준다. 확인되지 않은 것을 지어내지 않는다.
     asked: 세부 질문에서 고른 문장. 그대로 물어볼 문장에 넣는다.
@@ -222,24 +225,17 @@ def program_card(program: dict, text: dict, type_info: dict | None = None, guide
     with st.container(border=True):
         _card_top(program, text)
 
-        # ── 단추: 공식 안내(노랑) → 신청 → 전화 ──
-        primary_url = _official_button(program, text)
-        if program["신청URL"] and program["신청URL"] != primary_url:
-            link_button(text["apply_button"], program["신청URL"])
-        _call_buttons(program["공식연락처"], text)
-
-        # ── 한눈에 보는 정보 ──
         place = program["장소"] or program["진행방식"]
         no_visit = _no_visit(place)
         first_step = program["첫방문안내"] or program["신청방법"]
         timing = program["기간"] if program["종류"] == KIND_PERIOD else ""
-        _facts([("이용 방법" if no_visit else "장소", place),
-                (text["first_visit_label"], first_step),
-                (text["target_label"], program["대상"]),
-                ("일정" if timing else "시간", timing or program["시간대"]),
-                ("비용", program["비용"])])
 
-        # ── 물어볼 문장과 물어볼 준비 ──
+        # ── 공식 안내(노랑) → 신청 ──
+        primary_url = _official_button(program, text)
+        if program["신청URL"] and program["신청URL"] != primary_url:
+            link_button(text["apply_button"], program["신청URL"])
+
+        # ── 물어볼 문장 → 전화 ──
         checks = _checks(program, text, type_info)
         worries, sentences = [], [program["첫연락문장"]] if program["첫연락문장"] else []
         sentences += list(asked or [])
@@ -255,6 +251,14 @@ def program_card(program: dict, text: dict, type_info: dict | None = None, guide
         if sentences:
             lines = "<br>".join(f"“{escape(s)}”" for s in dict.fromkeys(sentences))     # 같은 문장은 한 번만
             html(f'<div class="say"><b>{escape(text["say_prefix"])}</b><br>{lines}</div>')
+        _call_buttons(program["공식연락처"], text)
+
+        # ── 한눈에 보는 정보 ──
+        _facts([("이용 방법" if no_visit else "장소", place),
+                (text["first_visit_label"], first_step),
+                (text["target_label"], program["대상"]),
+                ("일정" if timing else "시간", timing or program["시간대"]),
+                ("비용", program["비용"])])
 
         # 위 표에 못 다 적은 것: 기간 프로그램의 시간대, '처음 이용할 때'에 쓰지 않은 신청 방법
         extra_facts = []
