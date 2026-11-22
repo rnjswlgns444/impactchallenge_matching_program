@@ -174,7 +174,11 @@ def screen_survey(data, text) -> None:
     kind = question["selection"]
     # 진행 표시는 기본정보부터 걸림돌까지 한 줄로 센다('질문 n / 28'). 글자와 막대가 같은 기준이다
     position = survey.index(question) + 1
-    ui.progress(text["progress_scale"].format(number=position, total=len(survey)), position / len(survey))
+    if editing:
+        # 답 하나만 고치는 중: '질문 5 / 28'을 보여주면 뒤의 문항을 다시 해야 하는 것으로 읽힌다
+        ui.notice(text["edit_notice"], "info")
+    else:
+        ui.progress(text["progress_scale"].format(number=position, total=len(survey)), position / len(survey))
 
     def answer(value) -> None:
         state.answers[qid] = value
@@ -590,18 +594,17 @@ def edit_answers(data, text) -> None:
         for number, q in enumerate(survey, 1)
     }
 
-    def edit() -> None:
-        qid = state.get("edit_pick")
-        if qid not in lines:
-            return
+    def edit(qid: str) -> None:
         value = state.answers.get(qid)
         state.draft[qid] = list(value) if isinstance(value, list) else value    # 지금 답을 표시해 준다
         state.edit_q = qid
         go("survey")
 
+    # 고르는 상자(selectbox)는 휴대폰에서 글자가 작고 긴 줄이 잘려서, 문항마다 단추 하나로 둔다
     with st.expander(text["edit_heading"], key="edit_box"):
-        st.selectbox(text["edit_select"], list(lines), format_func=lines.get, key="edit_pick")
-        st.button(width="stretch", label=text["edit_button"], key="edit_answer", on_click=edit)
+        ui.html(f'<p class="q-help">{escape(text["edit_select"])}</p>')
+        for qid, line in lines.items():
+            st.button(width="stretch", label=line, key=f"edit_{qid}", on_click=edit, args=(qid,))
 
 
 def result_footer(data, text, judged: scoring.Score) -> None:
@@ -640,7 +643,7 @@ def screen_browse(data, text) -> None:
 
     def draw_section(type_id: str) -> None:
         result = candidates.for_type(data.programs, data.types[type_id], state.details.get(type_id), today)
-        type_section(data, text, result, text["type_label_other"], [], top_n, seen, consults)
+        type_section(data, text, result, text["type_label_browse"], [], top_n, seen, consults)
 
     ui.notice(text["browse_intro"], "info")
     browse_types(data, text, list(data.types), [], opened, draw_section)
@@ -651,7 +654,6 @@ def screen_browse(data, text) -> None:
               on_click=leave, args=("survey",))
     st.button(width="stretch", label=text["browse_to_start"], key="browse_to_start", type="tertiary",
               on_click=leave, args=("start",))
-    ui.html(f'<p class="small-note">{escape(text["disclaimer"])}</p>')
 
 
 def screen_result(data, text) -> None:

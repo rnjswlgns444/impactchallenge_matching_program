@@ -617,10 +617,11 @@ def test_one_answer_can_be_fixed_from_the_result(app):
     assert text["type_label"] in page_text(app)
 
     # 고르기만 하고 '수정하지 않고 결과로'를 누르면 아무것도 바뀌지 않는다
-    app.selectbox(key="edit_pick").set_value(first).run()
-    click(app, "edit_answer")
+    click(app, f"edit_{first}")
     assert app.session_state.screen == "survey"
-    assert sel.question(data.questions, first)["text"] in page_text(app)
+    page = page_text(app)
+    assert sel.question(data.questions, first)["text"] in page
+    assert text["edit_notice"] in page and "aria-valuetext" not in page             # 진행 표시 대신 안내 한 줄
     assert "✓ " + data.scale[0]["label"] in [b.label for b in app.button]          # 지금 답(5점)이 표시되어 있다
     assert "back_survey" not in [b.key for b in app.button]                         # 고치는 중에는 '이전으로'가 없다
     click(app, "edit_cancel")
@@ -628,8 +629,7 @@ def test_one_answer_can_be_fixed_from_the_result(app):
     assert text["type_label"] in page_text(app)
 
     # 5점을 1점으로 고치면 그 문항만 묻고 바로 결과로 돌아온다. 일터찾기형은 6점이 되어 대표 유형이 사라진다
-    app.selectbox(key="edit_pick").set_value(first).run()
-    click(app, "edit_answer")
+    click(app, f"edit_{first}")
     click(app, f"opt_{first}_1")
     assert app.session_state.screen == "result" and "edit_q" not in app.session_state
     assert app.session_state.answers[first] == 1 and app.session_state.answers[second] == 5
