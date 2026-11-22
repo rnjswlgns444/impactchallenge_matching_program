@@ -155,12 +155,18 @@ def screen_start(data, text) -> None:
 
 def screen_survey(data, text) -> None:
     state = st.session_state
-    question = sel.next_question(state.answers, data.questions)
+    survey = sel.survey_questions(data.questions)
+    # 결과 화면에서 '선택한 답 수정하기'로 왔으면(edit_q) 그 문항 하나만 다시 묻고 결과로 돌아간다
+    editing = state.get("edit_q")
+    question = next((q for q in survey if q["id"] == editing), None)
+    if question is None:
+        state.pop("edit_q", None)                 # 고칠 문항이 없으면(문항 파일이 바뀜) 평소대로 다음 문항을 묻는다
+        editing = None
+        question = sel.next_question(state.answers, data.questions)
     if question is None:
         go("result")
         st.rerun()
 
-    survey = sel.survey_questions(data.questions)
     qid = question["id"]
     kind = question["selection"]
     # 진행 표시는 기본정보부터 걸림돌까지 한 줄로 센다('질문 n / 28'). 글자와 막대가 같은 기준이다
@@ -171,6 +177,13 @@ def screen_survey(data, text) -> None:
         state.answers[qid] = value
         state.draft.pop(qid, None)
         state.to_top = True
+        if editing:
+            # 답이 바뀌었으니 결과는 답에서 다시 판정한다. 예전 답으로 AI가 찾아 준 것은 지운다
+            state.pop("edit_q", None)
+            state.ai = None
+            state.ai_pending = False
+            state.free_empty = False
+            go("result")
 
     # 질문과 선택지는 흰 카드(q_card) 안에, 이전 단추는 카드 밖에 둔다. 모든 문항은 답해야 넘어간다
     card = st.container(key="q_card")
@@ -221,8 +234,15 @@ def screen_survey(data, text) -> None:
                           key=f"opt_{qid}_{option['id']}", type="primary" if selected else "secondary",
                           on_click=answer, args=(option["id"],))
 
-    st.button(width="stretch", label=text["back_button"], key="back_survey", type="tertiary",
-              on_click=back_one, args=(data.questions,))
+    if editing:
+        def cancel_edit() -> None:
+            state.pop("edit_q", None)
+            state.draft.pop(qid, None)
+            go("result")
+        st.button(width="stretch", label=text["edit_cancel"], key="edit_cancel", type="tertiary", on_click=cancel_edit)
+    else:
+        st.button(width="stretch", label=text["back_button"], key="back_survey", type="tertiary",
+                  on_click=back_one, args=(data.questions,))
 
 
 # ── 결과 화면 ──
@@ -541,6 +561,41 @@ def log_once(data, judged: scoring.Score, shown_ids: list[str]) -> None:
     state.logged = shape
 
 
+def answer_label(data, question: dict, value) -> str:
+    """설문 답을 화면에 보여줄 글로 바꾼다. 예) 4 → '그래요', ['alone'] → '혼자 가기 망설여져요'."""
+    if question["selection"] == sel.SCALE:
+        options = [{"id": opt["value"], "label": opt["label"]} for opt in data.scale]
+    else:
+        options = question.get("options") or []
+    values = value if isinstance(value, list) else [value]
+    labels = [str(opt["label"]) for opt in options if opt["id"] in values]
+    return ", ".join(labels) or str(value)
+
+
+def edit_answers(data, text) -> None:
+    """설문 답변 확인·수정. 문항 하나를 골라 그 답만 고친다. 처음부터 다시 하지 않아도 된다."""
+    state = st.session_state
+    survey = sel.survey_questions(data.questions)
+    lines = {
+        q["id"]: text["edit_option"].format(number=number, question=q["text"],
+                                            answer=answer_label(data, q, state.answers.get(q["id"])))
+        for number, q in enumerate(survey, 1)
+    }
+
+    def edit() -> None:
+        qid = state.get("edit_pick")
+        if qid not in lines:
+            return
+        value = state.answers.get(qid)
+        state.draft[qid] = list(value) if isinstance(value, list) else value    # 지금 답을 표시해 준다
+        state.edit_q = qid
+        go("survey")
+
+    with st.expander(text["edit_heading"], key="edit_box"):
+        st.selectbox(text["edit_select"], list(lines), format_func=lines.get, key="edit_pick")
+        st.button(width="stretch", label=text["edit_button"], key="edit_answer", on_click=edit)
+
+
 def result_footer(data, text, judged: scoring.Score) -> None:
     state = st.session_state
 
@@ -550,6 +605,7 @@ def result_footer(data, text, judged: scoring.Score) -> None:
 
     if sel.PRIORITY_Q in state.answers:
         st.button(width="stretch", label=text["repick_button"], key="repick", type="tertiary", on_click=repick)
+    edit_answers(data, text)
     st.button(width="stretch", label=text["back_button"], key="back_result", type="tertiary",
               on_click=back_one, args=(data.questions,))
     st.button(width="stretch", label=text["restart_button"], key="restart", on_click=restart)

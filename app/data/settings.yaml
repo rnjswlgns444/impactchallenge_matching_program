@@ -103,7 +103,12 @@ text:
   # 대표 유형이 없을 때
   result_heading: "이런 곳에 물어볼 수 있어요"
   low_interest: "아직 한 가지로 정하기 어려워요. 어떤 도움이 있는지 먼저 둘러볼까요?"
-  edit_hint: "답을 고치고 싶으면 맨 아래 '← 이전으로'를 눌러 주세요."
+  edit_hint: "답을 고치고 싶으면 맨 아래 '설문 답변 확인·수정'을 눌러 주세요."
+  edit_heading: "설문 답변 확인·수정"                       # 결과 화면 아래의 접힌 칸 제목
+  edit_select: "어느 답을 바꿀까요?"
+  edit_option: "{number}. {question} · {answer}"            # 고르는 목록의 한 줄. 문항 번호, 문항, 지금 답
+  edit_button: "선택한 답 수정하기"
+  edit_cancel: "수정하지 않고 결과로"
   detail_label: "조금 더 맞춰 보기 (안 골라도 돼요)"
   contacts_heading: "지금 문의할 수 있는 곳"
   lists_heading: "목록에서 직접 찾아보기"

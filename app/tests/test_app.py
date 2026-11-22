@@ -578,6 +578,36 @@ def test_mind_and_health_detail_answers_are_not_logged(app, tmp_path):
     assert "chronic" not in (tmp_path / "responses.csv").read_text(encoding="utf-8-sig")
 
 
+def test_one_answer_can_be_fixed_from_the_result(app):
+    """결과 화면에서 문항 하나를 골라 답을 고치면, 그 문항만 다시 묻고 결과를 다시 판정한다."""
+    data = loader.load_all()
+    text = data.settings["text"]
+    first, second = sel.type_questions(data.questions, data.types)["T01"]
+    take_survey(app, T01=(5, 5))
+    assert text["type_label"] in page_text(app)
+
+    # 고르기만 하고 '수정하지 않고 결과로'를 누르면 아무것도 바뀌지 않는다
+    app.selectbox(key="edit_pick").set_value(first).run()
+    click(app, "edit_answer")
+    assert app.session_state.screen == "survey"
+    assert sel.question(data.questions, first)["text"] in page_text(app)
+    assert "✓ " + data.scale[0]["label"] in [b.label for b in app.button]          # 지금 답(5점)이 표시되어 있다
+    assert "back_survey" not in [b.key for b in app.button]                         # 고치는 중에는 '이전으로'가 없다
+    click(app, "edit_cancel")
+    assert app.session_state.screen == "result" and app.session_state.answers[first] == 5
+    assert text["type_label"] in page_text(app)
+
+    # 5점을 1점으로 고치면 그 문항만 묻고 바로 결과로 돌아온다. 일터찾기형은 6점이 되어 대표 유형이 사라진다
+    app.selectbox(key="edit_pick").set_value(first).run()
+    click(app, "edit_answer")
+    click(app, f"opt_{first}_1")
+    assert app.session_state.screen == "result" and "edit_q" not in app.session_state
+    assert app.session_state.answers[first] == 1 and app.session_state.answers[second] == 5
+    assert len([q for q in sel.survey_questions(data.questions) if q["id"] in app.session_state.answers]) == 28
+    page = page_text(app)
+    assert text["type_label"] not in page and text["low_interest"] in page
+
+
 def test_result_order_and_folded_consult(app):
     """대표 유형이 있으면: 유형 결과가 직접 적기보다 먼저 나오고, 함께 찾아 주는 창구는 접혀 있다."""
     data = loader.load_all()
