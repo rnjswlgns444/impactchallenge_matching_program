@@ -1,11 +1,10 @@
-# 화면 색과 글꼴 (밝은 화면으로 고정). 비밀 정보는 여기 넣지 않고 secrets.toml에 넣는다.
+# 안산노믹스 화면 기본색. 노랑은 주요 행동에 쓰고, 위젯 포커스에는 짙은 청록을 쓴다.
 [theme]
 base = "light"
-# 노란 포인트 색은 여기가 아니라 app/ui/style.py에서 정한 곳에만 칠한다(여기에 넣으면 입력칸 테두리까지 노래져 안 보인다).
-primaryColor = "#191919"
-backgroundColor = "#ffffff"
-secondaryBackgroundColor = "#f4f3ef"
-textColor = "#191919"
+primaryColor = "#12675F"
+backgroundColor = "#F8FBF7"
+secondaryBackgroundColor = "#DDF4EC"
+textColor = "#143F3C"
 
 [browser]
 gatherUsageStats = false
