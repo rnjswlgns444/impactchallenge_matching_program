@@ -598,7 +598,7 @@ def test_browse_without_the_survey(app, tmp_path):
     assert not [p for p in women_only if p["프로그램명"] not in page_text(app)]
 
     click(app, "browse_T11")                                          # 돌봄은 여기서도 먼저 골라야 나온다
-    assert text["detail_first"] in page_text(app)
+    assert escape(text["detail_first"]) in page_text(app)
     assert not (tmp_path / "responses.csv").exists()
 
     click(app, "browse_to_start")                                     # 나가면 열어 본 분야를 지운다
@@ -667,13 +667,13 @@ def test_care_type_asks_who_first(app):
     text = data.settings["text"]
     take_survey(app, T11=(5, 5))
     page = page_text(app)
-    assert text["detail_first"] in page and text["contacts_heading"] not in page
+    assert escape(text["detail_first"]) in page and text["contacts_heading"] not in page
     assert text["no_program"] not in page                          # '안내할 곳이 없다'가 아니라 '먼저 골라 달라'다
 
     click(app, "detail_T11_child")
     page = page_text(app)
     mine = candidates.for_type(data.programs, data.types["T11"], "child", clock.now(), app.session_state.answers)
-    assert text["detail_first"] not in page and mine.contacts[0]["프로그램명"] in page
+    assert escape(text["detail_first"]) not in page and mine.contacts[0]["프로그램명"] in page
     others = candidates.for_type(data.programs, data.types["T11"], "adult", clock.now(), app.session_state.answers)
     assert not [p for p in others.contacts if p["프로그램명"] in page]      # 다른 주제의 곳은 빠진다
 
@@ -695,6 +695,27 @@ def test_no_exact_topic_shows_the_type_places_with_a_note(app, monkeypatch):
     click(app, "detail_T12_smoking")
     page = page_text(app)
     assert text["widened_note"] in page and text["contacts_heading"] in page and text["no_program"] not in page
+
+
+def test_health_detail_choice_is_not_sent_to_ai(app, fake_ai):
+    """마음·건강 세부 질문에서 고른 것은 AI 지시문에도 넣지 않는다. 다른 유형의 세부 선택은 넣는다."""
+    data = loader.load_all()
+    fake_ai["reply"] = {"matches": [], "unmatched": []}
+    take_survey(app, T12=(5, 5))
+    click(app, "detail_T12_chronic")
+    write_wish(app, WISH)
+    label = next(o["label"] for o in data.types["T12"]["detail"]["options"] if o["id"] == "chronic")
+    assert len(fake_ai["prompts"]) == 1 and label not in fake_ai["prompts"][0]
+
+
+def test_job_detail_choice_is_sent_to_ai(app, fake_ai):
+    data = loader.load_all()
+    fake_ai["reply"] = {"matches": [], "unmatched": []}
+    to_result_with_t01(app)
+    click(app, "detail_T01_previous_work")
+    write_wish(app, WISH)
+    label = next(o["label"] for o in data.types["T01"]["detail"]["options"] if o["id"] == "previous_work")
+    assert label in fake_ai["prompts"][0]
 
 
 def test_no_detail_question_allows_many_answers():

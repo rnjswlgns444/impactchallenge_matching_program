@@ -428,9 +428,14 @@ def consult_section(data, text, consults: list[dict], guides, folded: bool = Fal
 
 
 def wish_examples(data, type_ids: list[str]) -> list[str]:
-    """AI에게 함께 알려 줄, 사용자가 고른 항목: 세부 질문의 답과 마음에 걸린다고 한 점."""
+    """AI에게 함께 알려 줄, 사용자가 고른 항목: 세부 질문의 답과 마음에 걸린다고 한 점.
+
+    마음·건강처럼 답을 남기지 않기로 한 세부 질문(log_answer: false)의 선택은 AI로도 보내지 않는다.
+    AI 후보는 세부 주제로 좁히지 않으므로, 이 선택을 빼도 같은 유형 안에서 찾아 준다.
+    """
     state = st.session_state
     chosen = [opt["label"] for tid in type_ids
+              if (sel.detail_of(data.types[tid]) or {}).get("log_answer", True)
               for opt in sel.chosen_detail_options(data.types[tid], state.details.get(tid))]
     worries = [f'마음에 걸리는 점: {guide["label"]}' for guide in sel.barrier_guides(state.answers, data.questions)]
     return chosen + worries

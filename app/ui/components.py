@@ -284,7 +284,7 @@ def ai_reason(label: str, reason: str) -> None:
 
 
 def picked_card(program: dict, text: dict, reason: str, type_name: str) -> None:
-    """직접 적기 구간(화면 맨 위)에 나오는 곳인데 아래쪽 구역에 이미 카드가 있는 경우. 이유, 물어볼 문장, 전화 단추만 다시 보여준다."""
+    """직접 적기 구간에 나오는 곳인데 같은 화면의 다른 구역에 이미 카드가 있는 경우. 이유, 물어볼 문장, 전화 단추만 다시 보여준다."""
     with st.container(border=True):
         html(f'<h3 class="p-name">{escape(program["프로그램명"])}</h3><p class="p-org">{escape(program["기관명"])}</p>')
         if reason:

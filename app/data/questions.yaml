@@ -58,11 +58,11 @@ questions:
   # ── 척도 문항 24개 ──
   - {id: Q01, type: T01, selection: scale, text: "꾸준히 다닐 직장을 찾고 싶어요."}
   - {id: Q02, type: T05, selection: scale, text: "시간 날 때 즐길 새 취미를 찾고 싶어요."}
-  - {id: Q03, type: T07, selection: scale, text: "정기적으로 만나고 함께할 사람들을 찾고 싶어요."}
+  - {id: Q03, type: T07, selection: scale, text: "꾸준히 만나고 함께할 사람들을 찾고 싶어요."}
   - {id: Q04, type: T09, selection: scale, text: "연금은 얼마나 받고 생활비는 얼마나 들지 따져 보고 싶어요."}
   - {id: Q05, type: T03, selection: scale, text: "가게나 사업을 직접 꾸려가고 싶어요."}
   - {id: Q06, type: T06, selection: scale, text: "새로운 지식이나 생활에 쓸 만한 걸 배우고 싶어요."}
-  - {id: Q07, type: T10, selection: scale, text: "내 조건으로 받을 수 있는 지원이나 혜택을 확인하고 싶어요."}
+  - {id: Q07, type: T10, selection: scale, text: "내가 받을 수 있는 지원이나 혜택을 확인하고 싶어요."}
   - {id: Q08, type: T12, selection: scale, text: "내 건강 상태에 맞는 관리 방법을 알아보고 싶어요."}
   - {id: Q09, type: T02, selection: scale, text: "무리하지 않고 짧게 일하거나 활동하고 싶어요."}
   - {id: Q10, type: T08, selection: scale, text: "마음에 걸리는 일을 상담 선생님과 이야기하고 싶어요."}
@@ -70,8 +70,8 @@ questions:
   - {id: Q12, type: T11, selection: scale, text: "나나 가족의 일상을 도와줄 사람이나 서비스를 찾고 싶어요."}
   - {id: Q13, type: T07, selection: scale, text: "관심사가 비슷한 사람들과 모임을 이어가고 싶어요."}
   - {id: Q14, type: T01, selection: scale, text: "오래 일할 수 있는 일자리를 소개받고 싶어요."}
-  - {id: Q15, type: T10, selection: scale, text: "지원금이나 요금 감면 중 내가 신청할 수 있는 것을 알아보고 싶어요."}
-  - {id: Q16, type: T05, selection: scale, text: "재미를 위해 만들기나 운동, 공연 같은 활동을 해보고 싶어요."}
+  - {id: Q15, type: T10, selection: scale, text: "내가 신청할 수 있는 지원금이나 요금 할인을 알아보고 싶어요."}
+  - {id: Q16, type: T05, selection: scale, text: "만들기든 운동이든 공연 구경이든, 재미 삼아 해 보고 싶어요."}
   - {id: Q17, type: T11, selection: scale, text: "돌봄에 필요한 도움을 어디서 받을 수 있는지 알아보고 싶어요."}
   - {id: Q18, type: T04, selection: scale, text: "취업이나 부업에 도움이 되는 교육을 찾아보고 싶어요."}
   - {id: Q19, type: T09, selection: scale, text: "은퇴 전후에 들어올 돈과 나갈 돈을 짚어 보며 상담받고 싶어요."}
