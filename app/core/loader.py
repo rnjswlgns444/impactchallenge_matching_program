@@ -67,7 +67,7 @@ TEXT_KEYS = """
 """.split()
 # 값을 끼워 넣는 문구와, 그 문구에 쓸 수 있는 자리표시자
 TEXT_FIELDS = {
-    "progress_before": {"number", "total"}, "progress_scale": {"number", "total"}, "progress_after": {"number", "total"},
+    "progress_scale": {"number", "total"}, "priority_example": {"org", "program"},
     "more_button": {"count"}, "ai_unmatched": {"items"},
     "ai_seen_note": {"type"}, "seen_note": {"type"}, "unconfirmed": {"column"}, "checked_note": {"date"},
 }

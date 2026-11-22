@@ -80,12 +80,12 @@ def test_survey_shows_one_question_at_a_time_without_type_names(app):
     click(app, "start")
     answer_profile(app)
     page = page_text(app)
-    assert text["progress_scale"].format(number=1, total=24) in page and text["scale_help"] in page
+    assert text["progress_scale"].format(number=4, total=28) in page and text["scale_help"] in page   # 기본정보 3문항 다음
     assert [b.label for b in app.button][:5] == [opt["label"] for opt in data.scale]
     assert not [t["name"] for t in data.types.values() if t["name"] in page]
 
     click(app, "opt_Q01_4")
-    assert text["progress_scale"].format(number=2, total=24) in page_text(app)
+    assert text["progress_scale"].format(number=5, total=28) in page_text(app)
     click(app, "back_survey")
     assert "✓ " + data.scale[1]["label"] in [b.label for b in app.button]      # 4점 = '그래요'
     click(app, "opt_Q01_2")                                                      # 고쳐서 답할 수 있다
@@ -150,6 +150,10 @@ def test_tie_lets_the_user_choose(app, tmp_path):
     page = page_text(app)
     assert text["tie_two"] in page and text["type_label"] not in page
     assert [b.label for b in app.button][:2] == [data.types["T05"]["statement"], data.types["T07"]["statement"]]
+    # 선택지 아래의 예시는 그 유형에서 지금 안내할 수 있는 곳(걸러진 후보의 첫 번째)이다
+    first = candidates.for_type(data.programs, data.types["T05"], None, candidates.today_kst())
+    example = (first.contacts or first.lists)[0]
+    assert escape(text["priority_example"].format(org=example["기관명"], program=example["프로그램명"])) in page
     row = rows(tmp_path, "responses.csv")[0]
     assert (row["state"], row["primary"], row["candidates"]) == ("choose_priority", "", "T05|T07")
 

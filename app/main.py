@@ -153,19 +153,6 @@ def screen_start(data, text) -> None:
 
 # ── 질문 화면 ──
 
-def progress_label(text, survey: list[dict], question: dict) -> str:
-    """문항 위의 진행 표시. 척도 문항은 '질문 n / 24'로, 그 앞뒤 문항은 따로 센다."""
-    scale = [q for q in survey if q["selection"] == sel.SCALE]
-    if question in scale:
-        return text["progress_scale"].format(number=scale.index(question) + 1, total=len(scale))
-    first = survey.index(scale[0]) if scale else len(survey)
-    position = survey.index(question)
-    if position < first:
-        return text["progress_before"].format(number=position + 1, total=first)
-    after = survey[first + len(scale):]
-    return text["progress_after"].format(number=after.index(question) + 1, total=len(after))
-
-
 def screen_survey(data, text) -> None:
     state = st.session_state
     question = sel.next_question(state.answers, data.questions)
@@ -176,7 +163,9 @@ def screen_survey(data, text) -> None:
     survey = sel.survey_questions(data.questions)
     qid = question["id"]
     kind = question["selection"]
-    ui.progress(progress_label(text, survey, question), (survey.index(question) + 1) / len(survey))
+    # 진행 표시는 기본정보부터 걸림돌까지 한 줄로 센다('질문 n / 28'). 글자와 막대가 같은 기준이다
+    position = survey.index(question) + 1
+    ui.progress(text["progress_scale"].format(number=position, total=len(survey)), position / len(survey))
 
     def answer(value) -> None:
         state.answers[qid] = value
@@ -238,10 +227,11 @@ def screen_survey(data, text) -> None:
 
 # ── 결과 화면 ──
 
-def priority_question(data, text, type_ids: list[str]) -> None:
+def priority_question(data, text, type_ids: list[str], today) -> None:
     """점수가 가장 높은 유형이 여럿이거나 확인이 필요한 점수일 때, 무엇부터 볼지 본인이 고른다.
 
     자동으로 하나를 정하지 않는다. '아직 고르지 않을게요'를 누르면 대표 유형 없이 둘러본다.
+    고르기 쉽게, 선택지 아래에 그 유형에서 지금 안내할 수 있는 곳 하나를 예로 보여준다.
     """
     state = st.session_state
     question = sel.question(data.questions, sel.PRIORITY_Q)
@@ -254,9 +244,16 @@ def priority_question(data, text, type_ids: list[str]) -> None:
 
     ui.body(lead)
     ui.heading(question["text"])
+    # 예로 드는 곳도 candidates가 걸러 준 후보에서만 고른다
+    previews = candidates.build_result(data.programs, data.types, type_ids, state.details, today)
+    examples = {r.type_id: (r.contacts or r.lists)[0] for r in previews if r.contacts or r.lists}
     for option in sel.options_of(question, data.types, type_ids):
         st.button(width="stretch", label=option["label"], key=f"priority_{option['id']}",
                   type="tertiary" if option["id"] == sel.DEFER else "secondary", on_click=choose, args=(option["id"],))
+        example = examples.get(option["id"])
+        if example:
+            line = text["priority_example"].format(org=example["기관명"], program=example["프로그램명"])
+            ui.html(f'<p class="small-note">{escape(line)}</p>')
 
 
 def detail_question(text, type_info: dict, detail: dict) -> None:
@@ -564,7 +561,7 @@ def screen_result(data, text) -> None:
 
     if judged.state in (scoring.CHOOSE, scoring.CONFIRM) and not deferred:
         # 동점이거나 확인이 필요한 점수: 먼저 볼 유형을 본인이 고른 뒤에 결과를 보여준다
-        priority_question(data, text, judged.candidates)
+        priority_question(data, text, judged.candidates, today)
         result_footer(data, text, judged)
         return
 
