@@ -124,13 +124,26 @@ def check_label(label: str, selected: bool) -> str:
 # ── 시작 화면 ──
 
 def screen_start(data, text) -> None:
-    ui.html(f'<span class="logo big"></span><p class="app-title center">{escape(data.settings["app_title"])}</p>')
-    ui.html(f'<p class="body center">{escape(text["start_intro"])}</p>')
+    """팀 이름 띠 → 그림 → 제목과 소개 → 저장 안내와 시작 단추. 배치는 ui/home.css가 정한다."""
+    ui_dir = Path(__file__).resolve().parent / "ui"
+    st.html(ui_dir / "home.css")
     saving = bool(data.settings.get("save_log", False))      # 기록을 켰을 때만 '저장해요'라고 말한다
-    # 저장·전송 안내는 시작 단추보다 위에 둔다. 누르기 전에 읽을 수 있어야 한다
-    ui.notice(text["start_privacy_saving"] if saving else text["start_privacy"], "info")
-    st.button(width="stretch", label=text["start_button"], key="start", type="primary", on_click=go, args=("survey",))
-    ui.html(f'<p class="q-help center">⏱ {escape(text["start_time"])}</p>')
+    with st.container(key="landing"):
+        ui.html(f'<header class="home-mast"><strong><span class="logo" aria-hidden="true"></span>'
+                f'{escape(text["team_name"])}</strong>'
+                f'<span class="mast-audience">{escape(text["start_audience"])}</span></header>')
+        with st.container(key="landing_panel"):
+            with st.container(key="home_art"):
+                st.image(str(ui_dir / "assets" / "ansan-lake.webp"), width="stretch", alt=text["start_image_alt"])
+            with st.container(key="home_copy"):
+                st.html(f'<h1 class="landing-title">{escape(text["start_heading"])}</h1>'
+                        f'<p class="landing-intro">{escape(text["start_intro"])}</p>')
+            with st.container(key="home_actions"):
+                # 저장·전송 안내는 시작 단추보다 위에 둔다. 누르기 전에 읽을 수 있어야 한다
+                ui.notice(text["start_privacy_saving"] if saving else text["start_privacy"], "info")
+                st.button(width="stretch", label=text["start_button"], key="start", type="primary",
+                          on_click=go, args=("survey",))
+                ui.html(f'<p class="survey-length">⏱ {escape(text["start_time"])}</p>')
     ui.notice(text["start_refresh"])                          # 새로고침·뒤로 가기를 하면 답이 지워진다는 안내. 단추 가까이 둔다
     start_steps = text.get("start_steps") or []              # 없어도 되는 문구라 loader가 검사하지 않는다
     if start_steps:
@@ -627,8 +640,8 @@ def main() -> None:
     style.apply()
     init_state()
     scroll_to_top()
-    if st.session_state.screen != "start":                    # 시작 화면에는 큰 로고와 제목이 따로 있다
-        ui.topbar(text.get("top_title") or data.settings["app_title"])
+    if st.session_state.screen != "start":                    # 시작 화면에는 팀 이름 띠와 큰 제목이 따로 있다
+        ui.topbar(text.get("top_title") or data.settings["app_title"], text["team_name"])
     screens ={"start": screen_start, "survey": screen_survey, "result": screen_result}
     screens[st.session_state.screen](data, text)
 

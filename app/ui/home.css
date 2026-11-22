@@ -1,0 +1,70 @@
+/* 첫 화면 배치. 휴대폰 세로 화면을 기본으로 하고, 넓은 화면에서는 글과 그림을 나란히 둔다.
+   그림 안에는 글자가 없어서, 글씨 크기를 키워도 그림과 따로 움직인다. */
+.block-container:has(.st-key-landing) {
+  max-width: 36rem;
+  padding: 3rem max(1rem, env(safe-area-inset-right)) max(1.5rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+}
+.stApp .st-key-landing { gap: .8rem; }
+.home-mast {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: .35rem .75rem; color: var(--ink);
+}
+.home-mast strong {
+  display: inline-flex; align-items: center; gap: .55rem;
+  font-size: 1.28rem; line-height: 1.35; letter-spacing: -.035em;
+}
+.home-mast .mast-audience { color: var(--teal); font-size: 1rem; font-weight: 700; }
+.stApp .st-key-landing_panel {
+  display: grid; grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "art" "copy" "actions"; gap: .85rem;
+}
+.st-key-landing_panel > :has(> .st-key-home_copy) { grid-area: copy; }
+.st-key-landing_panel > :has(> .st-key-home_art) { grid-area: art; }
+.st-key-landing_panel > :has(> .st-key-home_actions) { grid-area: actions; }
+.stApp :is(.st-key-home_art, .st-key-home_copy, .st-key-home_actions) { min-width: 0; }
+.stApp .st-key-home_art img {
+  display: block; width: 100%; aspect-ratio: 2 / 1; object-fit: cover; object-position: 50% 29%;
+  border-radius: 1.15rem;
+}
+.stApp .landing-title {
+  padding: 0; margin: 0; color: var(--ink); font: 800 clamp(1.9rem, 7.7vw, 2.45rem)/1.17 var(--font-ui);
+  letter-spacing: -.055em; word-break: keep-all; text-wrap: balance;
+}
+.stApp .landing-intro {
+  margin: .42rem 0 0; color: var(--body); font-size: 1.125rem; line-height: 1.48;
+  word-break: keep-all;
+}
+.stApp .st-key-home_actions { gap: .48rem; }
+.stApp .survey-length, .stApp .home-privacy {
+  margin: 0; color: var(--muted); font-size: 1rem; line-height: 1.5;
+}
+.stApp .st-key-home_actions button { min-height: 3.5rem; border-radius: 1rem; }
+.stApp .st-key-home_actions button p { font-size: 1.2rem; }
+.stApp .st-key-start_browse button { background: var(--surface); border-color: var(--teal); }
+.stApp .st-key-start_browse button p { color: var(--teal); }
+.stApp .st-key-landing [data-testid="stExpander"] details { background: var(--surface); }
+@media (max-height: 700px) and (max-width: 450px) {
+  .block-container:has(.st-key-landing) { padding-top: 2.45rem; }
+  .stApp .st-key-landing, .stApp .st-key-landing_panel { gap: .65rem; }
+}
+@media (max-width: 340px) {
+  .stApp .landing-title { font-size: 1.75rem; }
+}
+@media (min-width: 761px) {
+  .block-container:has(.st-key-landing) {
+    max-width: 74rem; padding: 3.5rem clamp(1.5rem, 4vw, 3rem) 3rem;
+  }
+  .stApp .st-key-landing { gap: 1.05rem; }
+  .home-mast { padding-bottom: .9rem; border-bottom: 1px solid var(--rule); }
+  .stApp .st-key-landing_panel {
+    grid-template-columns: minmax(0, .98fr) minmax(0, 1.15fr);
+    grid-template-areas: "copy art" "actions art"; align-content: center; align-items: center;
+    gap: 1.4rem clamp(1.5rem, 3vw, 3rem); padding: clamp(1.35rem, 3vw, 2.65rem);
+    border: 1px solid var(--rule); border-radius: 1.6rem; background: var(--surface);
+  }
+  .st-key-landing_panel > :has(> .st-key-home_copy) { align-self: end; }
+  .st-key-landing_panel > :has(> .st-key-home_actions) { align-self: start; }
+  .stApp .st-key-home_art img { aspect-ratio: 1.48; }
+  .stApp .landing-title { font-size: clamp(2.45rem, 4.4vw, 3.95rem); }
+  .stApp .landing-intro { font-size: 1.25rem; line-height: 1.58; margin-top: .7rem; }
+}

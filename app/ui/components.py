@@ -32,9 +32,10 @@ def heading(value: str) -> None:
     html(f'<p class="q-title">{escape(value)}</p>')
 
 
-def topbar(title: str) -> None:
-    """모든 화면 맨 위의 띠: 로고와 앱 이름."""
-    html(f'<p class="topbar"><span class="logo"></span>{escape(title)}</p>')
+def topbar(title: str, team: str) -> None:
+    """모든 화면 맨 위의 띠: 로고, 앱 이름, 팀 이름."""
+    html(f'<p class="topbar"><span class="logo" aria-hidden="true"></span>'
+         f'<span class="topbar-name">{escape(title)}</span><span class="topbar-team">{escape(team)}</span></p>')
 
 
 def steps(items: list[str]) -> None:

@@ -52,6 +52,7 @@ DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 # 화면(main.py, ui/components.py)이 쓰는 settings.yaml의 text 문구. 화면에 문구를 더하면 여기에도 적는다
 # (test_text_keys_match_the_screen_code가 둘이 어긋나면 알려 준다)
 TEXT_KEYS = """
+    start_heading team_name start_audience start_image_alt
     start_intro start_time start_refresh start_privacy start_privacy_saving start_button
     scale_help number_placeholder number_next number_required multi_help next_button back_button
     type_label type_label_other result_intro secondary_heading more_types_button also_heading
