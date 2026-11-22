@@ -84,7 +84,7 @@ types:
     area: work
     name: 실력쌓기형
     purpose: 취업교육·자격 취득
-    statement: "일에 필요한 기술이나 자격증을 배우고 싶어요."
+    statement: "일에 쓸 기술을 배우거나 자격증을 따고 싶어요."
     definition: "배움의 목적이 일·취업·부업인 경우. T01·T02·T03과 함께 선택 가능."
     detail:
       id: D04
@@ -147,7 +147,7 @@ types:
     area: leisure
     name: 마음쉼표형
     purpose: 마음·관계 상담
-    statement: "마음이나 관계 고민을 상담자와 이야기하고 싶어요."
+    statement: "마음에 걸리는 일이나 관계 고민을 상담하고 싶어요."
     definition: "본인이 상담을 원할 때 연결. 혼자 참여하기 어렵다는 답만으로 우울·치료 필요를 추정하지 않음."
     detail:
       id: D08
@@ -165,7 +165,7 @@ types:
     area: life
     name: 노후든든형
     purpose: 연금·노후 재무계획
-    statement: "연금과 앞으로의 생활비를 계획하고 싶어요."
+    statement: "연금과 노후 생활비를 미리 계산해 보고 싶어요."
     definition: "내 연금·자산·지출을 계획하는 목적. 받을 수 있는 지원금·감면 탐색은 T10."
     detail:
       id: D09
@@ -180,7 +180,7 @@ types:
     area: life
     name: 혜택찾기형
     purpose: 지원·혜택 확인
-    statement: "내 조건으로 받을 수 있는 지원이나 혜택이 궁금해요."
+    statement: "내가 받을 수 있는 지원금이나 혜택이 궁금해요."
     definition: "혜택 조회·신청 지원. 형편이 어렵다고 답한 사람에게만 부여하지 않음. 조회는 선정 확정이 아님."
     detail:
       id: D10
@@ -214,7 +214,7 @@ types:
     area: life
     name: 건강챙김형
     purpose: 건강 유지·관리
-    statement: "내 건강을 확인하고 관리하고 싶어요."
+    statement: "내 건강 상태를 알고 꾸준히 챙기고 싶어요."
     definition: "건강 유지·관리 욕구. 운동의 재미가 목적이면 T05도 가능. 질환이나 치료 필요를 자동 판정하지 않음."
     detail:
       id: D12
