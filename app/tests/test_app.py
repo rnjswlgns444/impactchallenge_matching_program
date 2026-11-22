@@ -213,8 +213,10 @@ def test_low_scores_browse_all_types(app, tmp_path):
     row = rows(tmp_path, "responses.csv")[0]
     assert (row["state"], row["primary"], row["candidates"]) == ("explore", "", "")
 
-    click(app, "browse_T07")                                   # 안내할 곳이 없는 유형도 막다른 화면이 아니다
-    assert text["no_program"] in page_text(app)
+    click(app, "browse_T07")                                   # 문의할 곳이 없고 목록만 있는 유형은 목록을 보여준다
+    page = page_text(app)
+    assert text["lists_heading"] in page and text["no_program"] not in page
+    assert text["contacts_heading"] not in page                # 11/22: 동네친구형은 둘러볼 목록(L15·L16)만 있다
     click(app, "browse_T09")
     assert data.types["T09"]["statement"] in page_text(app)
     click(app, "browse_T09")                                   # 다시 누르면 닫힌다
