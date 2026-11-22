@@ -175,7 +175,7 @@ text:
   share_message: "나에게 맞는 안산 프로그램 찾기: 질문에 답하면 안산에서 물어볼 수 있는 곳을 알려 줘요."   # 친구에게 가는 글
   share_copied: "주소를 복사했어요. 카카오톡 대화창에 붙여 넣어 보내 주세요."          # 공유 창을 띄우지 못해 주소를 복사했을 때
   share_failed: "자동으로 복사하지 못했어요. 아래 주소를 길게 눌러 복사해 주세요."      # 복사도 못 했을 때. 이 글 뒤에 주소가 나옵니다
-  share_url: "https://impactchallengematchingprogram-bukykbtaehsl53kbjv74an.streamlit.app/"   # 공유할 앱 주소(Streamlit Cloud). 비워 두면 지금 열려 있는 주소를 보냅니다
+  share_url: "https://impactchallengematchingprogram-bukykbtaehsl53kbjv74an.streamlit.app/?embed=true"   # 공유할 앱 주소(Streamlit Cloud). 비워 두면 지금 열려 있는 주소를 보냅니다. 뒤의 ?embed=true는 만든 사람 아이디 배지를 숨깁니다
   disclaimer: "지금 관심 있는 분야를 찾는 설문이에요. 신청 자격은 프로그램마다 달라요."
 
 # 정보표를 읽지 못하는 등 안내할 곳이 하나도 없을 때 보여주는 기본 창구.
