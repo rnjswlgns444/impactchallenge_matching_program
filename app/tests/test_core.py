@@ -119,9 +119,13 @@ def test_exclusive_option_cannot_mix(data):
 
 
 def test_disabled_detail_is_not_asked(data):
-    assert detail_of(data.types["T08"]) is None and detail_of(data.types["T12"]) is None
+    # 11/22부터 실제 유형은 세부 질문을 모두 묻는다. 꺼 두는 기능(enabled: false)은 꺼 둔 복사본으로 확인한다
+    off = copy.deepcopy(data.types["T08"])
+    off["detail"]["enabled"] = False
+    assert detail_of(off) is None
+    assert detail_of(data.types["T08"])["id"] == "D08" and detail_of(data.types["T12"])["id"] == "D12"
     assert detail_of(data.types["T01"])["id"] == "D01"
-    assert chosen_detail_options(data.types["T08"], ["stress"]) == []
+    assert chosen_detail_options(off, ["stress"]) == []
     assert [o["id"] for o in chosen_detail_options(data.types["T01"], ["explore", "unknown"])] == ["explore"]
 
 

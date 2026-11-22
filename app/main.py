@@ -269,7 +269,8 @@ def detail_question(text, type_info: dict, detail: dict) -> None:
             state.details[tid] = sel.toggle(chosen, option_id, detail["options"])
         else:
             state.details[tid] = None if option_id in chosen else option_id
-        logger.log_event(state.sid, "detail", tid, option_id)
+        # 마음·건강처럼 민감한 질문(log_answer: false)은 답했다는 사실만 남기고, 고른 선택지는 남기지 않는다
+        logger.log_event(state.sid, "detail", tid, option_id if detail.get("log_answer", True) else "")
 
     # 후보를 바꾸는 질문(보탬활동형의 보수)과 먼저 확인해야 하는 질문(돌봄 대상)은 접지 않고 그대로 보여준다
     prominent = bool(detail.get("last") or detail.get("prominent"))

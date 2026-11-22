@@ -181,6 +181,8 @@ def validate_types(areas: list[dict], types_list: list[dict]) -> list[str]:
         _check_options(where, options, problems)
         if "last" in detail:
             _check_rule(f"{where} last", detail["last"], problems)
+        if not isinstance(detail.get("log_answer", True), bool):
+            problems.append(f"{where}의 log_answer는 true 또는 false로 적습니다.")
         for opt in options:
             for key in ("exclude", "first"):
                 if key in opt:

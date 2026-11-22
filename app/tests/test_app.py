@@ -563,6 +563,21 @@ def test_detail_question_takes_one_answer(app):
     assert not app.session_state.details["T01"]
 
 
+def test_mind_and_health_detail_answers_are_not_logged(app, tmp_path):
+    """마음·건강 세부 질문은 화면에는 쓰지만, 기록을 켜 두어도 고른 선택지를 파일에 남기지 않는다."""
+    data = loader.load_all()
+    for tid in ("T08", "T12"):
+        assert sel.detail_of(data.types[tid]) and data.types[tid]["detail"]["log_answer"] is False, tid
+
+    take_survey(app, T12=(5, 5))
+    click(app, "detail_T12_chronic")
+    assert app.session_state.details["T12"] == "chronic"
+    events = [e for e in rows(tmp_path, "events.csv") if e["event"] == "detail"]
+    assert [(e["target"], e["value"]) for e in events] == [("T12", "")]
+    assert "chronic" not in (tmp_path / "events.csv").read_text(encoding="utf-8-sig")
+    assert "chronic" not in (tmp_path / "responses.csv").read_text(encoding="utf-8-sig")
+
+
 def test_no_detail_question_allows_many_answers():
     for type_info in loader.load_all().types.values():
         detail = type_info.get("detail") or {}
