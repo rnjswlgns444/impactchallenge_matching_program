@@ -60,8 +60,9 @@ TEXT_KEYS = """
     detail_label contacts_heading lists_heading no_program no_program_at_all unknown_intro
     browse_heading browse_help consult_heading
     free_privacy free_button free_empty free_unclear free_wait ai_heading ai_reason ai_stale ai_none ai_fail
-    kind_always kind_period kind_list nationwide card_about card_ask card_contact target_label first_visit_label
-    check_heading age_unconfirmed worry_heading say_prefix call_button apply_button detail_button list_note list_button
+    kind_always kind_period kind_list nationwide card_ask target_label first_visit_label
+    check_heading age_unconfirmed worry_heading say_prefix call_button apply_button detail_button home_button
+    list_note list_button
     capture_tip restart_button disclaimer
     share_heading share_help share_button share_message share_copied share_failed
 """.split()

@@ -135,11 +135,9 @@ text:
   kind_period: "기간이 정해져 있어요"            # 종류가 기간프로그램일 때
   kind_list: "목록이에요"                        # 종류가 목록일 때
   nationwide: "전국 어디서나 전화·온라인으로"     # 범위가 전국일 때
-  card_about: "이런 곳이에요"
   card_ask: "물어볼 준비"
-  card_contact: "문의·신청 방법"
   target_label: "대상"
-  first_visit_label: "처음 가면"
+  first_visit_label: "처음 이용할 때"
   check_heading: "먼저 확인해 보세요"
   unconfirmed: "{column}: 아직 확인하지 못했어요. 기관에 물어봐 주세요."
   age_unconfirmed: "55~64세도 이용할 수 있는지 기관에 물어봐 주세요."
@@ -147,7 +145,8 @@ text:
   say_prefix: "이렇게 물어보세요"
   call_button: "전화로 물어보기"
   apply_button: "신청 페이지 열기"
-  detail_button: "자세히 보기"
+  detail_button: "공식 안내 보기"            # 카드의 노란 단추. 기관이 올린 안내 페이지를 엽니다
+  home_button: "기관 홈페이지 보기"          # 안내 페이지도 신청 페이지도 없을 때 대신 나오는 단추
   seen_note: "위쪽 '{type}'에서 안내한 곳이에요."
   list_note: "지금 신청할 수 있는 강좌가 있는지는 목록에서 직접 확인해 주세요."
   list_button: "목록 열기"

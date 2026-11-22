@@ -12,6 +12,9 @@ from app.core.loader import KIND_ALWAYS, KIND_LIST, KIND_PERIOD, NATIONWIDE, UNC
 
 _RANGE = re.compile(r"~\s*\d+")                                   # '1619~21'의 '~21'
 _NUMBER = re.compile(r"\d{2,4}-\d{3,4}-\d{4}|\d{4}-\d{4}|\d{3,4}")  # 031-481-2919 / 1666-1234 / 129
+# 찾아가지 않고 이용하는 곳의 '장소' 칸에 적힌 말. 이런 곳에는 '혼자 가도 되나요', '처음 가면 뭘 하나요'를 붙이지 않는다
+REMOTE_PLACES = {"전화 문의", "전화 상담", "전화·온라인 상담", "온라인 상담", "온라인", "비대면", "집으로 방문하는 서비스"}
+VISIT_GUIDES = {"alone", "first_visit"}     # 직접 찾아갈 때만 뜻이 있는 걸림돌(questions.yaml의 Q_BARRIER 선택지 id)
 
 
 def html(markup: str) -> None:
@@ -144,9 +147,9 @@ def phones(contact: str) -> list[tuple[str, str]]:
 
 def _call_buttons(contact: str, text: dict) -> None:
     for number, shown in phones(contact):
-        # 전화번호가 줄 중간에서 끊기지 않게 번호는 한 덩어리로 둔다
-        html(f'<a class="a-btn fill" href="tel:{number}">📞 {escape(text["call_button"])}<br>'
-             f'<span class="nowrap">{escape(shown)}</span></a>')
+        # 전화번호가 줄 중간에서 끊기지 않게 번호는 한 덩어리로 둔다. 노란 단추는 공식 안내 하나만 쓴다
+        html(f'<a class="a-btn line phone-link" href="tel:{number}">'
+             f'<span>📞 {escape(text["call_button"])}</span><span class="nowrap">{escape(shown)}</span></a>')
 
 
 def _bullets(items: list[str]) -> None:
@@ -160,9 +163,35 @@ def _kind_chip(program: dict, text: dict) -> str:
 
 
 def _card_top(program: dict, text: dict) -> None:
-    html(f'{_kind_chip(program, text)}<h3 class="p-name">{escape(program["프로그램명"])}</h3>'
-         f'<p class="p-org">{escape(program["기관명"])}</p>')
+    html(f'<h3 class="p-name">{escape(program["프로그램명"])}</h3>'
+         f'<p class="p-org">{escape(program["기관명"])}</p>{_kind_chip(program, text)}')
     body(program["한줄설명"])
+
+
+def _official_button(program: dict, text: dict) -> str:
+    """공식 안내로 가는 노란 단추 하나. 상세 안내가 없으면 신청 페이지, 그것도 없으면 기관 홈페이지를 연다.
+
+    연 주소를 돌려준다(없으면 빈 글자). 같은 주소로 가는 단추를 또 그리지 않게 하기 위해서다.
+    """
+    for column, label in (("상세페이지URL", text["detail_button"]), ("신청URL", text["apply_button"]),
+                          ("홈페이지URL", text["home_button"])):
+        if program[column]:
+            link_button(label, program[column], fill=True)
+            return program[column]
+    return ""
+
+
+def _facts(items: list[tuple[str, str]]) -> None:
+    """'이름: 값' 표. 비어 있거나 '미확인'인 칸은 내지 않는다(미확인은 '먼저 확인해 보세요'에서 따로 알린다)."""
+    rows = "".join(f"<dt>{escape(label)}</dt><dd>{escape(value)}</dd>" for label, value in items
+                   if value and value != UNCONFIRMED)
+    if rows:
+        html(f'<dl class="card-facts">{rows}</dl>')
+
+
+def _no_visit(place: str) -> bool:
+    """찾아가지 않고 전화·온라인으로 이용하거나, 집으로 찾아오는 곳인지."""
+    return place in REMOTE_PLACES or place.startswith("전화 안내.")
 
 
 def _checks(program: dict, text: dict, type_info: dict | None) -> list[str]:
@@ -180,65 +209,68 @@ def _checked_note(program: dict, text: dict) -> None:
 
 
 def program_card(program: dict, text: dict, type_info: dict | None = None, guides: list[dict] | None = None,
-                 asked: list[str] | None = None, open_part: str | None = None, key: str = "") -> None:
-    """문의할 수 있는 곳 한 곳. 이런 곳이에요 → 물어볼 준비 → 문의·신청 방법 순서로 둔다.
+                 asked: list[str] | None = None, key: str = "") -> None:
+    """문의할 수 있는 곳 한 곳. 카드를 펴지 않아도 무엇을 어디서 하는지 읽고 공식 안내·전화로 갈 수 있다.
 
+    순서: 이름·기관·한 줄 설명 → 공식 안내·신청·전화 단추 → 장소·처음 이용할 때·대상·시간·비용
+          → 이렇게 물어보세요 → (접힘) 물어볼 준비 → 확인 날짜
     guides: 사용자가 고른 걸림돌(selection.barrier_guides). 정보표에 확인된 내용이 있으면 그 내용을,
             없으면 기관에 물어볼 문장을 보여준다. 확인되지 않은 것을 지어내지 않는다.
     asked: 세부 질문에서 고른 문장. 그대로 물어볼 문장에 넣는다.
-    open_part: 먼저 펼쳐 둘 곳(about / ask / contact). 내용이 빈 곳은 제목도 내지 않는다.
-    물어볼 문장과 전화 단추는 접지 않고 카드 아래에 항상 보여준다.
+    물어볼 문장과 전화 단추는 접지 않고 항상 보여준다.
     """
-    open_part = open_part or "about"
     with st.container(border=True):
         _card_top(program, text)
 
-        # ── 이런 곳이에요 ──
-        fact_columns = [(text["target_label"], "대상"), ("시간", "시간대"), ("비용", "비용"), ("장소", "장소"),
-                        (text["first_visit_label"], "첫방문안내")]
-        if program["종류"] == KIND_PERIOD:
-            fact_columns.insert(1, ("기간", "기간"))
-        facts = [f"<b>{escape(name)}</b>: {escape(program[col])}" for name, col in fact_columns if program[col]]
-        if facts:
-            with st.expander(text["card_about"], expanded=open_part == "about", key=f"about_{key}"):
-                _bullets(facts)
+        # ── 단추: 공식 안내(노랑) → 신청 → 전화 ──
+        primary_url = _official_button(program, text)
+        if program["신청URL"] and program["신청URL"] != primary_url:
+            link_button(text["apply_button"], program["신청URL"])
+        _call_buttons(program["공식연락처"], text)
 
-        # ── 물어볼 준비 ──
+        # ── 한눈에 보는 정보 ──
+        place = program["장소"] or program["진행방식"]
+        no_visit = _no_visit(place)
+        first_step = program["첫방문안내"] or program["신청방법"]
+        timing = program["기간"] if program["종류"] == KIND_PERIOD else ""
+        _facts([("이용 방법" if no_visit else "장소", place),
+                (text["first_visit_label"], first_step),
+                (text["target_label"], program["대상"]),
+                ("일정" if timing else "시간", timing or program["시간대"]),
+                ("비용", program["비용"])])
+
+        # ── 물어볼 문장과 물어볼 준비 ──
         checks = _checks(program, text, type_info)
         worries, sentences = [], [program["첫연락문장"]] if program["첫연락문장"] else []
         sentences += list(asked or [])
         for guide in guides or []:
+            if no_visit and guide.get("id") in VISIT_GUIDES:
+                continue
             known = [program[col].replace("|", ", ") for col in guide.get("show") or []
                      if program.get(col) and program[col] != UNCONFIRMED]
             if known:
                 worries.append(f'<b>{escape(guide["label"])}</b>: {escape(" / ".join(known))}')
             elif guide.get("ask"):
                 sentences.append(guide["ask"])
-        if checks or worries:
-            with st.expander(text["card_ask"], expanded=open_part == "ask", key=f"ask_{key}"):
+        if sentences:
+            lines = "<br>".join(f"“{escape(s)}”" for s in dict.fromkeys(sentences))     # 같은 문장은 한 번만
+            html(f'<div class="say"><b>{escape(text["say_prefix"])}</b><br>{lines}</div>')
+
+        # 위 표에 못 다 적은 것: 기간 프로그램의 시간대, '처음 이용할 때'에 쓰지 않은 신청 방법
+        extra_facts = []
+        if timing and program["시간대"] and program["시간대"] not in timing:
+            extra_facts.append(("시간", program["시간대"]))
+        if program["신청방법"] and program["신청방법"] != first_step:
+            extra_facts.append(("신청 방법", program["신청방법"]))
+        if extra_facts or checks or worries:
+            with st.expander(text["card_ask"], key=f"ask_{key}"):
+                _facts(extra_facts)
                 if checks:
                     html(f'<p class="sec">{escape(text["check_heading"])}</p>')
                     _bullets([escape(c) for c in checks])
                 if worries:
                     html(f'<p class="sec">{escape(text["worry_heading"])}</p>')
                     _bullets(worries)
-
-        # ── 문의·신청 방법 ──
-        detail_url = program["상세페이지URL"] or program["홈페이지URL"]
-        if program["신청방법"] or program["신청URL"] or detail_url:
-            with st.expander(text["card_contact"], expanded=open_part == "contact", key=f"contact_{key}"):
-                if program["신청방법"]:
-                    body(program["신청방법"])
-                if program["신청URL"]:
-                    link_button(text["apply_button"], program["신청URL"])
-                if detail_url and detail_url != program["신청URL"]:
-                    link_button(text["detail_button"], detail_url)
-
-        # ── 항상 보이는 곳: 물어볼 문장과 전화 ──
-        if sentences:
-            lines = "<br>".join(f"“{escape(s)}”" for s in sentences)
-            html(f'<div class="say"><b>{escape(text["say_prefix"])}</b><br>{lines}</div>')
-        _call_buttons(program["공식연락처"], text)
         _checked_note(program, text)
 
 
@@ -271,14 +303,14 @@ def list_card(program: dict, text: dict) -> None:
     """목록(강좌 목록 등). 무엇을 신청할 수 있는지는 사용자가 목록에서 직접 확인한다."""
     with st.container(border=True):
         _card_top(program, text)
-        notice(text["list_note"], "info")
+        body(text["list_note"])
+        list_url = program["신청URL"] or program["상세페이지URL"] or program["홈페이지URL"]
+        if list_url:
+            link_button(text["list_button"], list_url, fill=True)
         checks = _checks(program, text, None)
         if checks:
             html(f'<p class="sec">{escape(text["check_heading"])}</p>')
             _bullets([escape(c) for c in checks])
-        list_url = program["신청URL"] or program["상세페이지URL"] or program["홈페이지URL"]
-        if list_url:
-            link_button(text["list_button"], list_url, fill=True)
         _call_buttons(program["공식연락처"], text)
         _checked_note(program, text)
 
@@ -288,7 +320,7 @@ def fallback_card(card: dict, text: dict) -> None:
     with st.container(border=True):
         html(f'<h3 class="p-name">{escape(card["name"])}</h3><p class="p-org">{escape(card["org"])}</p>')
         body(card["description"])
+        if card.get("url"):
+            link_button(text["detail_button"], card["url"], fill=True)
         _call_buttons(card["phone"], text)
         html(f'<div class="say"><b>{escape(text["say_prefix"])}</b><br>“{escape(card["say"])}”</div>')
-        if card.get("url"):
-            link_button(text["detail_button"], card["url"])
