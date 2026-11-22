@@ -144,6 +144,9 @@ def screen_start(data, text) -> None:
                 st.button(width="stretch", label=text["start_button"], key="start", type="primary",
                           on_click=go, args=("survey",))
                 ui.html(f'<p class="survey-length">⏱ {escape(text["start_time"])}</p>')
+                # 설문 없이 어떤 곳이 있는지 먼저 볼 수 있는 길(11/22 결정). 주된 길은 위의 '시작하기'다
+                st.button(width="stretch", label=text["start_browse_button"], key="start_browse",
+                          on_click=go, args=("browse",))
     ui.notice(text["start_refresh"])                          # 새로고침·뒤로 가기를 하면 답이 지워진다는 안내. 단추 가까이 둔다
     start_steps = text.get("start_steps") or []              # 없어도 되는 문구라 loader가 검사하지 않는다
     if start_steps:
@@ -612,6 +615,40 @@ def result_footer(data, text, judged: scoring.Score) -> None:
     ui.html(f'<p class="small-note">{escape(text["disclaimer"])}</p>')
 
 
+def screen_browse(data, text) -> None:
+    """설문 없이 분야별로 보기. 유형 점수도 기본정보 답도 없이 12개 분야를 직접 열어 본다.
+
+    기본정보 답이 없으므로 성별·나이로 거르지 않는다(대상 조건은 카드의 '대상' 칸에 글로 나온다).
+    유형을 판정하지 않으므로 응답 기록(responses.csv)을 남기지 않고, 직접 적기(AI)도 두지 않는다.
+    """
+    state = st.session_state
+    today = clock.now()
+    top_n = int(data.settings.get("top_n", 1))
+    opened = [tid for tid in data.types if tid in state.opened]
+    consults = candidates.first_consult(data.programs, today)
+    seen: dict[str, str] = {}
+
+    def leave(screen: str) -> None:
+        # 여기서 열어 본 분야와 고른 주제가 나중의 설문 결과 화면에 섞이지 않게 지운다
+        state.opened, state.details, state.more = [], {}, []
+        go(screen)
+
+    def draw_section(type_id: str) -> None:
+        result = candidates.for_type(data.programs, data.types[type_id], state.details.get(type_id), today)
+        type_section(data, text, result, text["type_label_other"], [], top_n, seen, consults)
+
+    ui.notice(text["browse_intro"], "info")
+    browse_types(data, text, list(data.types), [], opened, draw_section)
+    rest = [p for p in consults if p["id"] not in seen]
+    if rest:
+        consult_section(data, text, rest, [], folded=True)
+    st.button(width="stretch", label=text["browse_to_survey"], key="browse_to_survey", type="primary",
+              on_click=leave, args=("survey",))
+    st.button(width="stretch", label=text["browse_to_start"], key="browse_to_start", type="tertiary",
+              on_click=leave, args=("start",))
+    ui.html(f'<p class="small-note">{escape(text["disclaimer"])}</p>')
+
+
 def screen_result(data, text) -> None:
     state = st.session_state
     if sel.next_question(state.answers, data.questions) is not None:
@@ -728,7 +765,7 @@ def main() -> None:
     scroll_to_top()
     if st.session_state.screen != "start":                    # 시작 화면에는 팀 이름 띠와 큰 제목이 따로 있다
         ui.topbar(text.get("top_title") or data.settings["app_title"], text["team_name"])
-    screens ={"start": screen_start, "survey": screen_survey, "result": screen_result}
+    screens = {"start": screen_start, "survey": screen_survey, "result": screen_result, "browse": screen_browse}
     screens[st.session_state.screen](data, text)
 
 

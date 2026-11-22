@@ -57,6 +57,7 @@ CLOCK_TIME = re.compile(r"(?:[01]\d|2[0-3]):[0-5]\d")     # 09:00, 16:30 (24ì‹œê
 TEXT_KEYS = """
     start_heading team_name start_audience start_image_alt
     start_intro start_time start_refresh start_privacy start_privacy_saving start_button
+    start_browse_button browse_intro browse_to_survey browse_to_start
     scale_help number_placeholder number_next number_required multi_help next_button back_button
     type_label type_label_other result_intro secondary_heading more_types_button also_heading
     tie_two tie_many confirm_one repick_button result_heading low_interest edit_hint

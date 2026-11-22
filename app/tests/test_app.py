@@ -578,6 +578,36 @@ def test_mind_and_health_detail_answers_are_not_logged(app, tmp_path):
     assert "chronic" not in (tmp_path / "responses.csv").read_text(encoding="utf-8-sig")
 
 
+def test_browse_without_the_survey(app, tmp_path):
+    """첫 화면에서 설문 없이 분야별로 볼 수 있다. 답이 없으니 거르지 않고, 응답 기록도 남기지 않는다."""
+    data = loader.load_all()
+    text = data.settings["text"]
+    click(app, "start_browse")
+    assert app.session_state.screen == "browse" and not app.session_state.answers
+    page = page_text(app)
+    assert text["browse_intro"] in page and text["browse_heading"] in page
+    assert "free_find" not in [b.key for b in app.button]             # 직접 적기(AI)는 설문 결과 화면에만 있다
+
+    click(app, "browse_T01")
+    page = page_text(app)
+    everyone = candidates.for_type(data.programs, data.types["T01"], None, clock.now())
+    assert data.types["T01"]["statement"] in page and everyone.contacts[0]["프로그램명"] in page
+    women_only = [p for p in everyone.contacts if p["대상성별"]]
+    assert women_only                                                 # 성별 조건이 있는 곳도 빼지 않고 후보에 둔다
+    click(app, "more_T01")
+    assert not [p for p in women_only if p["프로그램명"] not in page_text(app)]
+
+    click(app, "browse_T11")                                          # 돌봄은 여기서도 먼저 골라야 나온다
+    assert text["detail_first"] in page_text(app)
+    assert not (tmp_path / "responses.csv").exists()
+
+    click(app, "browse_to_start")                                     # 나가면 열어 본 분야를 지운다
+    assert app.session_state.screen == "start" and app.session_state.opened == []
+    click(app, "start_browse")
+    click(app, "browse_to_survey")
+    assert app.session_state.screen == "survey"
+
+
 def test_one_answer_can_be_fixed_from_the_result(app):
     """결과 화면에서 문항 하나를 골라 답을 고치면, 그 문항만 다시 묻고 결과를 다시 판정한다."""
     data = loader.load_all()
