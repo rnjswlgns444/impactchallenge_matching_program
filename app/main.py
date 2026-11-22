@@ -388,10 +388,20 @@ def browse_types(data, text, type_ids: list[str], first: list[str], opened: list
             type_buttons(data, in_area, opened, draw_section)
 
 
-def consult_section(data, text, consults: list[dict], guides) -> None:
-    ui.heading(text["consult_heading"])
-    for program in consults:
-        ui.program_card(program, text, None, guides, None, key=f"consult_{program['id']}")
+def consult_section(data, text, consults: list[dict], guides, folded: bool = False) -> None:
+    """무엇이 맞을지 함께 찾아 주는 곳(일반 창구).
+
+    folded: 대표 유형에 맞는 곳을 이미 받은 사람에게는 접어 둔다. 대표 유형이 없는 사람에게는 이 창구가
+    결과의 중심이므로 펼쳐서 보여준다(11/22 결정).
+    """
+    if folded:
+        box = st.expander(text["consult_heading"], key="consult_box")
+    else:
+        ui.heading(text["consult_heading"])
+        box = st.container()
+    with box:
+        for program in consults:
+            ui.program_card(program, text, None, guides, None, key=f"consult_{program['id']}")
 
 
 def wish_examples(data, type_ids: list[str]) -> list[str]:
@@ -414,7 +424,7 @@ def ask_ai(data, type_ids: list[str], pool: list[dict], wish: str) -> llm_matche
 
 
 def free_wish_form(data, text) -> None:
-    """원하는 점을 직접 적는 칸(Q_FREE)과 '찾아보기' 단추. 결과 화면 맨 위에 먼저 그린다.
+    """원하는 점을 직접 적는 칸(Q_FREE)과 '찾아보기' 단추. 대표 유형 바로 아래에 펼친 채로 둔다(11/22 결정).
 
     단추는 AI를 바로 부르지 않고 '찾는 중'(ai_pending)만 켠다. 찾는 동안에는 단추가 잠겨서
     다시 눌러도 AI를 또 부르지 않는다. 실제 호출은 free_wish_result가 한다. 적은 글은 기록하지 않는다.
@@ -585,26 +595,24 @@ def screen_result(data, text) -> None:
     def draw_section(type_id: str) -> None:
         type_section(data, text, by_type[type_id], text["type_label_other"], guides, top_n, seen, consults)
 
-    # 직접 적기 구간은 화면 맨 위에 둔다. 글 상자와 단추는 먼저 그려서, 찾는 동안 바로 잠기게 한다.
-    # AI가 고른 곳은 자리만 먼저 잡고, 아래 구역을 그린 뒤에 채운다.
-    # 그래야 '이미 카드로 나온 곳'(seen)을 알고 그릴 수 있다.
-    with st.container():
-        free_wish_form(data, text)
-    top = st.container()
+    def wish_area():
+        """직접 적기 구간. 글 상자와 단추를 그리고, AI가 고른 곳이 들어갈 자리를 돌려준다.
+
+        AI가 고른 곳은 자리만 먼저 잡고, 아래 구역을 모두 그린 뒤에 채운다.
+        그래야 '이미 카드로 나온 곳'(seen)을 알고 그릴 수 있다.
+        """
+        with st.container():
+            free_wish_form(data, text)
+        return st.container()
+
     if primary:
-        # 대표 유형 하나를 크게 보여준다
+        # 대표 유형 하나를 크게 보여주고, 바로 아래에 직접 적기를 둔다. 검사 결과가 글 상자보다 먼저 보인다
         type_section(data, text, by_type[primary], text["type_label"], guides, top_n, seen, consults,
                      intro=text["result_intro"])
+        picks = wish_area()
         if judged.secondary:
             ui.html(f'<p class="sec">{escape(text["secondary_heading"])}</p>')
             type_buttons(data, [judged.secondary], opened, draw_section)
-        rest = [p for p in consults if p["id"] not in seen]           # 위에 이미 나온 창구는 다시 내지 않는다
-        if rest:
-            consult_section(data, text, rest, guides)
-            seen.update({p["id"]: text["consult_heading"] for p in rest})
-        elif not shown_ids:
-            ui.notice(text["no_program_at_all"], "fail")
-            ui.fallback_card(data.settings["fallback_card"], text)
 
         # 다른 유형은 첫 화면에 늘어놓지 않고, 원하는 사람만 펼쳐 본다
         others = [tid for tid in data.types if tid not in (primary, judged.secondary)]
@@ -619,6 +627,15 @@ def screen_result(data, text) -> None:
         else:
             tied = [] if judged.secondary else judged.secondary_candidates
             browse_types(data, text, others, tied, opened, draw_section)
+
+        # 함께 찾아 주는 창구는 맨 아래에 접어 둔다. 유형에 맞는 곳을 이미 받았기 때문이다
+        rest = [p for p in consults if p["id"] not in seen]           # 위에 이미 나온 창구는 다시 내지 않는다
+        if rest:
+            consult_section(data, text, rest, guides, folded=True)
+            seen.update({p["id"]: text["consult_heading"] for p in rest})
+        elif not shown_ids:
+            ui.notice(text["no_program_at_all"], "fail")
+            ui.fallback_card(data.settings["fallback_card"], text)
     else:
         # 대표 유형이 없는 사람: 일반 창구를 먼저, 그 아래에서 유형을 둘러본다
         ui.heading(text["result_heading"])
@@ -632,9 +649,10 @@ def screen_result(data, text) -> None:
             seen.update({p["id"]: text["consult_heading"] for p in consults})
         else:
             ui.fallback_card(data.settings["fallback_card"], text)
+        picks = wish_area()
         browse_types(data, text, list(data.types), judged.candidates if deferred else [], opened, draw_section)
 
-    with top:
+    with picks:
         free_wish_result(data, text, shown_types, pool, guides, seen, consults)
     ui.notice(text["capture_tip"], "info")
     ui.share_box(text, data.settings["app_title"], str(text.get("share_url") or ""))

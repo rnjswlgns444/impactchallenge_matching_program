@@ -490,9 +490,9 @@ def test_picked_place_already_shown_keeps_call_button(app, fake_ai):
     assert escape(settings["ai_seen_note"].format(type=data.types["T01"]["name"])) in text
     assert text.count(settings["call_button"]) > calls_before
     assert "해외여행" in text                                  # 일부만 찾았으면 못 찾은 부분을 알려 준다
-    # 직접 적기 구간은 화면 맨 위에 있다: AI가 고른 곳이 대표 유형 상자와 문의할 곳보다 먼저 나온다
-    assert text.index(settings["ai_heading"]) < text.index(settings["type_label"])
-    assert text.index(settings["ai_heading"]) < text.index(settings["contacts_heading"])
+    # 직접 적기 구간은 대표 유형 바로 아래에 있다(11/22): AI가 고른 곳은 대표 유형과 그 문의할 곳 다음에 나온다
+    assert text.index(settings["type_label"]) < text.index(settings["contacts_heading"]) < text.index(settings["ai_heading"])
+    assert text.index(settings["ai_heading"]) < text.index(settings["share_heading"])
 
     # 글만 고치고 '찾아보기'를 다시 누르지 않으면: 예전 결과가 그대로 있고 AI를 또 부르지 않는다
     app.text_area(key="free_text").set_value("다른 글").run()
@@ -576,6 +576,29 @@ def test_mind_and_health_detail_answers_are_not_logged(app, tmp_path):
     assert [(e["target"], e["value"]) for e in events] == [("T12", "")]
     assert "chronic" not in (tmp_path / "events.csv").read_text(encoding="utf-8-sig")
     assert "chronic" not in (tmp_path / "responses.csv").read_text(encoding="utf-8-sig")
+
+
+def test_result_order_and_folded_consult(app):
+    """대표 유형이 있으면: 유형 결과가 직접 적기보다 먼저 나오고, 함께 찾아 주는 창구는 접혀 있다."""
+    data = loader.load_all()
+    text = data.settings["text"]
+    wish = sel.question(data.questions, sel.FREE_Q)["text"]
+    take_survey(app, T01=(5, 5))
+    page = page_text(app)
+    assert page.index(data.types["T01"]["name"]) < page.index(wish) < page.index(text["share_heading"])
+    assert "more_types" in [b.key for b in app.button]             # 다른 유형은 그 아래에서 연다
+    assert [e.label for e in app.expander if e.label == text["consult_heading"]]
+
+
+def test_consult_stays_open_without_a_primary_type(app):
+    """대표 유형이 없으면 함께 찾아 주는 창구가 결과의 중심이므로 펼쳐서 보여주고, 직접 적기는 그 아래에 둔다."""
+    data = loader.load_all()
+    text = data.settings["text"]
+    wish = sel.question(data.questions, sel.FREE_Q)["text"]
+    take_survey(app, base=3)
+    page = page_text(app)
+    assert not [e.label for e in app.expander if e.label == text["consult_heading"]]
+    assert page.index(text["consult_heading"]) < page.index(wish) < page.index(text["browse_heading"])
 
 
 def test_care_type_asks_who_first(app):
