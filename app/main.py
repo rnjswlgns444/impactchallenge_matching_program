@@ -301,6 +301,12 @@ def type_section(data, text, result: candidates.TypeResult, label: str, guides, 
     type_info = data.types[tid]
     ui.type_header(label, type_info)
 
+    if result.needs_choice:
+        # 먼저 골라야 하는 세부 질문(돌봄: 누구의 돌봄인지). 고르기 전에는 곳을 보여주지 않는다
+        detail_question(text, type_info, sel.detail_of(type_info))
+        ui.notice(text["detail_first"], "info")
+        return
+
     if not result.contacts and not result.lists:
         # 안내할 곳이 없으면 세부 질문을 묻지 않고, 함께 찾아 주는 창구를 바로 붙인다
         ui.notice(text["no_program"])
@@ -318,6 +324,8 @@ def type_section(data, text, result: candidates.TypeResult, label: str, guides, 
     if detail:
         detail_question(text, type_info, detail)
     asked = [opt["label"] for opt in sel.chosen_detail_options(type_info, state.details.get(tid))]
+    if result.widened:
+        ui.notice(text["widened_note"], "info")
 
     if result.contacts:
         ui.html(f'<p class="sec">{escape(text["contacts_heading"])}</p>')

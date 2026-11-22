@@ -27,6 +27,8 @@ class TypeResult:
     type_id: str
     contacts: list[dict] = field(default_factory=list)   # 지금 문의할 수 있는 곳 (순서대로)
     lists: list[dict] = field(default_factory=list)      # 목록에서 직접 찾아볼 곳
+    needs_choice: bool = False   # 세부 질문을 먼저 골라야 해서 아직 아무것도 고르지 않았다 (require_choice)
+    widened: bool = False        # 고른 세부 주제에 맞는 곳이 없어, 빼지 않고 이 유형의 곳을 그대로 담았다
 
 
 def _still_open(program: dict, day: str, time: str) -> bool:
@@ -84,16 +86,23 @@ def _matches(program: dict, rule: dict | None) -> bool:
 
 
 def for_type(programs: list[dict], type_info: dict, detail_answer, today: date,
-             profile: dict | None = None) -> TypeResult:
+             profile: dict | None = None, narrow: bool = True) -> TypeResult:
     """유형 하나의 후보를 '문의할 곳'과 '목록'으로 나눠 돌려준다.
 
     세부 질문의 규칙: 고른 선택지의 exclude에 해당하면 빼고, first에 해당하면 앞으로 가져온다.
     세부 질문의 last에 해당하는 프로그램은 (first로 가져오지 않는 한) 맨 뒤로 보낸다. 답하지 않아도 적용된다.
+    match_tags인 세부 질문은 고른 선택지의 세부태그가 붙은 곳만 남긴다. 그런 곳이 하나도 없으면 빼지 않고
+    이 유형의 곳을 그대로 돌려주고 widened로 알린다(다른 유형의 곳은 섞지 않는다).
+    require_choice인 세부 질문은 고르기 전에는 아무것도 돌려주지 않고 needs_choice로 알린다.
+    narrow=False면 match_tags로 좁히지 않는다(AI 후보용). exclude와 require_choice는 그대로 적용된다.
     순서: 앞으로 가져온 것 → 안산에 있는 곳 → 세부태그가 많이 겹치는 순 → 상시서비스 → id. 인기순이 아니다.
     """
     detail = detail_of(type_info)
     chosen = chosen_detail_options(type_info, detail_answer)
     chosen_tags = {f"{detail['id']}.{opt['id']}" for opt in chosen} if detail else set()
+    if detail and detail.get("require_choice") and not chosen_tags:
+        return TypeResult(type_info["id"], needs_choice=True)
+    required_tags = chosen_tags if narrow and detail and detail.get("match_tags") else set()
 
     def place(program: dict) -> int:
         if any(_matches(program, opt.get("first")) for opt in chosen):
@@ -110,31 +119,38 @@ def for_type(programs: list[dict], type_info: dict, detail_answer, today: date,
         if type_info["id"] in split_multi(p["유형태그"])
         and not any(_matches(p, opt.get("exclude")) for opt in chosen)
     ]
+    narrowed = [p for p in candidates if not required_tags.isdisjoint(split_multi(p["세부태그"]))]
+    widened = bool(required_tags and candidates and not narrowed)
+    if required_tags and narrowed:
+        candidates = narrowed
     candidates.sort(key=sort_key)
     return TypeResult(
         type_info["id"],
         contacts=[p for p in candidates if p["종류"] != KIND_LIST],
         lists=[p for p in candidates if p["종류"] == KIND_LIST],
+        widened=widened,
     )
 
 
 def build_result(programs: list[dict], types: dict[str, dict], type_ids: list[str],
-                 details: dict, today: date, profile: dict | None = None) -> list[TypeResult]:
+                 details: dict, today: date, profile: dict | None = None, narrow: bool = True) -> list[TypeResult]:
     """고른 유형마다 기본 결과를 만든다. details는 {유형 id: 세부 질문의 답}, profile은 설문 답이다."""
-    return [for_type(programs, types[tid], details.get(tid), today, profile) for tid in type_ids]
+    return [for_type(programs, types[tid], details.get(tid), today, profile, narrow) for tid in type_ids]
 
 
 def ai_pool(programs: list[dict], types: dict[str, dict], type_ids: list[str],
             details: dict, today: date, profile: dict | None = None) -> list[dict]:
     """AI에게 보낼 후보. AI는 이 목록 안에서만 고를 수 있다.
 
-    유형을 골랐으면 그 유형들의 '문의할 곳'을 합친 것이다(세부 질문으로 뺀 것은 여기서도 빠진다).
+    유형을 골랐으면 그 유형들의 '문의할 곳'을 합친 것이다(세부 질문의 exclude로 뺀 것은 여기서도 빠진다).
+    세부 주제(match_tags)로는 좁히지 않는다. 직접 적은 글이 주제 단추보다 구체적이므로, 글에 다른 주제를
+    적어도 같은 유형 안에서는 찾아 줄 수 있어야 한다. 먼저 골라야 하는 유형(돌봄)은 고르기 전에는 비어 있다.
     유형을 정하지 않았으면 지금 보여줘도 되는 곳 전체다. 목록(강좌 목록 등)은 넣지 않는다.
     """
     if not type_ids:
         return [p for p in eligible(programs, today, profile) if p["종류"] != KIND_LIST]
     pool: dict[str, dict] = {}
-    for result in build_result(programs, types, type_ids, details, today, profile):
+    for result in build_result(programs, types, type_ids, details, today, profile, narrow=False):
         for program in result.contacts:
             pool.setdefault(program["id"], program)
     return list(pool.values())

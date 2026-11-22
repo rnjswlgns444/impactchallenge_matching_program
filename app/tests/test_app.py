@@ -578,6 +578,42 @@ def test_mind_and_health_detail_answers_are_not_logged(app, tmp_path):
     assert "chronic" not in (tmp_path / "responses.csv").read_text(encoding="utf-8-sig")
 
 
+def test_care_type_asks_who_first(app):
+    """돌봄동행형: 누구의 돌봄인지 고르기 전에는 곳을 보여주지 않고, 고르면 그 주제의 곳만 보여준다."""
+    data = loader.load_all()
+    text = data.settings["text"]
+    take_survey(app, T11=(5, 5))
+    page = page_text(app)
+    assert text["detail_first"] in page and text["contacts_heading"] not in page
+    assert text["no_program"] not in page                          # '안내할 곳이 없다'가 아니라 '먼저 골라 달라'다
+
+    click(app, "detail_T11_child")
+    page = page_text(app)
+    mine = candidates.for_type(data.programs, data.types["T11"], "child", clock.now(), app.session_state.answers)
+    assert text["detail_first"] not in page and mine.contacts[0]["프로그램명"] in page
+    others = candidates.for_type(data.programs, data.types["T11"], "adult", clock.now(), app.session_state.answers)
+    assert not [p for p in others.contacts if p["프로그램명"] in page]      # 다른 주제의 곳은 빠진다
+
+
+def test_no_exact_topic_shows_the_type_places_with_a_note(app, monkeypatch):
+    """고른 주제에 맞는 곳이 없으면 빈 화면 대신 그 유형의 곳을 보여주고 한 줄로 알린다."""
+    data = loader.load_all()
+    text = data.settings["text"]
+    real = candidates.for_type
+
+    def nothing_exact(programs, type_info, detail_answer, today, profile=None, narrow=True):
+        result = real(programs, type_info, None, today, profile)        # 주제에 맞는 곳이 없는 상황을 만든다
+        result.widened = bool(detail_answer) and narrow
+        return result
+    monkeypatch.setattr(candidates, "for_type", nothing_exact)
+
+    take_survey(app, T12=(5, 5))
+    assert text["widened_note"] not in page_text(app)                   # 고르기 전에는 알릴 것이 없다
+    click(app, "detail_T12_smoking")
+    page = page_text(app)
+    assert text["widened_note"] in page and text["contacts_heading"] in page and text["no_program"] not in page
+
+
 def test_no_detail_question_allows_many_answers():
     for type_info in loader.load_all().types.values():
         detail = type_info.get("detail") or {}

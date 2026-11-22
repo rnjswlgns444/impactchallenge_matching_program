@@ -60,7 +60,7 @@ TEXT_KEYS = """
     scale_help number_placeholder number_next number_required multi_help next_button back_button
     type_label type_label_other result_intro secondary_heading more_types_button also_heading
     tie_two tie_many confirm_one repick_button result_heading low_interest edit_hint
-    detail_label contacts_heading lists_heading no_program no_program_at_all unknown_intro
+    detail_label detail_first widened_note contacts_heading lists_heading no_program no_program_at_all unknown_intro
     browse_heading browse_help consult_heading
     free_privacy free_button free_empty free_unclear free_wait ai_heading ai_reason ai_stale ai_none ai_fail
     kind_always kind_period kind_list nationwide card_ask target_label first_visit_label
@@ -181,8 +181,9 @@ def validate_types(areas: list[dict], types_list: list[dict]) -> list[str]:
         _check_options(where, options, problems)
         if "last" in detail:
             _check_rule(f"{where} last", detail["last"], problems)
-        if not isinstance(detail.get("log_answer", True), bool):
-            problems.append(f"{where}의 log_answer는 true 또는 false로 적습니다.")
+        for flag in ("log_answer", "match_tags", "require_choice"):
+            if not isinstance(detail.get(flag, True), bool):
+                problems.append(f"{where}의 {flag}는 true 또는 false로 적습니다.")
         for opt in options:
             for key in ("exclude", "first"):
                 if key in opt:

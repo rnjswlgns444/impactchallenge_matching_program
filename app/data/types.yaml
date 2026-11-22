@@ -16,6 +16,9 @@
 #       exclude   : 이 선택지를 고르면 후보에서 뺄 프로그램. {programs.csv의 열 이름: [뺄 값]}
 #       enabled   : false면 이 세부 질문을 화면에서 묻지 않습니다. (적지 않으면 묻습니다)
 #       prominent : true면 접어 두지 않고 유형 이름 바로 아래에 보여줍니다. (적지 않으면 접어 둡니다)
+#       match_tags: true면 선택지를 고른 뒤에는 그 선택지의 세부태그가 붙은 프로그램만 남깁니다.
+#                   맞는 곳이 하나도 없으면 빼지 않고 이 유형의 곳을 그대로 보여 주며 그 사실을 알립니다.
+#       require_choice: true면 선택지를 고르기 전에는 프로그램을 보여 주지 않습니다. (돌봄: 누구의 돌봄인지 먼저 확인)
 #       log_answer: false면 기록을 켜 두어도 고른 선택지를 남기지 않습니다. 마음·건강처럼 민감한 질문에 적습니다.
 #
 # 세부 선택지를 프로그램과 연결하려면 programs.csv의 '세부태그'에 '질문id.선택지id'를 적습니다. 예) D02.wage_required
@@ -101,6 +104,7 @@ types:
     definition: "활동 자체의 즐거움이 중심. 지속적인 사람·소속이 중심이면 T07도 선택."
     detail:
       id: D05
+      match_tags: true
       text: "어떤 활동이 끌리세요?"
       selection: single
       options:
@@ -116,6 +120,7 @@ types:
     definition: "취업 외 생활 기능·지식 학습. 디지털에 한정하지 않고, 취업 목적도 있으면 T04 추가 여부 확인."
     detail:
       id: D06
+      match_tags: true
       text: "무엇을 배우고 싶으세요?"
       selection: single
       options:
@@ -146,6 +151,7 @@ types:
     definition: "본인이 상담을 원할 때 연결. 혼자 참여하기 어렵다는 답만으로 우울·치료 필요를 추정하지 않음."
     detail:
       id: D08
+      match_tags: true
       log_answer: false   # 민감한 내용이라 고른 선택지를 기록하지 않습니다. 본인 상태가 아니라 알아볼 상담의 종류를 묻습니다.
       text: "어떤 상담을 알아볼까요?"
       selection: single
@@ -178,6 +184,7 @@ types:
     definition: "혜택 조회·신청 지원. 형편이 어렵다고 답한 사람에게만 부여하지 않음. 조회는 선정 확정이 아님."
     detail:
       id: D10
+      match_tags: true
       text: "어떤 지원이 궁금하세요?"
       selection: single
       options:
@@ -193,6 +200,8 @@ types:
     definition: "응답자와 돌봄 대상자를 구분. 대상자의 나이·필요도를 확인하고 사업별 대상 조건 적용."
     detail:
       id: D11
+      match_tags: true
+      require_choice: true
       text: "누구에게 도움이 필요하세요?"
       selection: single
       prominent: true   # 누구의 돌봄인지 먼저 확인하도록 접지 않고 보여줍니다. 답하지 않으면 일반 안내만 나옵니다.
@@ -209,6 +218,7 @@ types:
     definition: "건강 유지·관리 욕구. 운동의 재미가 목적이면 T05도 가능. 질환이나 치료 필요를 자동 판정하지 않음."
     detail:
       id: D12
+      match_tags: true
       log_answer: false   # 민감한 내용이라 고른 선택지를 기록하지 않습니다. 본인 상태가 아니라 볼 정보의 종류를 묻습니다.
       text: "어떤 건강 정보를 볼까요?"
       selection: single

@@ -187,6 +187,63 @@ def test_profile_filters_by_gender_age_and_work(data):
     assert ids(first_consult(programs, TODAY, man)) == ["all"]
 
 
+def test_chosen_detail_keeps_only_matching_places(data):
+    """match_tags인 세부 질문: 고른 주제의 세부태그가 붙은 곳만 남긴다. 고르지 않으면 모두 보여준다."""
+    health = data.types["T12"]
+    programs = [row("quit", "T12", 세부태그="D12.smoking"), row("check", "T12", 세부태그="D12.check|D12.habits"),
+                row("plain", "T12"), row("book", "T12", 종류="목록", 세부태그="D12.smoking")]
+    everything = for_type(programs, health, None, TODAY)
+    assert ids(everything.contacts) == ["check", "plain", "quit"] and ids(everything.lists) == ["book"]
+    assert not everything.widened and not everything.needs_choice
+
+    smoking = for_type(programs, health, "smoking", TODAY)
+    assert ids(smoking.contacts) == ["quit"] and ids(smoking.lists) == ["book"] and not smoking.widened
+    # AI 후보는 주제로 좁히지 않는다. 글에 다른 주제를 적어도 같은 유형 안에서는 찾을 수 있어야 한다
+    assert ids(ai_pool(programs, data.types, ["T12"], {"T12": "smoking"}, TODAY)) == ["quit", "check", "plain"]
+
+    # 고른 주제에 맞는 곳이 하나도 없으면 빼지 않고 이 유형의 곳을 그대로 보여주고, 그 사실을 알린다
+    chronic = for_type(programs, health, "chronic", TODAY)
+    assert ids(chronic.contacts) == ["check", "plain", "quit"] and chronic.widened
+    assert ids(for_type([row("job", "T01")], health, "chronic", TODAY).contacts) == []      # 다른 유형의 곳은 섞지 않는다
+
+    # match_tags가 아닌 세부 질문(일터찾기형)은 고른 뒤에도 빼지 않고 순서만 바꾼다
+    jobs = [row("a", "T01", 세부태그="D01.new_work"), row("b", "T01")]
+    picked = for_type(jobs, data.types["T01"], "new_work", TODAY)
+    assert ids(picked.contacts) == ["a", "b"] and not picked.widened
+
+
+def test_care_asks_who_before_showing_places(data):
+    """돌봄(require_choice): 누구의 돌봄인지 고르기 전에는 곳을 보여주지 않는다."""
+    care = data.types["T11"]
+    assert care["detail"]["require_choice"] is True and care["detail"]["match_tags"] is True
+    programs = [row("mine", "T11", 세부태그="D11.self"), row("parent", "T11", 세부태그="D11.adult")]
+    before = for_type(programs, care, None, TODAY)
+    assert before.needs_choice and not before.contacts and not before.lists
+    assert ai_pool(programs, data.types, ["T11"], {}, TODAY) == []
+    after = for_type(programs, care, "adult", TODAY)
+    assert ids(after.contacts) == ["parent"] and not after.needs_choice
+    assert any("require_choice" in line for line in loader.validate_types(
+        [{"id": care["area"]}], [dict(care, detail=dict(care["detail"], require_choice="yes"))]))
+
+
+def test_every_detail_topic_has_a_place_today(data):
+    """지금 정보표로는 match_tags인 세부 질문의 모든 선택지에 맞는 곳이 한 곳 이상 있다(11/22 기준).
+
+    정보표가 바뀌어 빈 주제가 생기면 이 테스트가 알려준다. 그때 화면은 빈 화면 대신 그 유형의 곳을 보여준다.
+    """
+    today = datetime(2026, 11, 22, 12, 0, tzinfo=clock.KST)
+    empty = []
+    for type_info in data.types.values():
+        detail = detail_of(type_info)
+        if not detail or not detail.get("match_tags"):
+            continue
+        for opt in detail["options"]:
+            result = for_type(data.programs, type_info, opt["id"], today)
+            if result.widened or not (result.contacts or result.lists):
+                empty.append(f"{type_info['id']}.{opt['id']}")
+    assert empty == []
+
+
 def test_target_columns_are_checked(data):
     types_list = list(data.types.values())
     fine = row("a", "T01", 대상성별="female", 최소나이="50", 최대나이="69", 대상재직상태="not_working|employed")
