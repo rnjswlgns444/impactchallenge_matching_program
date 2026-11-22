@@ -51,9 +51,9 @@ questions:
     text: "지금은 일하고 계세요?"
     selection: single
     options:
-      - {id: employed, label: "고용되어 일하고 있어요 (시간제·일용직 포함)"}
+      - {id: employed, label: "월급이나 일당을 받고 일해요 (시간제·일용직 포함)"}
       - {id: self_employed, label: "자영업·사업을 하고 있어요"}
-      - {id: not_working, label: "현재 일을 하지 않아요"}
+      - {id: not_working, label: "지금은 돈을 받고 일하지 않아요"}
 
   # ── 척도 문항 24개 ──
   - {id: Q01, type: T01, selection: scale, text: "꾸준히 다닐 직장을 찾고 싶어요."}
@@ -106,7 +106,7 @@ questions:
         show: [혼자참여]
         ask: "혼자 가도 괜찮을까요?"
       - id: time_care
-        label: "시간이나 가족 돌봄"
+        label: "시간이 맞을지 (일·가족 돌봄)"
         show: [시간대]
         ask: "이용할 수 있는 요일과 시간이 어떻게 되나요?"
       - id: cost
@@ -132,6 +132,6 @@ questions:
   - id: Q_FREE
     where: result
     text: "더 바라는 점이 있으면 적어 주세요."
-    help: "해보고 싶은 일이나 시작하기 전에 걱정되는 점을 편하게 적어주세요. 적지 않고 넘어가도 괜찮아요."
+    help: '예) "무료면 좋겠어요", "오전에 갈 수 있는 곳". 적지 않아도 괜찮아요.'
     selection: text
     max_characters: 500

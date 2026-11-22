@@ -63,7 +63,7 @@ types:
       options:
         - {id: wage_required, label: "급여가 꼭 필요해요", exclude: {보수: [무보수]}}
         - {id: allowance_ok, label: "교통비·식비 정도도 괜찮아요"}
-        - {id: unpaid_ok, label: "보수 없이도 괜찮아요", first: {보수: [무보수]}}
+        - {id: unpaid_ok, label: "급여 없는 봉사활동도 좋아요", first: {보수: [무보수]}}
 
   - id: T03
     area: work
@@ -124,9 +124,9 @@ types:
       text: "무엇을 배우고 싶으세요?"
       selection: single
       options:
-        - {id: knowledge, label: "인문·역사·외국어 등을 배우고 싶어요"}
-        - {id: digital, label: "스마트폰이나 AI를 배우고 싶어요"}
-        - {id: basic, label: "읽기·쓰기 등 기초부터 배우고 싶어요"}
+        - {id: knowledge, label: "인문학·역사·외국어 등"}
+        - {id: digital, label: "스마트폰·인공지능(AI) 사용법"}
+        - {id: basic, label: "읽기·쓰기 등 기초"}
 
   - id: T07
     area: leisure
