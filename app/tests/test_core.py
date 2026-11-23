@@ -572,6 +572,18 @@ def test_text_keys_match_the_screen_code():
     assert not set(loader.TEXT_KEYS) & set(loader.TEXT_FIELDS)
 
 
+def test_every_type_has_a_character_for_each_gender(data):
+    """유형마다 성별 선택지 수만큼 캐릭터 그림 파일이 있다. 그림이 없는 경우에는 None이라 화면이 그림 없이 그려진다."""
+    from app.ui.components import CHARACTER_DIR, character_image
+    genders = [option["id"] for option in question(data.questions, "P_GENDER")["options"]]
+    for type_id in data.types:
+        for gender in genders:
+            assert character_image(type_id, gender) == CHARACTER_DIR / f"{type_id.lower()}-{gender}.webp"
+    assert len(list(CHARACTER_DIR.glob("*.webp"))) == len(data.types) * len(genders)   # 쓰지 않는 그림도 없다
+    assert character_image("T01", None) is None                  # 성별 답이 없을 때(질문 없이 둘러보기)
+    assert character_image("T99", genders[0]) is None            # 그림을 아직 넣지 않은 유형
+
+
 def test_general_window_may_have_no_type_tag(data):
     types_list = list(data.types.values())
     assert loader.validate_programs([row("g", "", 첫상담="Y")], types_list) == []

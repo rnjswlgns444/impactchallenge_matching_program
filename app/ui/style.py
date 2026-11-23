@@ -234,11 +234,32 @@ CSS = """
 
 .stApp .topbar-name { flex: 1; min-width: 0; }
 .stApp .topbar-team { font-size: 1rem; font-weight: 650; color: var(--muted); }
-.stApp [data-area="work"] { --area-ink: var(--teal); --area-wash: var(--aqua); --area-rule: #B8D0C2; }
-.stApp [data-area="leisure"] { --area-ink: var(--clay); --area-wash: #FBEEDE; --area-rule: #DDC4AD; }
-.stApp [data-area="life"] { --area-ink: #295B72; --area-wash: #E8F1F2; --area-rule: #B2CBD0; }
+.stApp :is([data-area="work"], .st-key-type_hero:has([data-area="work"])) {
+  --area-ink: var(--teal); --area-wash: var(--aqua); --area-rule: #B8D0C2;
+}
+.stApp :is([data-area="leisure"], .st-key-type_hero:has([data-area="leisure"])) {
+  --area-ink: var(--clay); --area-wash: #FBEEDE; --area-rule: #DDC4AD;
+}
+.stApp :is([data-area="life"], .st-key-type_hero:has([data-area="life"])) {
+  --area-ink: #295B72; --area-wash: #E8F1F2; --area-rule: #B2CBD0;
+}
 .stApp .type-box[data-area] {
   background: var(--area-wash); border-color: var(--area-rule); border-inline-start-color: var(--area-ink);
+}
+/* 대표 유형 카드: 캐릭터 그림 → 작은 글 → 유형 이름 → 설명. 그림과 글을 한 카드로 묶고 가운데에 둔다.
+   그림에는 글자가 없어서, 글씨를 키워도 그림과 따로 움직인다 */
+.stApp .st-key-type_hero {
+  align-items: center; gap: .35rem; padding: 1rem 1.1rem 1.15rem; border-radius: var(--card-radius);
+  background: var(--area-wash, var(--aqua)); border: 1px solid var(--area-rule, #B8D0C2);
+}
+.stApp .st-key-type_hero [data-testid="stImage"] { margin-inline: auto; }
+/* 그림은 400px로 받아 200px로 보여 준다. Streamlit이 그림 태그에 폭(400px)을 직접 적어 넣으므로 !important로 덮는다 */
+.stApp .st-key-type_hero img {
+  display: block; width: min(200px, 56vw) !important; max-width: 100%; height: auto; margin-inline: auto;
+}
+.stApp .st-key-type_hero [data-testid="stElementToolbar"] { display: none; }   /* 그림 크게 보기 단추는 쓰지 않는다 */
+.stApp .st-key-type_hero .type-box[data-area] {
+  padding: 0; border: 0; background: none; text-align: center; word-break: keep-all;
 }
 .stApp .type-box[data-area] .type-label, .stApp .area[data-area] { color: var(--area-ink); }
 .stApp .area[data-area]::after { background: var(--area-rule); }

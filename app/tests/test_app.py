@@ -112,6 +112,7 @@ def test_one_type_to_the_end(app, tmp_path):
 
     page = page_text(app)
     assert text["type_label"] in page and data.types["T01"]["name"] in page
+    assert len(app.get("image")) == 1                           # 대표 유형 이름 위에 캐릭터 그림 한 장
     assert data.types["T04"]["name"] not in page               # 다른 유형은 첫 화면에 늘어놓지 않는다
     assert "혼자 가도 괜찮을까요?" in page                      # 걸림돌이 물어볼 문장으로 이어진다
     assert text["call_button"] in page                         # 전화 단추는 접지 않고 보인다
@@ -126,6 +127,7 @@ def test_one_type_to_the_end(app, tmp_path):
     click(app, "browse_T04")
     page = page_text(app)
     assert data.types["T04"]["name"] in page and text["type_label_other"] in page
+    assert len(app.get("image")) == 1                           # 본인이 연 유형에는 그림을 더하지 않는다
     # 유형마다 한 곳만 먼저 보이므로(top_n 1), 겹치는 곳을 보려면 '더 보기'로 두 유형을 모두 펼친다
     for key in ("more_T01", "more_T04"):
         if key in [b.key for b in app.button]:
@@ -593,6 +595,7 @@ def test_browse_without_the_survey(app, tmp_path):
     page = page_text(app)
     everyone = candidates.for_type(data.programs, data.types["T01"], None, clock.now())
     assert data.types["T01"]["statement"] in page and everyone.contacts[0]["프로그램명"] in page
+    assert not app.get("image")                                        # 성별 답이 없으니 캐릭터 그림도 없다
     women_only = [p for p in everyone.contacts if p["대상성별"]]
     assert women_only                                                 # 성별 조건이 있는 곳도 빼지 않고 후보에 둔다
     click(app, "more_T01")

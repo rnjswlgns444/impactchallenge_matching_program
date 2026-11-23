@@ -318,15 +318,17 @@ def visible_contacts(result: candidates.TypeResult, top_n: int) -> list[dict]:
 
 
 def type_section(data, text, result: candidates.TypeResult, label: str, guides, top_n: int,
-                 seen: dict[str, str], consults: list[dict], intro: str = "") -> None:
+                 seen: dict[str, str], consults: list[dict], intro: str = "", gender: str | None = None) -> None:
     """유형 하나의 구역. seen은 {이미 카드로 나온 프로그램 id: 그 유형 이름}이고, 여기서 나온 것을 더한다.
 
     label은 유형 이름 위의 작은 글(대표 유형인지, 본인이 연 유형인지), intro는 머리말 아래 안내다.
+    gender(P_GENDER의 답)를 주면 그 성별의 캐릭터 그림을 유형 이름 위에 띄운다. 대표 유형에만 준다.
     """
     state = st.session_state
     tid = result.type_id
     type_info = data.types[tid]
-    ui.type_header(label, type_info)
+    ui.type_header(label, type_info, ui.character_image(tid, gender),
+                   text["type_image_alt"].format(name=type_info["name"]))
 
     if result.needs_choice:
         # 먼저 골라야 하는 세부 질문(돌봄: 누구의 돌봄인지). 고르기 전에는 곳을 보여주지 않는다
@@ -707,8 +709,9 @@ def screen_result(data, text) -> None:
 
     if primary:
         # 대표 유형 하나를 크게 보여주고, 바로 아래에 직접 적기를 둔다. 검사 결과가 글 상자보다 먼저 보인다
+        # 성별 답은 캐릭터 그림을 고르는 데만 넘긴다. 저장하지 않는다
         type_section(data, text, by_type[primary], text["type_label"], guides, top_n, seen, consults,
-                     intro=text["result_intro"])
+                     intro=text["result_intro"], gender=state.answers.get(sel.GENDER_Q))
         picks = wish_area()
         if judged.secondary:
             ui.html(f'<p class="sec">{escape(text["secondary_heading"])}</p>')

@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import re
 from html import escape
+from pathlib import Path
 
 import streamlit as st
 
@@ -15,6 +16,8 @@ _NUMBER = re.compile(r"\d{2,4}-\d{3,4}-\d{4}|\d{4}-\d{4}|\d{3,4}")  # 031-481-29
 # 찾아가지 않고 이용하는 곳의 '장소' 칸에 적힌 말. 이런 곳에는 '혼자 가도 되나요', '처음 가면 뭘 하나요'를 붙이지 않는다
 REMOTE_PLACES = {"전화 문의", "전화 상담", "전화·온라인 상담", "온라인 상담", "온라인", "비대면", "집으로 방문하는 서비스"}
 VISIT_GUIDES = {"alone", "first_visit"}     # 직접 찾아갈 때만 뜻이 있는 걸림돌(questions.yaml의 Q_BARRIER 선택지 id)
+CHARACTER_DIR = Path(__file__).resolve().parent / "assets" / "type-characters"   # 유형 캐릭터 그림(유형 12개 × 성별 2)
+CHARACTER_WIDTH = 400                       # 보내는 그림의 폭(px). 화면에는 style.py가 200px로 보여 준다(휴대폰에서 선명하게 보이도록 두 배)
 
 
 def html(markup: str) -> None:
@@ -110,14 +113,34 @@ def question_text(text: str, help_text: str = "") -> None:
         html(f'<p class="q-help">{escape(help_text)}</p>')
 
 
-def type_header(label: str, type_info: dict) -> None:
-    """유형 구역의 머리말: 작은 글(label), 유형 이름, 유형 설명 문장."""
-    html(
+def character_image(type_id: str, gender: str | None) -> Path | None:
+    """유형 캐릭터 그림의 경로. 파일 이름은 't01-female.webp'처럼 유형 id와 성별 선택지 id(P_GENDER의 답)로 정한다.
+
+    성별 답이 없거나 그 그림 파일이 없으면 None이다. 그러면 화면은 그림 없이 유형 상자만 그린다.
+    """
+    if not gender:
+        return None
+    path = CHARACTER_DIR / f"{type_id.lower()}-{gender}.webp"
+    return path if path.is_file() else None
+
+
+def type_header(label: str, type_info: dict, image: Path | None = None, alt: str = "") -> None:
+    """유형 구역의 머리말: 작은 글(label), 유형 이름, 유형 설명 문장.
+
+    image를 주면 그림을 유형 이름 위에 두고 한 카드로 묶는다(대표 유형에만 쓴다. 한 화면에 한 번만 그린다).
+    """
+    box = (
         f'<div class="type-box" data-area="{escape(type_info.get("area", ""), quote=True)}">'
         f'<p class="type-label">{escape(label)}</p>'
         f'<h2 class="type-name">{escape(type_info["name"])}</h2>'
         f'<p class="type-statement">{escape(type_info["statement"])}</p></div>'
     )
+    if image is None:
+        html(box)
+        return
+    with st.container(key="type_hero"):
+        st.image(str(image), width=CHARACTER_WIDTH, alt=alt)
+        html(box)
 
 
 def link_button(label: str, url: str, fill: bool = False) -> None:

@@ -74,7 +74,7 @@ TEXT_KEYS = """
 # 값을 끼워 넣는 문구와, 그 문구에 쓸 수 있는 자리표시자
 TEXT_FIELDS = {
     "progress_scale": {"number", "total"}, "priority_example": {"org", "program"},
-    "edit_option": {"number", "question", "answer"},
+    "edit_option": {"number", "question", "answer"}, "type_image_alt": {"name"},
     "more_button": {"count"}, "ai_unmatched": {"items"},
     "ai_seen_note": {"type"}, "seen_note": {"type"}, "unconfirmed": {"column"}, "checked_note": {"date"},
 }
