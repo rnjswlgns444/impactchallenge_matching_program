@@ -264,6 +264,80 @@ CSS = """
 .stApp .type-box[data-area] .type-label, .stApp .area[data-area] { color: var(--area-ink); }
 .stApp .area[data-area]::after { background: var(--area-rule); }
 
+/* 따라다니는 목차(대표 유형이 있는 결과 화면). 휴대폰: 유형 상자 아래에 있다가 스크롤하면 화면 위에 붙는 얇은 띠.
+   sticky는 띠가 아니라 Streamlit이 씌운 바깥 껍데기에 준다. 띠에 주면 껍데기 높이 안에서만 붙어서 따라오지 않는다 */
+.stApp [data-testid="stElementContainer"]:has(nav.toc) { position: sticky; top: 0; z-index: 5; }
+.stApp .toc { --toc-h: 3rem; background: var(--canvas); border-bottom: 1px solid var(--rule); }
+.stApp .toc-head, .stApp .toc-title, .stApp .toc-long { display: none; }
+.stApp .toc-row {
+  display: flex; align-items: stretch; margin: 0; padding: 0; list-style: none;
+  overflow-x: auto; scrollbar-width: none;
+}
+.stApp .toc-row::-webkit-scrollbar { display: none; }
+.stApp .toc-row li { flex: 1 0 auto; display: flex; margin: 0; padding: 0; }
+.stApp .toc a {
+  flex: 1; min-height: var(--toc-h); display: flex; align-items: center; justify-content: center; gap: .3em;
+  padding: 0 .2rem; white-space: nowrap; text-decoration: none; color: var(--ink);
+  font-size: clamp(1rem, 4.4vw, 1.125rem); font-weight: 650;
+}
+.stApp .toc-num { color: var(--teal); font-weight: 750; }
+.stApp .toc a.toc-act > span {
+  display: flex; align-items: center; min-height: 2.25rem; padding: 0 .6rem;
+  border: 1.5px solid var(--line); border-radius: 999px; background: var(--surface);
+}
+.stApp .toc li.toc-wide-only { display: none; }
+/* 목차를 눌러 내려갔을 때 띠가 구역 제목을 가리지 않게, 제목 위에 띠 높이만큼 자리를 둔다 */
+.stApp [id^="sec-"] { scroll-margin-top: 4.25rem; }
+[data-testid="stMain"] { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { [data-testid="stMain"] { scroll-behavior: auto; } }
+/* 넓은 화면: 본문(42rem) 오른쪽에 뜨는 상자 */
+@media (min-width: 1180px) {
+  .stApp [data-testid="stElementContainer"]:has(nav.toc) { position: static; }
+  .stApp .toc {
+    position: fixed; top: 5.5rem; left: calc(50% + 21rem + 1.25rem); width: 14rem; z-index: 5;
+    padding: 1rem; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--card-radius);
+  }
+  .stApp .toc-head { display: block; padding-bottom: .85rem; border-bottom: 1px solid var(--rule); }
+  .stApp .toc-head .toc-label { margin: 0; font-size: 1rem; color: var(--muted); line-height: 1.4; }
+  .stApp .toc-head .toc-name { margin: 0; font-size: 1.25rem; font-weight: 750; color: var(--ink); line-height: 1.4; }
+  .stApp .toc-title { display: block; margin: .85rem 0 .25rem; font-size: 1rem; font-weight: 700; color: var(--muted); }
+  .stApp .toc-row { flex-direction: column; padding: 0; overflow: visible; }
+  .stApp .toc-short { display: none; }
+  .stApp .toc-long { display: inline; }
+  .stApp .toc a { justify-content: flex-start; white-space: normal; padding: 0 .6rem; font-size: 1.125rem; }
+  .stApp .toc li.toc-wide-only { display: flex; }
+  .stApp .toc li.toc-first-act { margin-top: .75rem; }
+  .stApp .toc a.toc-act { padding: .3rem 0; }
+  .stApp .toc a.toc-act > span { flex: 1; justify-content: center; min-height: 3rem; border-radius: .85rem; }
+  .stApp [id^="sec-"] { scroll-margin-top: 1.5rem; }
+}
+@media (hover: hover) {
+  .stApp .toc a:hover { background: #F0F5EB; }
+  .stApp .toc a.toc-act:hover { background: none; }
+  .stApp .toc a.toc-act:hover > span { border-color: var(--teal); background: #F0F5EB; }
+}
+
+/* 대표 유형 아래의 구역 제목: 번호 동그라미 + 제목. 구역은 선이 아니라 위 여백으로 나눈다 */
+.stApp .sec-head { display: flex; align-items: center; gap: .65rem; margin: 1.1rem 0 0; }
+.stApp .sec-num {
+  flex: none; width: 2.1rem; height: 2.1rem; border-radius: 50%; background: var(--aqua); color: var(--teal);
+  display: flex; align-items: center; justify-content: center; font-size: 1.25rem; font-weight: 750;
+}
+.stApp .save-head { margin-top: 1.1rem; }
+
+/* 내 결과 저장하기: 사진 미리보기, 저장 단추(주요 단추와 같은 모양), 보내기 단추 */
+.stApp .st-key-save_card img { border: 1px solid var(--rule); border-radius: .85rem; }
+.stApp .st-key-save_card [data-testid="stElementToolbar"] { display: none; }   /* 그림 크게 보기 단추는 쓰지 않는다 */
+.stApp .stDownloadButton > button {
+  width: 100%; min-height: 3.875rem; box-sizing: border-box; padding: .68rem 1.1rem;
+  background: var(--yellow); color: #202E27; border: 1.5px solid #857810; border-radius: .85rem; box-shadow: none;
+}
+.stApp .stDownloadButton > button p { color: #202E27; font-size: 1.25rem; line-height: 1.45; font-weight: 750; }
+@media (hover: hover) {
+  .stApp .stDownloadButton > button:enabled:hover { background: #F4DA02; border-color: #857810; }
+}
+.stApp .send .send-status:empty { display: none; }
+
 @media (max-width: 420px) {
   .block-container { padding-inline: .85rem; }
   .stApp .st-key-q_card { padding: .95rem; }

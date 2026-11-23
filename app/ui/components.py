@@ -77,20 +77,115 @@ _SHARE_CODE = """(function (cfg) {
 })(CONFIG);"""
 
 
-def share_box(text: dict, title: str, url: str = "") -> None:
-    """결과 화면 맨 아래의 '친구에게 공유하기'. 답이나 결과는 보내지 않는다."""
-    html(f'<div class="share"><h2 class="q-title">{escape(text["share_heading"])}</h2>'
-         f'<p class="q-help">{escape(text["share_help"])}</p>'
-         f'<a class="a-btn share-btn" href="#" role="button">💬 {escape(text["share_button"])}</a>'
-         f'<p class="small-note share-status" aria-live="polite"></p><p class="share-url"></p></div>')
-    config = {"title": title, "message": text["share_message"], "copied": text["share_copied"],
-              "failed": text["share_failed"], "url": url}
-    code = _SHARE_CODE.replace("CONFIG", json.dumps(config, ensure_ascii=False))
-    loader_script = ("<script>const w = window.parent; if (!w.__shareBound) { w.__shareBound = true; "
+def _plant(flag: str, code: str, config: dict) -> None:
+    """단추를 눌렀을 때 실행할 코드를 앱 화면(부모 문서)에 한 번만 심는다. flag는 이미 심었는지 적어 두는 이름."""
+    code = code.replace("CONFIG", json.dumps(config, ensure_ascii=False))
+    loader_script = (f"<script>const w = window.parent; if (!w.{flag}) {{ w.{flag} = true; "
                      "const s = w.document.createElement('script'); s.textContent = "
                      + json.dumps(code, ensure_ascii=False).replace("</", "<\\/")
                      + "; w.document.head.appendChild(s); }</script>")
     st.iframe(loader_script, height=1)
+
+
+def share_box(text: dict, title: str, url: str = "") -> None:
+    """결과 화면 맨 아래의 '친구에게 공유하기'. 답이나 결과는 보내지 않는다."""
+    html(f'<div class="share" id="sec-share"><h2 class="q-title">{escape(text["share_heading"])}</h2>'
+         f'<p class="q-help">{escape(text["share_help"])}</p>'
+         f'<a class="a-btn share-btn" href="#" role="button">💬 {escape(text["share_button"])}</a>'
+         f'<p class="small-note share-status" aria-live="polite"></p><p class="share-url"></p></div>')
+    _plant("__shareBound", _SHARE_CODE, {"title": title, "message": text["share_message"],
+                                         "copied": text["share_copied"], "failed": text["share_failed"], "url": url})
+
+
+# '카카오톡·메시지로 보내기'를 누르면 실행되는 코드. 화면에 보이는 결과 사진을 휴대폰 공유 창에 파일로 넘긴다.
+# 공유 창은 누른 직후에만 띄울 수 있어서(아이폰), 단추에 손이 닿는 순간 사진을 미리 받아 둔다.
+# 사진 파일을 공유하지 못하는 브라우저에서는 안내 글만 보여준다. 보내는 것은 사진 한 장뿐이다.
+_SEND_CODE = """(function (cfg) {
+  let kept = { src: '', file: null };
+  async function load() {
+    const img = document.querySelector('.st-key-save_card img');
+    if (!img) return null;
+    if (kept.file && kept.src === img.src) return kept.file;
+    const blob = await (await fetch(img.src)).blob();
+    kept = { src: img.src, file: new File([blob], cfg.name, { type: blob.type || 'image/png' }) };
+    return kept.file;
+  }
+  const button = function (e) { return e.target.closest && e.target.closest('a.send-btn'); };
+  document.addEventListener('pointerdown', function (e) { if (button(e)) load().catch(function () {}); }, true);
+  document.addEventListener('click', async function (e) {
+    const a = button(e);
+    if (!a) return;
+    e.preventDefault();
+    const status = a.parentElement.querySelector('.send-status');
+    if (status) status.textContent = '';
+    try {
+      const file = await load();
+      if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: cfg.title });
+        return;
+      }
+    } catch (err) { if (err && err.name === 'AbortError') return; }
+    if (status) status.textContent = cfg.failed;
+  });
+})(CONFIG);"""
+SAVE_FILE_NAME = "내결과.png"
+
+
+def save_box(text: dict, title: str, image: bytes) -> None:
+    """결과 화면 아래의 '내 결과 저장하기'. image는 result_image.render가 만든 사진(PNG)이다.
+
+    사진 미리보기 → 저장 단추 → 보내기 단추. 사진은 길게 눌러서도 저장할 수 있다(단추가 안 되는 브라우저의 마지막 방법).
+    """
+    html(f'<div class="save-head" id="sec-save"><h2 class="q-title">{escape(text["save_heading"])}</h2></div>'
+         f'<p class="q-help">{escape(text["save_help"])}</p>')
+    with st.container(key="save_card"):
+        # PNG 그대로 보여 준다. 정하지 않으면 Streamlit이 JPG로 바꿔서 글자가 흐려지고, 길게 눌러 저장한 사진도 흐리다
+        st.image(image, alt=text["save_image_alt"], output_format="PNG")
+    # 누르면 사진만 내려받고 화면은 다시 그리지 않는다(on_click="ignore")
+    st.download_button(text["save_button"], data=image, file_name=SAVE_FILE_NAME, mime="image/png",
+                       key="save_image", type="primary", width="stretch", on_click="ignore")
+    html(f'<div class="send"><a class="a-btn line send-btn" href="#" role="button">💬 {escape(text["save_send_button"])}</a>'
+         f'<p class="small-note send-status" aria-live="polite"></p></div>')
+    _plant("__sendBound", _SEND_CODE, {"title": title, "name": SAVE_FILE_NAME, "failed": text["save_send_failed"]})
+
+
+def section_head(number: int, title: str, anchor: str) -> None:
+    """대표 유형 아래의 구역 제목: 번호 동그라미 + 제목. anchor는 목차가 찾아오는 표시(id)다.
+
+    표시는 제목(h2)이 아니라 바깥 상자에 붙인다. Streamlit이 제목 태그의 id를 자기 값으로 바꾸기 때문이다.
+    """
+    html(f'<div class="sec-head" id="{escape(anchor, quote=True)}"><span class="sec-num" aria-hidden="true">{number}</span>'
+         f'<h2 class="q-title">{escape(title)}</h2></div>')
+
+
+def feature_text(value: str) -> None:
+    """유형의 특징 글(types.yaml의 feature). 상자 없이 본문 글로 보여준다."""
+    html(f'<p class="body feature">{escape(value)}</p>')
+
+
+def page_nav(text: dict, type_name: str, places_title: str, places_short: str) -> None:
+    """스크롤을 따라다니는 목차. 휴대폰에서는 화면 위에 붙는 띠, 넓은 화면에서는 본문 오른쪽 상자다(style.py).
+
+    링크만으로 움직인다(스크립트 없음). 결과 화면의 맨 바깥에서 그려야 한다. 상자 안에서 그리면 그 상자 안에서만 따라다닌다.
+    places_title, places_short는 3번 구역의 이름이다(문의할 곳이 있을 때와 목록만 있을 때가 다르다).
+    """
+    def item(number: int, anchor: str, short: str, long: str) -> str:
+        return (f'<li><a href="#{anchor}"><span class="toc-num">{number}</span>'
+                f'<span class="toc-short">{escape(short)}</span><span class="toc-long">{escape(long)}</span></a></li>')
+
+    html(
+        f'<nav class="toc" aria-label="{escape(text["nav_label"], quote=True)}">'
+        f'<div class="toc-head"><p class="toc-label">{escape(text["nav_type_label"])}</p>'
+        f'<p class="toc-name">{escape(type_name)}</p></div>'
+        f'<p class="toc-title">{escape(text["nav_label"])}</p><ol class="toc-row">'
+        + item(1, "sec-traits", text["nav_feature"], text["feature_heading"])
+        + item(2, "sec-tune", text["nav_tune"], text["tune_heading"])
+        + item(3, "sec-places", places_short, places_title)
+        + f'<li class="toc-first-act"><a class="toc-act" href="#sec-save"><span><span class="toc-short">'
+          f'{escape(text["nav_save"])}</span><span class="toc-long">{escape(text["save_heading"])}</span></span></a></li>'
+          f'<li class="toc-wide-only"><a class="toc-act" href="#sec-share"><span>{escape(text["share_button"])}</span></a></li>'
+          '</ol></nav>'
+    )
 
 
 def progress(label: str, fraction: float) -> None:

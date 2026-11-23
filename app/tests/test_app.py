@@ -11,10 +11,12 @@ from html import escape
 from pathlib import Path
 
 import pytest
+import streamlit as st
 from streamlit.testing.v1 import AppTest
 
 from app.core import candidates, clock, llm_matcher, loader, logger
 from app.core import selection as sel
+from app.ui import result_image
 
 MAIN = str(Path(__file__).resolve().parents[1] / "main.py")
 
@@ -112,7 +114,7 @@ def test_one_type_to_the_end(app, tmp_path):
 
     page = page_text(app)
     assert text["type_label"] in page and data.types["T01"]["name"] in page
-    assert len(app.get("image")) == 1                           # 대표 유형 이름 위에 캐릭터 그림 한 장
+    assert len(app.get("image")) == 2                           # 캐릭터 그림 한 장 + 맨 아래 저장되는 결과 사진 한 장
     assert data.types["T04"]["name"] not in page               # 다른 유형은 첫 화면에 늘어놓지 않는다
     assert "혼자 가도 괜찮을까요?" in page                      # 걸림돌이 물어볼 문장으로 이어진다
     assert text["call_button"] in page                         # 전화 단추는 접지 않고 보인다
@@ -127,7 +129,7 @@ def test_one_type_to_the_end(app, tmp_path):
     click(app, "browse_T04")
     page = page_text(app)
     assert data.types["T04"]["name"] in page and text["type_label_other"] in page
-    assert len(app.get("image")) == 1                           # 본인이 연 유형에는 그림을 더하지 않는다
+    assert len(app.get("image")) == 2                           # 본인이 연 유형에는 그림을 더하지 않는다
     # 유형마다 한 곳만 먼저 보이므로(top_n 1), 겹치는 곳을 보려면 '더 보기'로 두 유형을 모두 펼친다
     for key in ("more_T01", "more_T04"):
         if key in [b.key for b in app.button]:
@@ -752,3 +754,94 @@ def test_share_box_sends_no_answers(app):
     sent = " ".join(str(frame.proto) for frame in app.get("iframe"))
     assert text["share_message"] in sent
     assert data.types["T01"]["name"] not in sent and "female" not in sent and "61" not in sent
+
+
+# ── 결과 화면의 구역 순서, 따라다니는 목차, 내 결과 저장하기 (11/23) ──
+
+@pytest.fixture
+def cards(monkeypatch):
+    """결과 사진에 무엇이 넘어가는지 모은다. 실제 그리기 대신 작은 그림을 돌려준다.
+
+    한 장은 (앱 이름, 팀 이름, 맨 아래 글, 소제목, 곳 목록, 유형 이름, 설명, 특징, 영역, 그림 경로, 유형 없을 때 제목)이다.
+    """
+    st.cache_data.clear()                                     # 앞선 테스트가 그려 둔 사진을 다시 쓰지 않게 한다
+    real = result_image.render("앱", "팀", "아래", "곳", [])
+    drawn = []
+
+    def render(*args):
+        drawn.append(args)
+        return real
+
+    monkeypatch.setattr(result_image, "render", render)
+    yield drawn
+    st.cache_data.clear()
+
+
+def test_primary_result_follows_the_new_order(app):
+    """대표 유형: 유형 → 특징 → 조금 더 맞춰 보기(세부 질문·직접 적기) → 문의할 곳 → 저장 → 공유. 목차가 있다."""
+    data = loader.load_all()
+    text = data.settings["text"]
+    wish = sel.question(data.questions, sel.FREE_Q)["text"]
+    take_survey(app, T01=(5, 5))
+    page = page_text(app)
+    order = [data.types["T01"]["statement"], text["feature_heading"] + "</h2>", escape(data.types["T01"]["feature"]),
+             text["tune_heading"] + "</h2>", escape(data.types["T01"]["detail"]["text"]), wish,
+             text["contacts_heading"] + "</h2>", escape(text["result_intro"]), text["save_heading"] + "</h2>",
+             text["share_heading"]]
+    places = [page.index(part) for part in order]
+    assert places == sorted(places)
+    assert 'class="toc"' in page and 'href="#sec-places"' in page and 'id="sec-places"' in page
+    assert text["tune_help"] in page
+    assert not [e for e in app.expander if e.label == text["detail_label"]]   # 대표 유형의 세부 질문은 접지 않는다
+    assert len(app.get("download_button")) == 1
+
+
+def test_nav_and_save_box_follow_the_state(app, cards):
+    """동점 화면에는 목차도 저장도 없다. 대표 유형이 없으면 목차 없이 저장만 있고, 사진에는 일반 창구 이름이 들어간다."""
+    data = loader.load_all()
+    text = data.settings["text"]
+    take_survey(app, T05=(5, 5), T07=(5, 5))
+    page = page_text(app)
+    saving = text["save_heading"] + "</h2>"                    # 저장 구역의 제목(화면 글에는 CSS 주석도 섞여 있다)
+    assert text["tie_two"] in page and 'class="toc"' not in page and saving not in page
+    assert not cards and not app.get("download_button")
+
+    click(app, f"priority_{sel.DEFER}")                        # 고르지 않고 둘러보기: 대표 유형이 없다
+    page = page_text(app)
+    assert 'class="toc"' not in page and text["feature_heading"] + "</h2>" not in page and saving in page
+    title, team, footer, heading, places, type_name, statement, feature, area, character, plain = cards[-1]
+    assert (type_name, statement, feature, character) == ("", "", "", None) and plain == text["card_plain_title"]
+    consults = candidates.first_consult(data.programs, clock.now(), app.session_state.answers)
+    assert heading == text["consult_heading"]
+    assert places == [(p["프로그램명"], p["기관명"]) for p in consults[:3]] and places
+
+
+def test_card_has_type_and_place_names_only(app, cards):
+    """사진에는 유형 이름·설명·특징과 곳 이름만 넘어간다. 곳은 화면 후보의 앞 3개이고, 답·전화번호는 넘어가지 않는다."""
+    data = loader.load_all()
+    text = data.settings["text"]
+    take_survey(app, barrier="alone", T01=(5, 5))
+    title, team, footer, heading, places, type_name, statement, feature, area, character, plain = cards[-1]
+    info = data.types["T01"]
+    assert (type_name, statement, feature, area, plain) == (info["name"], info["statement"], info["feature"], info["area"], "")
+    assert character.name == "t01-female.webp"                 # 화면의 캐릭터 그림과 같은 그림
+    assert footer == text["card_footer"].format(date="11월 22일") and heading == text["card_places_heading"]
+
+    shown = candidates.for_type(data.programs, info, None, clock.now(), app.session_state.answers)
+    assert places == [(p["프로그램명"], p["기관명"]) for p in shown.contacts[:3]] and 1 <= len(places) <= 3
+    words = " ".join([title, team, footer, heading, type_name, statement, feature, *sum(map(list, places), [])])
+    phones = [p["공식연락처"] for p in data.programs if p["공식연락처"]]
+    assert not [phone for phone in phones if phone in words]
+    assert "61" not in words and "혼자" not in words          # 나이, 걸림돌 답
+
+
+def test_type_with_lists_only_names_the_section_differently(app, cards):
+    """문의할 곳이 없고 목록만 있는 대표 유형(동네친구형): 구역 제목과 목차가 '문의할 곳'이라고 말하지 않는다."""
+    data = loader.load_all()
+    text = data.settings["text"]
+    take_survey(app, T07=(5, 5))
+    page = page_text(app)
+    assert text["places_heading"] + "</h2>" in page and text["nav_places"] in page
+    assert text["contacts_heading"] not in page and text["nav_contacts"] not in page
+    heading, places = cards[-1][3], cards[-1][4]
+    assert heading == text["lists_heading"] and places

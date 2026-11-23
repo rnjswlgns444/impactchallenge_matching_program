@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.core import candidates, clock, llm_matcher, loader, logger, scoring  # noqa: E402
 from app.core import selection as sel  # noqa: E402
 from app.ui import components as ui  # noqa: E402
-from app.ui import style  # noqa: E402
+from app.ui import result_image, style  # noqa: E402
 
 
 def load_data() -> loader.AppData:
@@ -283,8 +283,11 @@ def priority_question(data, text, type_ids: list[str], today) -> None:
             ui.html(f'<p class="small-note example-note">{escape(line)}</p>')
 
 
-def detail_question(text, type_info: dict, detail: dict) -> None:
-    """유형의 세부 질문(선택). 답은 후보의 순서와 '이렇게 물어보세요' 문장에 쓰인다."""
+def detail_question(text, type_info: dict, detail: dict, plain: bool = False) -> None:
+    """유형의 세부 질문(선택). 답은 후보의 순서와 '이렇게 물어보세요' 문장에 쓰인다.
+
+    plain: 대표 유형의 '조금 더 맞춰 보기' 구역에서는 접지 않고 상자 없이 그린다(구역 제목이 이미 있다).
+    """
     state = st.session_state
     tid = type_info["id"]
     multi = detail["selection"] == "multi"
@@ -301,10 +304,15 @@ def detail_question(text, type_info: dict, detail: dict) -> None:
 
     # 후보를 바꾸는 질문(보탬활동형의 보수)과 먼저 확인해야 하는 질문(돌봄 대상)은 접지 않고 그대로 보여준다
     prominent = bool(detail.get("last") or detail.get("prominent"))
-    box = st.container(border=True) if prominent else st.expander(text["detail_label"], expanded=bool(chosen),
-                                                                 key=f"detail_box_{tid}")
+    if plain:
+        box = st.container()
+    elif prominent:
+        box = st.container(border=True)
+    else:
+        box = st.expander(text["detail_label"], expanded=bool(chosen), key=f"detail_box_{tid}")
     with box:
-        ui.html(f'<p class="q-help"><b>{escape(detail["text"])}</b></p>')
+        ui.html(f'<p class="sec">{escape(detail["text"])}</p>' if plain
+                else f'<p class="q-help"><b>{escape(detail["text"])}</b></p>')
         for option in detail["options"]:
             selected = option["id"] in chosen
             st.button(width="stretch", label=check_label(option["label"], selected), key=f"detail_{tid}_{option['id']}",
@@ -317,47 +325,103 @@ def visible_contacts(result: candidates.TypeResult, top_n: int) -> list[dict]:
     return result.contacts[:top_n]
 
 
-def type_section(data, text, result: candidates.TypeResult, label: str, guides, top_n: int,
-                 seen: dict[str, str], consults: list[dict], intro: str = "", gender: str | None = None) -> None:
-    """유형 하나의 구역. seen은 {이미 카드로 나온 프로그램 id: 그 유형 이름}이고, 여기서 나온 것을 더한다.
+def no_place(result: candidates.TypeResult) -> bool:
+    """이 유형에 안내할 곳이 하나도 없는가. (먼저 골라야 해서 아직 안 보여 주는 경우는 아니다)"""
+    return not result.needs_choice and not result.contacts and not result.lists
 
-    label은 유형 이름 위의 작은 글(대표 유형인지, 본인이 연 유형인지), intro는 머리말 아래 안내다.
-    gender(P_GENDER의 답)를 주면 그 성별의 캐릭터 그림을 유형 이름 위에 띄운다. 대표 유형에만 준다.
-    """
-    state = st.session_state
+
+def consult_instead(data, text, result: candidates.TypeResult, guides, seen: dict[str, str], consults: list[dict]) -> None:
+    """안내할 곳이 없는 유형: 그 사실을 알리고, 함께 찾아 주는 창구를 바로 붙인다."""
     tid = result.type_id
-    type_info = data.types[tid]
-    ui.type_header(label, type_info, ui.character_image(tid, gender),
-                   text["type_image_alt"].format(name=type_info["name"]))
+    ui.notice(text["no_program"])
+    for program in consults[:1]:
+        if program["id"] in seen:
+            ui.seen_card(program, text, seen[program["id"]])
+        else:
+            seen[program["id"]] = data.types[tid]["name"]
+            ui.program_card(program, text, None, guides, None, key=f"{tid}_consult_{program['id']}")
+
+
+def type_section(data, text, result: candidates.TypeResult, label: str, guides, top_n: int,
+                 seen: dict[str, str], consults: list[dict]) -> None:
+    """본인이 연 유형 하나의 구역(결과 화면의 다른 유형, 둘러보기 화면). 대표 유형은 primary_section이 그린다.
+
+    seen은 {이미 카드로 나온 프로그램 id: 그 유형 이름}이고, 여기서 나온 것을 더한다.
+    label은 유형 이름 위의 작은 글이다.
+    """
+    type_info = data.types[result.type_id]
+    ui.type_header(label, type_info)
 
     if result.needs_choice:
         # 먼저 골라야 하는 세부 질문(돌봄: 누구의 돌봄인지). 고르기 전에는 곳을 보여주지 않는다
         detail_question(text, type_info, sel.detail_of(type_info))
         ui.notice(text["detail_first"], "info")
         return
-
-    if not result.contacts and not result.lists:
-        # 안내할 곳이 없으면 세부 질문을 묻지 않고, 함께 찾아 주는 창구를 바로 붙인다
-        ui.notice(text["no_program"])
-        for program in consults[:1]:
-            if program["id"] in seen:
-                ui.seen_card(program, text, seen[program["id"]])
-            else:
-                seen[program["id"]] = type_info["name"]
-                ui.program_card(program, text, None, guides, None, key=f"{tid}_consult_{program['id']}")
+    if no_place(result):
+        consult_instead(data, text, result, guides, seen, consults)   # 세부 질문은 묻지 않는다
         return
-
-    if intro:                                                 # '확인한 곳이에요'는 보여줄 곳이 있을 때만 말한다
-        ui.body(intro)
     detail = sel.detail_of(type_info)
     if detail:
         detail_question(text, type_info, detail)
+    type_places(data, text, result, guides, top_n, seen)
+
+
+def primary_section(data, text, result: candidates.TypeResult, guides, top_n: int, seen: dict[str, str],
+                    consults: list[dict], gender: str | None):
+    """대표 유형의 구역(11/23 순서): 유형 상자 → 목차 → 1 특징 → 2 맞춰 보기(세부 질문 + 직접 적기) → 3 곳.
+
+    AI가 고른 곳이 들어갈 자리를 돌려준다. 자리만 먼저 잡고, 아래 구역을 모두 그린 뒤에 채운다(seen을 알아야 해서).
+    gender(P_GENDER의 답)는 캐릭터 그림을 고르는 데만 쓴다. 결과 화면의 맨 바깥에서 불러야 목차가 따라다닌다.
+    """
+    type_info = data.types[result.type_id]
+    has_contacts = bool(result.contacts)
+    places_title = text["contacts_heading"] if has_contacts else text["places_heading"]
+    ui.type_header(text["type_label"], type_info, ui.character_image(result.type_id, gender),
+                   text["type_image_alt"].format(name=type_info["name"]))
+    ui.page_nav(text, type_info["name"], places_title, text["nav_contacts"] if has_contacts else text["nav_places"])
+
+    ui.section_head(1, text["feature_heading"], "sec-traits")
+    ui.feature_text(type_info["feature"])
+
+    ui.section_head(2, text["tune_heading"], "sec-tune")
+    detail = sel.detail_of(type_info)
+    if result.needs_choice:
+        detail_question(text, type_info, detail, plain=True)      # 꼭 골라야 하므로 '안 골라도 돼요'를 말하지 않는다
+    else:
+        ui.html(f'<p class="q-help">{escape(text["tune_help"])}</p>')
+        if detail and not no_place(result):                       # 안내할 곳이 없으면 세부 질문을 묻지 않는다
+            detail_question(text, type_info, detail, plain=True)
+    with st.container():
+        free_wish_form(data, text, compact=True)
+
+    ui.section_head(3, places_title, "sec-places")
+    picks = st.container()
+    if result.needs_choice:
+        ui.notice(text["detail_first"], "info")
+    elif no_place(result):
+        consult_instead(data, text, result, guides, seen, consults)
+    else:
+        ui.body(text["result_intro"])                             # '확인한 곳이에요'는 보여줄 곳이 있을 때만 말한다
+        type_places(data, text, result, guides, top_n, seen, heading=False)
+    return picks
+
+
+def type_places(data, text, result: candidates.TypeResult, guides, top_n: int, seen: dict[str, str],
+                heading: bool = True) -> None:
+    """유형의 곳 목록: 문의할 곳 카드, '더 보기', 목록에서 직접 찾아보기.
+
+    heading: '지금 문의할 수 있는 곳' 작은 제목을 붙일지. 대표 유형은 구역 제목이 이미 그 말이라 붙이지 않는다.
+    """
+    state = st.session_state
+    tid = result.type_id
+    type_info = data.types[tid]
     asked = [opt["label"] for opt in sel.chosen_detail_options(type_info, state.details.get(tid))]
     if result.widened:
         ui.notice(text["widened_note"], "info")
 
     if result.contacts:
-        ui.html(f'<p class="sec">{escape(text["contacts_heading"])}</p>')
+        if heading:
+            ui.html(f'<p class="sec">{escape(text["contacts_heading"])}</p>')
         shown = visible_contacts(result, top_n)
         for program in shown:
             if program["id"] in seen:
@@ -457,8 +521,10 @@ def ask_ai(data, type_ids: list[str], pool: list[dict], wish: str) -> llm_matche
                                  wish, pool, int(data.settings.get("ai_top_n", 3)), caller)
 
 
-def free_wish_form(data, text) -> None:
-    """원하는 점을 직접 적는 칸(Q_FREE)과 '찾아보기' 단추. 대표 유형 바로 아래에 펼친 채로 둔다(11/22 결정).
+def free_wish_form(data, text, compact: bool = False) -> None:
+    """원하는 점을 직접 적는 칸(Q_FREE)과 '찾아보기' 단추. 접지 않고 펼친 채로 둔다(11/22 결정).
+
+    compact: 대표 유형의 '조금 더 맞춰 보기' 구역 안에서는 질문을 작은 제목으로 그린다(구역 제목이 이미 있다).
 
     단추는 AI를 바로 부르지 않고 '찾는 중'(ai_pending)만 켠다. 찾는 동안에는 단추가 잠겨서
     다시 눌러도 AI를 또 부르지 않는다. 실제 호출은 free_wish_result가 한다. 적은 글은 기록하지 않는다.
@@ -482,7 +548,10 @@ def free_wish_form(data, text) -> None:
             state.ai = llm_matcher.AiResult(llm_matcher.UNCLEAR)
             logger.log_event(state.sid, "ai", state.ai.status, "")
 
-    ui.heading(question["text"])
+    if compact:
+        ui.html(f'<p class="sec">{escape(question["text"])}</p>')
+    else:
+        ui.heading(question["text"])
     if question.get("help"):
         ui.html(f'<p class="q-help">{escape(question["help"])}</p>')
     ui.notice(text["free_privacy"], "info")                # 적기 전에 읽도록 글 상자 위에, 작은 글이 아니라 상자로 둔다
@@ -609,6 +678,50 @@ def edit_answers(data, text) -> None:
             st.button(width="stretch", label=line, key=f"edit_{qid}", on_click=edit, args=(qid,))
 
 
+def card_places(text, result: candidates.TypeResult | None, consults: list[dict]) -> tuple[str, list[dict]]:
+    """결과 사진에 이름을 넣을 곳과 그 소제목. 대표 유형의 문의할 곳 → 둘러볼 목록 → 일반 창구 순서로 처음 있는 것.
+
+    새로 거르지 않는다. candidates가 이미 거른 후보의 앞에서부터 고른다(화면의 순서와 같다).
+    """
+    if result is not None and result.contacts:
+        return text["card_places_heading"], result.contacts[:result_image.MAX_PLACES]
+    if result is not None and result.lists:
+        return text["lists_heading"], result.lists[:result_image.MAX_PLACES]
+    return text["consult_heading"], consults[:result_image.MAX_PLACES]
+
+
+@st.cache_data(show_spinner=False, max_entries=64)
+def draw_card(title: str, team: str, footer: str, heading: str, places: tuple, type_name: str, statement: str,
+              feature: str, area: str, character: str, plain_title: str) -> bytes:
+    """결과 사진을 그린다. 같은 내용이면 다시 그리지 않는다(화면을 누를 때마다 그리면 느리다).
+
+    받는 것은 사진에 찍히는 글자와 그림 경로뿐이다. 설문 답은 여기로 오지 않는다.
+    """
+    return result_image.render(title, team, footer, heading, list(places), type_name, statement, feature, area,
+                               Path(character) if character else None, plain_title)
+
+
+def save_result(data, text, result: candidates.TypeResult | None, consults: list[dict], gender: str | None,
+                today) -> None:
+    """'내 결과 저장하기': 유형·특징과 곳 이름만 담은 사진을 보여 주고 저장·보내기 단추를 둔다.
+
+    result는 대표 유형의 결과이고, 대표 유형이 없으면 None이다(그때는 일반 창구 이름만 넣는다).
+    사진은 그 자리에서 만들어 보여 줄 뿐이고 앱에 남기지 않는다.
+    """
+    heading, places = card_places(text, result, consults)
+    names = tuple((p["프로그램명"], p["기관명"]) for p in places)
+    footer = text["card_footer"].format(date=f"{today.month}월 {today.day}일")
+    title = text.get("top_title") or data.settings["app_title"]
+    if result is None:
+        image = draw_card(title, text["team_name"], footer, heading, names, "", "", "", "", "", text["card_plain_title"])
+    else:
+        type_info = data.types[result.type_id]
+        character = ui.character_image(result.type_id, gender)
+        image = draw_card(title, text["team_name"], footer, heading, names, type_info["name"], type_info["statement"],
+                          type_info["feature"], type_info.get("area", ""), str(character or ""), "")
+    ui.save_box(text, data.settings["app_title"], image)
+
+
 def result_footer(data, text, judged: scoring.Score) -> None:
     state = st.session_state
 
@@ -707,12 +820,10 @@ def screen_result(data, text) -> None:
             free_wish_form(data, text)
         return st.container()
 
+    gender = state.answers.get(sel.GENDER_Q)                  # 캐릭터 그림을 고르는 데만 쓴다. 저장하지 않는다
     if primary:
-        # 대표 유형 하나를 크게 보여주고, 바로 아래에 직접 적기를 둔다. 검사 결과가 글 상자보다 먼저 보인다
-        # 성별 답은 캐릭터 그림을 고르는 데만 넘긴다. 저장하지 않는다
-        type_section(data, text, by_type[primary], text["type_label"], guides, top_n, seen, consults,
-                     intro=text["result_intro"], gender=state.answers.get(sel.GENDER_Q))
-        picks = wish_area()
+        # 대표 유형 하나를 크게 보여준다: 유형 상자 → 특징 → 맞춰 보기(직접 적기 포함) → 곳 (11/23 순서)
+        picks = primary_section(data, text, by_type[primary], guides, top_n, seen, consults, gender)
         if judged.secondary:
             ui.html(f'<p class="sec">{escape(text["secondary_heading"])}</p>')
             type_buttons(data, [judged.secondary], opened, draw_section)
@@ -757,7 +868,7 @@ def screen_result(data, text) -> None:
 
     with picks:
         free_wish_result(data, text, shown_types, pool, guides, seen, consults)
-    ui.notice(text["capture_tip"], "info")
+    save_result(data, text, by_type.get(primary) if primary else None, consults, gender, today)
     ui.share_box(text, data.settings["app_title"], str(text.get("share_url") or ""))
     result_footer(data, text, judged)
 
