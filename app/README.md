@@ -106,6 +106,7 @@ Claude로 바꾸려면 `llm.provider: anthropic`, `llm.model: claude-opus-5-5`�
 - 유형의 세부 질문(`types.yaml`의 `detail`)에 적을 수 있는 표시: `match_tags`(고른 주제에 맞는 곳만 남김), `require_choice`(먼저 골라야 곳이 나옴), `log_answer: false`(고른 선택지를 기록에도 AI에도 남기지 않음. 마음·건강), `prominent`(접지 않고 보여 줌), `enabled: false`(묻지 않음).
 - 척도 문항 사이에 다른 문항을 넣지 않는다. 다른 문항은 척도 문항들의 앞이나 뒤에 둔다.
 - 화면 색(연녹색 바탕, 청록 글자, 노란 주요 단추)은 `ui/style.py` 맨 위 `:root`의 색 값 한 곳에서 고친다. 노란색은 주요 단추(시작, 공식 안내 보기, 다음)의 바탕 칠로만 쓴다. 고른 답은 물빛 바탕과 청록 테두리로 구분한다.
+- 결과 화면의 대표 유형 상자 맨 위에는 캐릭터 그림이 나온다. 그림은 `ui/assets/type-characters/`에 있고, 파일 이름은 `t01-female.webp`처럼 `유형 id(소문자)-성별.webp`다(유형 12개 × 여성·남성 = 24장). 설문에서 답한 성별의 그림을 띄우며, 성별은 그림을 고르는 데만 쓰고 저장하지 않는다. 그림을 바꾸려면 같은 이름의 파일로 덮어쓴다. 파일이 없는 유형은 그림 없이 나온다. 본인이 눌러서 연 다른 유형과 '질문 없이 둘러보기'에는 그림이 없다. 그림 설명(화면 읽기 도구용)은 `type_image_alt`에서 고친다.
 - 시작 화면의 배치는 `ui/home.css`, 그림은 `ui/assets/ansan-lake.webp`다. 큰 제목은 `start_heading`, 팀 이름은 `team_name`, 팀 이름 옆 작은 글은 `start_audience`, 그림 설명(화면 읽기 도구용)은 `start_image_alt`에서 고친다.
 - 화면 맨 위 띠의 이름은 `top_title`, 시작 화면의 1·2·3 순서 안내는 `start_steps`다. 이 둘은 지워도 앱이 켜진다.
 - 설문 위의 진행 표시(`progress_scale`)는 기본정보부터 걸림돌까지 한 줄로 센다('질문 4 / 28').
