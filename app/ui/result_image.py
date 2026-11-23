@@ -27,10 +27,12 @@ AREA_COLORS = {                              # 영역별 유형 상자의 (바�
 PLAIN_COLORS = ("#DDF4EC", "#B8D0C2")        # 대표 유형이 없을 때의 제목 상자
 
 PAD_X, PAD_TOP, PAD_BOTTOM = 64, 48, 40
-TOP_H, FOOT_H, GAP, MID_GAP = 52, 34, 24, 28
+TOP_H, FOOT_H, GAP, MID_GAP = 52, 40, 24, 28
 BOX_W = WIDTH - 2 * PAD_X                    # 952
 CHAR_MAX, CHAR_MIN = 320, 200
 FEATURE_MAX_LINES = 6
+# 글자 크기와 줄 높이(px). 휴대폰에서는 사진이 0.36배쯤으로 보이므로 본문을 36px 아래로 줄이지 않는다
+STATE, FEATURE, HEADING, NAME, ORG = (36, 50), (36, 50), (30, 42), (38, 50), (28, 38)
 
 
 @lru_cache(maxsize=None)
@@ -143,9 +145,9 @@ def render(title: str, team: str, footer: str, places_heading: str, places: list
     places = [(name.strip(), org.strip()) for name, org in places if name.strip()][:MAX_PLACES]
     has_art = bool(type_name) and character is not None and Path(character).is_file()
 
-    f_app, f_team, f_foot = _font(True, 32), _font(False, 24), _font(False, 24)
-    f_pill, f_state, f_feature = _font(True, 48), _font(False, 32), _font(False, 32)
-    f_title, f_heading, f_name, f_org = _font(True, 46), _font(True, 26), _font(True, 30), _font(False, 24)
+    f_app, f_team, f_foot = _font(True, 32), _font(False, 26), _font(False, 28)
+    f_pill, f_state, f_feature = _font(True, 48), _font(False, STATE[0]), _font(False, FEATURE[0])
+    f_title, f_heading, f_name, f_org = _font(True, 46), _font(True, HEADING[0]), _font(True, NAME[0]), _font(False, ORG[0])
 
     inner = BOX_W - 2 * 36                                   # 유형 상자 안쪽 폭
     text_w = BOX_W - 2 * 12                                  # 특징·곳 구역의 글 폭
@@ -157,14 +159,14 @@ def render(title: str, team: str, footer: str, places_heading: str, places: list
     def measure(shown: list[tuple[str, str]], art: int) -> tuple[int, int, int, list[list[str]]]:
         """(유형 상자 높이, 특징 높이, 곳 구역 높이, 곳마다 이름 줄들)"""
         if type_name:
-            hero = 24 + (art + 10 if has_art else 0) + 80 + (16 + 46 * len(state_lines) if state_lines else 0) + 32
+            hero = 24 + (art + 10 if has_art else 0) + 80 + (16 + STATE[1] * len(state_lines) if state_lines else 0) + 32
         else:
             hero = 48 + 62 * len(title_lines) + 48 if title_lines else 0
-        feat = 46 * len(feature_lines)
+        feat = FEATURE[1] * len(feature_lines)
         names = [wrap(name, f_name, text_w, 2) for name, _ in shown]
         spots = 0
         if shown:
-            spots = 2 + 24 + 38 + 12 + sum(42 * len(n) + (34 if org else 0) for n, (_, org) in zip(names, shown))
+            spots = 2 + 24 + HEADING[1] + 12 + sum(NAME[1] * len(n) + (ORG[1] if org else 0) for n, (_, org) in zip(names, shown))
             spots += 16 * (len(shown) - 1)
         return hero, feat, spots, names
 
@@ -205,23 +207,23 @@ def render(title: str, team: str, footer: str, places_heading: str, places: list
             pill_w = _width(pill_text, f_pill) + 2 * 52
             pen.box((WIDTH - pill_w) / 2, cursor, pill_w, 80, 40, YELLOW, YELLOW_RULE, 2)
             pen.centered(cursor, pill_text, f_pill, PILL_INK, 80)
-            pen.lines(0, cursor + 80 + 16, state_lines, f_state, INK, 46, center=True)
+            pen.lines(0, cursor + 80 + 16, state_lines, f_state, INK, STATE[1], center=True)
         else:
             pen.lines(0, y + 48, title_lines, f_title, INK, 62, center=True)
         y += hero_h + MID_GAP
     if feature_h:
-        pen.lines(PAD_X + 12, y, feature_lines, f_feature, BODY, 46)
+        pen.lines(PAD_X + 12, y, feature_lines, f_feature, BODY, FEATURE[1])
         y += feature_h + MID_GAP
     if places_h:
         pen.box(PAD_X, y, BOX_W, 2, 0, RULE)
         cursor = y + 2 + 24
-        pen.text(PAD_X + 12, cursor, _clip(places_heading, f_heading, text_w), f_heading, TEAL, 38)
-        cursor += 38 + 12
+        pen.text(PAD_X + 12, cursor, _clip(places_heading, f_heading, text_w), f_heading, TEAL, HEADING[1])
+        cursor += HEADING[1] + 12
         for lines, (_, org) in zip(names, shown):
-            cursor = pen.lines(PAD_X + 12, cursor, lines, f_name, INK, 42)
+            cursor = pen.lines(PAD_X + 12, cursor, lines, f_name, INK, NAME[1])
             if org:
-                pen.text(PAD_X + 12, cursor, _clip(org, f_org, text_w), f_org, MUTED, 34)
-                cursor += 34
+                pen.text(PAD_X + 12, cursor, _clip(org, f_org, text_w), f_org, MUTED, ORG[1])
+                cursor += ORG[1]
             cursor += 16
     pen.centered(HEIGHT - PAD_BOTTOM - FOOT_H, _clip(footer, f_foot, BOX_W), f_foot, MUTED, FOOT_H)
     return pen.png()

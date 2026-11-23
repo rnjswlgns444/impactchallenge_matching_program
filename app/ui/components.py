@@ -131,13 +131,14 @@ _SEND_CODE = """(function (cfg) {
 SAVE_FILE_NAME = "내결과.png"
 
 
-def save_box(text: dict, title: str, image: bytes) -> None:
+def save_box(text: dict, title: str, image: bytes, help_text: str) -> None:
     """결과 화면 아래의 '내 결과 저장하기'. image는 result_image.render가 만든 사진(PNG)이다.
 
     사진 미리보기 → 저장 단추 → 보내기 단추. 사진은 길게 눌러서도 저장할 수 있다(단추가 안 되는 브라우저의 마지막 방법).
+    help_text는 사진에 무엇이 들어가는지 알리는 글이다(대표 유형이 있을 때와 없을 때가 다르다).
     """
     html(f'<div class="save-head" id="sec-save"><h2 class="q-title">{escape(text["save_heading"])}</h2></div>'
-         f'<p class="q-help">{escape(text["save_help"])}</p>')
+         f'<p class="q-help">{escape(help_text)}</p>')
     with st.container(key="save_card"):
         # PNG 그대로 보여 준다. 정하지 않으면 Streamlit이 JPG로 바꿔서 글자가 흐려지고, 길게 눌러 저장한 사진도 흐리다
         st.image(image, alt=text["save_image_alt"], output_format="PNG")

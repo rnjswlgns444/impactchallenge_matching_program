@@ -72,7 +72,7 @@ TEXT_KEYS = """
     share_heading share_help share_button share_message share_copied share_failed
     feature_heading tune_heading tune_help places_heading
     nav_label nav_type_label nav_feature nav_tune nav_contacts nav_places nav_save
-    save_heading save_help save_image_alt save_button save_send_button save_send_failed
+    save_heading save_help save_help_plain save_image_alt save_button save_send_button save_send_failed
     card_places_heading card_plain_title
 """.split()
 # 값을 끼워 넣는 문구와, 그 문구에 쓸 수 있는 자리표시자

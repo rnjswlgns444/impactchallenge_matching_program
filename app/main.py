@@ -401,7 +401,8 @@ def primary_section(data, text, result: candidates.TypeResult, guides, top_n: in
     elif no_place(result):
         consult_instead(data, text, result, guides, seen, consults)
     else:
-        ui.body(text["result_intro"])                             # '확인한 곳이에요'는 보여줄 곳이 있을 때만 말한다
+        if has_contacts:                                          # '문의할 수 있다고 확인한 곳'은 문의할 곳이 있을 때만 말한다
+            ui.body(text["result_intro"])                         # (목록 행은 모집 여부를 확인하지 못한 것일 수 있다)
         type_places(data, text, result, guides, top_n, seen, heading=False)
     return picks
 
@@ -719,7 +720,7 @@ def save_result(data, text, result: candidates.TypeResult | None, consults: list
         character = ui.character_image(result.type_id, gender)
         image = draw_card(title, text["team_name"], footer, heading, names, type_info["name"], type_info["statement"],
                           type_info["feature"], type_info.get("area", ""), str(character or ""), "")
-    ui.save_box(text, data.settings["app_title"], image)
+    ui.save_box(text, data.settings["app_title"], image, text["save_help_plain"] if result is None else text["save_help"])
 
 
 def result_footer(data, text, judged: scoring.Score) -> None:
