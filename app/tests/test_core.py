@@ -572,6 +572,18 @@ def test_text_keys_match_the_screen_code():
     assert not set(loader.TEXT_KEYS) & set(loader.TEXT_FIELDS)
 
 
+def test_every_type_needs_a_feature_that_fits_the_card(data):
+    """유형마다 특징 글(feature)이 있어야 하고, 결과 사진에 들어가는 길이를 넘으면 알려 준다."""
+    types_list = list(data.types.values())
+    areas = [{"id": t["area"]} for t in types_list]
+    assert not loader.validate_types(areas, types_list)
+    first = types_list[0]
+    missing = loader.validate_types(areas, [{k: v for k, v in first.items() if k != "feature"}])
+    assert any("feature가 없습니다" in line for line in missing)
+    too_long = loader.validate_types(areas, [dict(first, feature="가" * (loader.FEATURE_MAX + 1))])
+    assert any("넘습니다" in line for line in too_long)
+
+
 def test_every_type_has_a_character_for_each_gender(data):
     """유형마다 성별 선택지 수만큼 캐릭터 그림 파일이 있다. 그림이 없는 경우에는 None이라 화면이 그림 없이 그려진다."""
     from app.ui.components import CHARACTER_DIR, character_image

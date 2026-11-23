@@ -68,8 +68,12 @@ TEXT_KEYS = """
     kind_always kind_period kind_list nationwide card_ask target_label first_visit_label
     check_heading age_unconfirmed worry_heading say_prefix call_button apply_button detail_button home_button
     list_note list_button
-    capture_tip restart_button disclaimer
+    restart_button disclaimer
     share_heading share_help share_button share_message share_copied share_failed
+    feature_heading tune_heading tune_help places_heading
+    nav_label nav_type_label nav_feature nav_tune nav_contacts nav_places nav_save
+    save_heading save_help save_image_alt save_button save_send_button save_send_failed
+    card_places_heading card_plain_title
 """.split()
 # 값을 끼워 넣는 문구와, 그 문구에 쓸 수 있는 자리표시자
 TEXT_FIELDS = {
@@ -77,7 +81,9 @@ TEXT_FIELDS = {
     "edit_option": {"number", "question", "answer"}, "type_image_alt": {"name"},
     "more_button": {"count"}, "ai_unmatched": {"items"},
     "ai_seen_note": {"type"}, "seen_note": {"type"}, "unconfirmed": {"column"}, "checked_note": {"date"},
+    "card_footer": {"date"},
 }
+FEATURE_MAX = 160                 # 유형 특징 글(types.yaml의 feature)의 최대 글자 수. 결과 사진에 들어가는 길이다
 FALLBACK_KEYS = ["name", "org", "description", "phone", "say"]   # url은 없어도 된다
 
 
@@ -164,9 +170,12 @@ def validate_types(areas: list[dict], types_list: list[dict]) -> list[str]:
         if tid in seen:
             problems.append(f"types.yaml: 유형 id '{tid}'가 두 번 나옵니다.")
         seen.add(tid)
-        for field in ("name", "statement"):
+        for field in ("name", "statement", "feature"):
             if not t.get(field):
                 problems.append(f"types.yaml: 유형 '{tid}'에 {field}가 없습니다.")
+        if len(str(t.get("feature") or "")) > FEATURE_MAX:
+            problems.append(f"types.yaml: 유형 '{tid}'의 feature가 {FEATURE_MAX}자를 넘습니다. "
+                            "결과 사진에 다 들어가지 않으니 줄여 주세요.")
         if t.get("area") not in area_ids:
             problems.append(f"types.yaml: 유형 '{tid}'의 area '{t.get('area')}'가 areas에 없습니다.")
         detail = t.get("detail")
