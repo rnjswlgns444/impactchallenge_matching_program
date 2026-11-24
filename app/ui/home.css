@@ -13,7 +13,11 @@
   display: inline-flex; align-items: center; gap: .55rem;
   font-size: 1.28rem; line-height: 1.35; letter-spacing: -.035em;
 }
-.home-mast .mast-audience { color: var(--teal); font-size: 1rem; font-weight: 700; }
+/* 팀 이름 옆 글은 팀 포스터처럼 연초록 알약 모양이다. 글자와 바탕의 명암비는 9.3:1 */
+.home-mast .mast-audience {
+  padding: .32rem .9rem; border-radius: 999px; background: #DDEBCA; color: var(--ink);
+  font-size: 1rem; font-weight: 700;
+}
 .stApp .st-key-landing_panel {
   display: grid; grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "art" "copy" "actions"; gap: .85rem;
@@ -96,6 +100,8 @@
 }
 @media (max-width: 340px) {
   .stApp .landing-title { font-size: 1.75rem; }
+  /* 좁은 화면에서는 알약이 팀 이름 옆에 들어가지 못해 아랫줄로 내려간다. 그러면 시작 단추가 밀리므로 글씨만 둔다 */
+  .home-mast .mast-audience { padding: 0; background: none; color: var(--teal); }
 }
 @media (min-width: 761px) {
   .block-container:has(.st-key-landing) {
