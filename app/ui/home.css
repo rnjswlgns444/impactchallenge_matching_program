@@ -100,7 +100,10 @@
 }
 @media (max-width: 340px) {
   .stApp .landing-title { font-size: 1.75rem; }
-  /* 좁은 화면에서는 알약이 팀 이름 옆에 들어가지 못해 아랫줄로 내려간다. 그러면 시작 단추가 밀리므로 글씨만 둔다 */
+}
+/* 좁은 화면에서는 알약이 팀 이름 옆에 들어가지 못해 아랫줄로 내려간다. 그러면 시작 단추가 밀리므로 글씨만 둔다.
+   팀 이름과 알약에 드는 폭은 297px쯤이다. 폭 344px은 여유가 5px뿐이라, 여유가 21px인 360px부터 알약을 쓴다 */
+@media (max-width: 359px) {
   .home-mast .mast-audience { padding: 0; background: none; color: var(--teal); }
 }
 @media (min-width: 761px) {
