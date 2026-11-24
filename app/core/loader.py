@@ -55,7 +55,7 @@ CLOCK_TIME = re.compile(r"(?:[01]\d|2[0-3]):[0-5]\d")     # 09:00, 16:30 (24시�
 # 화면(main.py, ui/components.py)이 쓰는 settings.yaml의 text 문구. 화면에 문구를 더하면 여기에도 적는다
 # (test_text_keys_match_the_screen_code가 둘이 어긋나면 알려 준다)
 TEXT_KEYS = """
-    start_heading team_name start_audience start_image_alt
+    start_heading team_name start_audience
     start_intro start_time start_refresh start_privacy start_privacy_saving start_button
     start_browse_button browse_intro browse_to_survey browse_to_start type_label_browse
     scale_help number_placeholder number_next number_required multi_help next_button back_button

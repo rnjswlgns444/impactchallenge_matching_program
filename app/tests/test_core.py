@@ -596,6 +596,16 @@ def test_every_type_has_a_character_for_each_gender(data):
     assert character_image("T99", genders[0]) is None            # 그림을 아직 넣지 않은 유형
 
 
+def test_home_characters_have_picture_files(data):
+    """시작 화면에 세우는 캐릭터는 모두 실제 유형·성별 선택지이고 그림 파일이 있다. 없으면 그 칸이 비어 상자가 어긋난다."""
+    from app.ui.components import HOME_CHARACTERS, character_image
+    genders = [option["id"] for option in question(data.questions, "P_GENDER")["options"]]
+    assert len(HOME_CHARACTERS) == 3                             # home.css의 그림 상자가 세 칸이다
+    for type_id, gender in HOME_CHARACTERS:
+        assert type_id in data.types and gender in genders
+        assert character_image(type_id, gender) is not None
+
+
 def test_general_window_may_have_no_type_tag(data):
     types_list = list(data.types.values())
     assert loader.validate_programs([row("g", "", 첫상담="Y")], types_list) == []

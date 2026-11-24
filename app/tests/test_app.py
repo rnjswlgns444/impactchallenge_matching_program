@@ -733,6 +733,14 @@ def test_no_detail_question_allows_many_answers():
 
 # ── 겉모습과 공유 ──
 
+def test_start_screen_shows_the_home_characters(app):
+    """시작 화면의 그림 상자에는 캐릭터 그림이 정해 둔 수만큼 나온다. 설문 화면으로 가면 사라진다."""
+    from app.ui.components import HOME_CHARACTERS
+    assert len(app.get("image")) == len(HOME_CHARACTERS)
+    click(app, "start")
+    assert not app.get("image")
+
+
 def test_top_bar_and_start_steps_are_shown(app):
     """시작 화면에는 순서 안내가, 그 뒤 화면에는 맨 위에 앱 이름 띠가 나온다."""
     text = loader.load_all().settings["text"]

@@ -133,8 +133,7 @@ def screen_start(data, text) -> None:
                 f'{escape(text["team_name"])}</strong>'
                 f'<span class="mast-audience">{escape(text["start_audience"])}</span></header>')
         with st.container(key="landing_panel"):
-            with st.container(key="home_art"):
-                st.image(str(ui_dir / "assets" / "ansan-lake.webp"), width="stretch", alt=text["start_image_alt"])
+            ui.home_art()
             with st.container(key="home_copy"):
                 st.html(f'<h1 class="landing-title">{escape(text["start_heading"])}</h1>'
                         f'<p class="landing-intro">{escape(text["start_intro"])}</p>')

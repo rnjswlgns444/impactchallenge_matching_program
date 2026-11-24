@@ -18,6 +18,9 @@ REMOTE_PLACES = {"전화 문의", "전화 상담", "전화·온라인 상담", "
 VISIT_GUIDES = {"alone", "first_visit"}     # 직접 찾아갈 때만 뜻이 있는 걸림돌(questions.yaml의 Q_BARRIER 선택지 id)
 CHARACTER_DIR = Path(__file__).resolve().parent / "assets" / "type-characters"   # 유형 캐릭터 그림(유형 12개 × 성별 2)
 CHARACTER_WIDTH = 400                       # 보내는 그림의 폭(px). 화면에는 style.py가 200px로 보여 준다(휴대폰에서 선명하게 보이도록 두 배)
+# 시작 화면의 그림 상자에 왼쪽부터 세우는 캐릭터 (유형 id, 성별 선택지 id). 팀 포스터와 같은 세 명이다.
+# 일자리·여가·생활 분야에서 하나씩 골랐다. 바꾸려면 이 줄만 고친다. 셋이 아니면 home.css의 칸 수도 함께 고친다
+HOME_CHARACTERS = (("T01", "male"), ("T05", "female"), ("T12", "female"))
 
 
 def html(markup: str) -> None:
@@ -218,6 +221,21 @@ def character_image(type_id: str, gender: str | None) -> Path | None:
         return None
     path = CHARACTER_DIR / f"{type_id.lower()}-{gender}.webp"
     return path if path.is_file() else None
+
+
+def home_art() -> None:
+    """시작 화면의 그림 상자. 유형 캐릭터를 나란히 세운다. 노란 바탕·바닥·해는 home.css가 그린다.
+
+    꾸밈 그림이라 설명 글(alt)을 비운다. 화면 읽기 도구는 그림을 건너뛰고 바로 제목을 읽는다.
+    이름표는 붙이지 않는다(캐릭터 자료의 유형 이름이 앱의 이름과 달라서, 11/24 결정).
+    그림 파일이 없는 캐릭터는 건너뛰고, 하나도 없으면 상자를 그리지 않는다.
+    """
+    images = [path for path in (character_image(type_id, gender) for type_id, gender in HOME_CHARACTERS) if path]
+    if not images:
+        return
+    with st.container(key="home_art"):
+        for path in images:
+            st.image(str(path), width=CHARACTER_WIDTH, alt="")
 
 
 def type_header(label: str, type_info: dict, image: Path | None = None, alt: str = "") -> None:
