@@ -25,6 +25,20 @@ SCALE = "scale"
 CANDIDATE_TYPES = "candidate_types"   # options_from에 적는 값. 넘겨받은 유형들이 선택지가 된다
 
 
+def full_number(question: dict, value) -> int | None:
+    """숫자 문항에 적은 값을 답으로 쓸 수 있게 다듬는다. 쓸 수 없으면 None.
+
+    태어난 해를 '66'처럼 두 자리로 적는 사람이 많다. 문항에 short_base(예: 1900)가 있으면 두 자리 수에 더해 준다.
+    그 뒤에도 min~max 밖이면 답으로 받지 않는다(가까운 값으로 바꾸지 않는다).
+    """
+    if type(value) is not int:
+        return None
+    base = question.get("short_base")
+    if base and 0 <= value <= 99:
+        value += base
+    return value if question["min"] <= value <= question["max"] else None
+
+
 def ages_from_birth_year(year: int, today: date) -> tuple[int, int]:
     """태어난 해(P_AGE의 답)로 알 수 있는 만 나이 두 가지: (올해 생일 전, 올해 생일 뒤).
 

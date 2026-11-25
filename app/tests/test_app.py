@@ -339,7 +339,10 @@ def test_every_question_must_be_answered(app):
     assert keys() == ["next_P_AGE", "back_survey"]
     click(app, "next_P_AGE")                                                             # 태어난 해를 적지 않고 다음
     assert text["number_required"] in page_text(app) and "P_AGE" not in app.session_state.answers
-    app.number_input(key="num_P_AGE").set_value(BORN)
+    app.number_input(key="num_P_AGE").set_value(1800)                                   # 범위 밖의 해는 받지 않는다
+    click(app, "next_P_AGE")
+    assert text["number_required"] in page_text(app) and "P_AGE" not in app.session_state.answers
+    app.number_input(key="num_P_AGE").set_value(BORN % 100)                             # '65'처럼 두 자리로 적어도 받는다
     click(app, "next_P_AGE")
     assert app.session_state.answers["P_AGE"] == BORN
     assert next_is_off("P_WORK")

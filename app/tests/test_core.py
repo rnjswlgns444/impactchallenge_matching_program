@@ -17,7 +17,8 @@ from app.core import clock, loader, logger, privacy
 from app.core.candidates import ai_pool, build_result, eligible, first_consult, for_type, unconfirmed_columns
 from app.core.llm_matcher import NO_KEY, NO_TYPE, REASON_LIMIT, build_prompt, has_wish, parse_answer, recommend
 from app.core.scoring import CHOOSE, RESULT, score
-from app.core.selection import (ages_from_birth_year, barrier_guides, chosen_detail_options, detail_of, next_question,
+from app.core.selection import (ages_from_birth_year, barrier_guides, chosen_detail_options, detail_of, full_number,
+                                next_question,
                                 options_of, question, scale_questions, toggle, type_questions)
 
 TODAY = date(2026, 11, 17)
@@ -185,6 +186,16 @@ def test_profile_filters_by_gender_age_and_work(data):
     assert ids(ai_pool(programs, data.types, ["T01"], {}, TODAY, man)) == ["all", "mid", "rest"]
     assert ids(ai_pool(programs, data.types, [], {}, TODAY, man)) == ["all", "mid", "rest"]
     assert ids(first_consult(programs, TODAY, man)) == ["all"]
+
+
+def test_two_digit_birth_year_is_read_as_19xx(data):
+    """'몇 년생'에 66이라고 적는 사람이 많다. 1966으로 받고, 범위 밖은 가까운 값으로 바꾸지 않고 받지 않는다."""
+    age = question(data.questions, "P_AGE")
+    assert full_number(age, 66) == 1966 and full_number(age, 1966) == 1966
+    assert full_number(age, 5) is None                           # 1905년생은 범위(1920~) 밖
+    assert full_number(age, 1800) is None and full_number(age, 2020) is None
+    assert full_number(age, None) is None and full_number(age, "1966") is None
+    assert full_number({"min": 0, "max": 120}, 66) == 66          # short_base가 없는 문항은 그대로
 
 
 def test_birth_year_is_never_off_by_one_against_the_user():

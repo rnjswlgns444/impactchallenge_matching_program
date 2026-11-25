@@ -274,12 +274,14 @@ def screen_survey(data, text) -> None:
     elif kind == "number":
         # 폼으로 묶어야, 숫자를 적고 바로 '다음'을 눌러도 적은 값이 함께 넘어온다
         with card, st.form(key=f"form_{qid}", border=False):
-            st.number_input(question["text"], min_value=question["min"], max_value=question["max"],
+            # 칸의 아래쪽 범위는 0으로 열어 둔다. 범위 밖 숫자를 Streamlit이 말없이 가장 가까운 값으로 바꾸지 않게,
+            # 범위는 아래에서 직접 보고 안내한다
+            st.number_input(question["text"], min_value=0, max_value=question["max"],
                             value=state.draft.get(qid), step=1, key=f"num_{qid}", label_visibility="collapsed",
                             placeholder=text["number_placeholder"])
             if st.form_submit_button(text["number_next"], type="primary", width="stretch", key=f"next_{qid}"):
-                number = state.get(f"num_{qid}")
-                if number is None:                       # 비워 두고 누르면 넘어가지 않고 적어 달라고 한다
+                number = sel.full_number(question, state.get(f"num_{qid}"))
+                if number is None:                       # 비웠거나 범위 밖이면 넘어가지 않고 다시 적어 달라고 한다
                     ui.notice(text["number_required"])
                 else:
                     answer(number)
