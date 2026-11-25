@@ -7,6 +7,8 @@
 #   help      : 질문 아래 작은 안내 (없어도 됨)
 #   selection : single(하나만) / multi(여러 개) / number(숫자 입력) / scale(5점 척도) / text(직접 적기)
 #   options   : 선택지 (id와 label). exclusive: true인 선택지는 다른 선택지와 함께 고를 수 없습니다.
+#               icon을 적으면 선택지 글 앞에 작은 그림이 붙습니다. ':material/그림이름:' 꼴로 적습니다(없어도 됨).
+#               그림 이름은 https://fonts.google.com/icons 에서 찾습니다. 예) icon: ":material/work:"
 #   type      : 척도 문항(scale)에만 적습니다. 이 문항의 점수가 더해질 유형 번호(types.yaml의 id)입니다.
 #   where     : result라고 적으면 설문이 아니라 결과 화면에서 묻습니다.
 #
@@ -40,20 +42,22 @@ questions:
       - {id: male, label: "남성"}
       - {id: female, label: "여성"}
 
+  # 나이는 태어난 해로 묻습니다(11/25). 맞는 곳을 고를 때 올해에서 빼서 만 나이로 바꿉니다.
+  # 생일이 지났는지는 모르므로, 한 살 차이 나는 두 나이 가운데 하나라도 조건에 맞으면 빼지 않습니다.
   - id: P_AGE
-    text: "만 나이가 어떻게 되세요?"
-    help: "숫자만 적어 주세요. 예) 60"
+    text: "몇 년생이세요?"
+    help: "태어난 해를 숫자 네 자리로 적어 주세요. 예) 1966"
     selection: number
-    min: 0
-    max: 120
+    min: 1920
+    max: 2010
 
   - id: P_WORK
     text: "지금은 일하고 계세요?"
     selection: single
     options:
-      - {id: employed, label: "월급이나 일당을 받고 일해요 (시간제·일용직 포함)"}
-      - {id: self_employed, label: "자영업·사업을 하고 있어요"}
-      - {id: not_working, label: "지금은 돈을 받고 일하지 않아요"}
+      - {id: employed, label: "월급이나 일당을 받고 일해요 (시간제·일용직 포함)", icon: ":material/work:"}
+      - {id: self_employed, label: "자영업·사업을 하고 있어요", icon: ":material/storefront:"}
+      - {id: not_working, label: "지금은 돈을 받고 일하지 않아요", icon: ":material/local_cafe:"}
 
   # ── 척도 문항 24개 ──
   - {id: Q01, type: T01, selection: scale, text: "꾸준히 다닐 직장을 찾고 싶어요."}

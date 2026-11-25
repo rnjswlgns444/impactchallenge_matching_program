@@ -17,8 +17,8 @@ from app.core import clock, loader, logger, privacy
 from app.core.candidates import ai_pool, build_result, eligible, first_consult, for_type, unconfirmed_columns
 from app.core.llm_matcher import NO_KEY, NO_TYPE, REASON_LIMIT, build_prompt, has_wish, parse_answer, recommend
 from app.core.scoring import CHOOSE, RESULT, score
-from app.core.selection import (barrier_guides, chosen_detail_options, detail_of, next_question, options_of,
-                                question, scale_questions, toggle, type_questions)
+from app.core.selection import (ages_from_birth_year, barrier_guides, chosen_detail_options, detail_of, next_question,
+                                options_of, question, scale_questions, toggle, type_questions)
 
 TODAY = date(2026, 11, 17)
 
@@ -92,7 +92,7 @@ def test_real_questions_lead_to_one_type(data):
 
 def test_profile_and_barrier_do_not_change_type(data):   # 검증 사례 4
     answers = high(data, "T07")
-    answers.update({"P_GENDER": "female", "P_AGE": 60, "P_WORK": "not_working", "Q_BARRIER": ["alone"]})
+    answers.update({"P_GENDER": "female", "P_AGE": 1966, "P_WORK": "not_working", "Q_BARRIER": ["alone"]})
     assert judge(data, answers).primary == "T07"
     guides = barrier_guides(answers, data.questions)
     assert [g["id"] for g in guides] == ["alone"] and guides[0]["ask"]
@@ -165,26 +165,53 @@ def test_end_time_needs_an_end_date_and_clock_format(data):
 
 
 def test_profile_filters_by_gender_age_and_work(data):
-    """답한 성별·나이·일 여부가 대상 조건에 안 맞는 곳은 뺀다. 빈칸은 조건 없음, 답이 없으면 거르지 않는다."""
+    """답한 성별·태어난 해·일 여부가 대상 조건에 안 맞는 곳은 뺀다. 빈칸은 조건 없음, 답이 없으면 거르지 않는다."""
     programs = [row("all", "T01", 첫상담="Y"), row("women", "T01", 대상성별="female", 첫상담="Y"),
                 row("mid", "T01", 최소나이="50", 최대나이="69"),
                 row("rest", "T01", 대상재직상태="not_working|self_employed")]
-    who = lambda gender, age, work: {"P_GENDER": gender, "P_AGE": age, "P_WORK": work, "Q01": 5}   # noqa: E731
+    who = lambda gender, born, work: {"P_GENDER": gender, "P_AGE": born, "P_WORK": work, "Q01": 5}   # noqa: E731
 
-    assert ids(eligible(programs, TODAY, who("female", 61, "not_working"))) == ["all", "women", "mid", "rest"]
-    assert ids(eligible(programs, TODAY, who("male", 61, "not_working"))) == ["all", "mid", "rest"]
-    assert ids(eligible(programs, TODAY, who("female", 70, "self_employed"))) == ["all", "women", "rest"]   # 최대나이 초과
-    assert ids(eligible(programs, TODAY, who("female", 49, "employed"))) == ["all", "women"]                # 최소나이 미만, 재직 중
-    assert ids(eligible(programs, TODAY, who("female", 50, "not_working"))) == ["all", "women", "mid", "rest"]  # 경계 나이는 포함
+    # TODAY는 2026년이다. 1965년생은 만 60~61세
+    assert ids(eligible(programs, TODAY, who("female", 1965, "not_working"))) == ["all", "women", "mid", "rest"]
+    assert ids(eligible(programs, TODAY, who("male", 1965, "not_working"))) == ["all", "mid", "rest"]
+    assert ids(eligible(programs, TODAY, who("female", 1955, "self_employed"))) == ["all", "women", "rest"]   # 만 70~71세: 최대나이 초과
+    assert ids(eligible(programs, TODAY, who("female", 1977, "employed"))) == ["all", "women"]                # 만 48~49세: 최소나이 미만, 재직 중
     assert ids(eligible(programs, TODAY)) == ["all", "women", "mid", "rest"]             # 설문 없이 볼 때는 거르지 않는다
     assert ids(eligible(programs, TODAY, {})) == ["all", "women", "mid", "rest"]
 
     # 유형 결과, AI 후보, 일반 창구 모두 같은 거르기를 거친다
-    man = who("male", 61, "not_working")
+    man = who("male", 1965, "not_working")
     assert ids(for_type(programs, data.types["T01"], None, TODAY, man).contacts) == ["all", "mid", "rest"]
     assert ids(ai_pool(programs, data.types, ["T01"], {}, TODAY, man)) == ["all", "mid", "rest"]
     assert ids(ai_pool(programs, data.types, [], {}, TODAY, man)) == ["all", "mid", "rest"]
     assert ids(first_consult(programs, TODAY, man)) == ["all"]
+
+
+def test_birth_year_is_never_off_by_one_against_the_user():
+    """태어난 해만 알면 만 나이가 한 살 어긋날 수 있다. 두 나이 중 하나라도 조건에 맞으면 빼지 않는다."""
+    assert ages_from_birth_year(1976, TODAY) == (49, 50)             # 올해 생일 전이면 49세, 지났으면 50세
+    programs = [row("from50", "T01", 최소나이="50"), row("to69", "T01", 최대나이="69"), row("any", "T01")]
+    born = lambda year: {"P_AGE": year}   # noqa: E731
+
+    # 최소나이 50세: 올해에서 태어난 해를 뺀 값이 51, 50인 사람은 남고 49인 사람(만 48~49세)만 빠진다
+    assert ids(eligible(programs, TODAY, born(1975))) == ["from50", "to69", "any"]      # 만 50~51세
+    assert ids(eligible(programs, TODAY, born(1976))) == ["from50", "to69", "any"]      # 만 49~50세: 생일이 지났으면 50세다
+    assert ids(eligible(programs, TODAY, born(1977))) == ["to69", "any"]                # 만 48~49세
+    # 최대나이 69세: 만 69~70세인 사람은 남고, 만 70~71세부터 빠진다
+    assert ids(eligible(programs, TODAY, born(1956))) == ["from50", "to69", "any"]
+    assert ids(eligible(programs, TODAY, born(1955))) == ["from50", "any"]
+    # 나이는 넘겨받은 날짜의 연도로 센다. 해가 바뀌면 같은 사람도 한 살 많아진다
+    assert ids(eligible(programs, date(2027, 1, 1), born(1956))) == ["from50", "any"]
+    assert ids(eligible(programs, datetime(2027, 1, 1, 9, 0, tzinfo=clock.KST), born(1977))) == ["from50", "to69", "any"]
+
+
+def test_option_icon_must_be_a_material_name(data):
+    """선택지 앞의 그림(icon)은 ':material/이름:' 꼴이어야 한다. 틀리면 그 문항 화면이 열릴 때 오류가 나므로 미리 알린다."""
+    work = question(data.questions, "P_WORK")
+    assert all(opt.get("icon") for opt in work["options"]) and loader.validate_questions(data.questions) == []
+    questions = copy.deepcopy(data.questions)
+    question(questions, "P_WORK")["options"][0]["icon"] = "서류가방"
+    assert any("icon" in line and "employed" in line for line in loader.validate_questions(questions))
 
 
 def test_chosen_detail_keeps_only_matching_places(data):
@@ -468,7 +495,7 @@ def test_log_has_no_free_text(tmp_path):
 
 def test_response_row_has_no_profile_and_no_free_text(tmp_path):
     """기록할 값은 화면이 아니라 logger가 만든다. 기본정보(성별·나이·일 여부)와 직접 적은 글은 들어가지 않는다."""
-    answers = {"Q01": 5, "Q13": 4, "Q02": 2, "Q14": 1, "P_GENDER": "female", "P_AGE": 61, "P_WORK": "not_working",
+    answers = {"Q01": 5, "Q13": 4, "Q02": 2, "Q14": 1, "P_GENDER": "female", "P_AGE": 1965, "P_WORK": "not_working",
                "Q_BARRIER": ["alone", "cost"], "Q_FREE": "직접 적은 글"}
     judged = score(answers, {"T01": ["Q01", "Q13"], "T05": ["Q02", "Q14"]}, 8, 7)
     fields = logger.response_fields(judged, answers, ["Q13", "Q01", "Q02", "Q14"], ["JOB01"])
@@ -479,7 +506,7 @@ def test_response_row_has_no_profile_and_no_free_text(tmp_path):
     assert fields["barriers"] == ["alone", "cost"] and fields["program_ids"] == ["JOB01"]
     logger.log_response("sid", fields, tmp_path)
     line = (tmp_path / "responses.csv").read_text(encoding="utf-8-sig").splitlines()[1]
-    assert "61" not in line and "직접 적은 글" not in line
+    assert "1965" not in line and "직접 적은 글" not in line
     assert "female" not in line and "not_working" not in line
 
 

@@ -5,9 +5,11 @@
 기본정보(P_*)와 걸림돌(Q_BARRIER)은 유형을 바꾸지 않는다. 걸림돌은 결과 카드에서 무엇을 먼저 보여줄지만 정한다.
 
 answers는 {문항 id: 답} 사전이다. 설문 문항은 모두 답해야 넘어가므로 빈 답은 없다.
-  multi → 선택지 id 목록 / single → 선택지 id 하나 / scale → 1~5 정수 / number → 정수
+  multi → 선택지 id 목록 / single → 선택지 id 하나 / scale → 1~5 정수 / number → 정수(P_AGE는 태어난 해)
 """
 from __future__ import annotations
+
+from datetime import date
 
 BARRIER_Q = "Q_BARRIER"
 PRIORITY_Q = "Q_PRIORITY"
@@ -21,6 +23,17 @@ PROFILE_CHOICES = (
 AGE_MIN_COLUMN, AGE_MAX_COLUMN = "최소나이", "최대나이"     # 만 나이. 빈칸은 '제한 없음'이다
 SCALE = "scale"
 CANDIDATE_TYPES = "candidate_types"   # options_from에 적는 값. 넘겨받은 유형들이 선택지가 된다
+
+
+def ages_from_birth_year(year: int, today: date) -> tuple[int, int]:
+    """태어난 해(P_AGE의 답)로 알 수 있는 만 나이 두 가지: (올해 생일 전, 올해 생일 뒤).
+
+    설문은 태어난 해만 묻는다(11/25). 생일이 지났는지 모르므로 만 나이는 한 살 차이 나는 둘 중 하나다.
+    정보표의 나이 조건과 견줄 때는 둘 중 하나라도 맞으면 맞는 것으로 본다(candidates.fits_profile).
+    받을 수 있는 사람을 빼는 것보다, 한 살 모자란 사람에게 한 곳을 더 보여 주는 편이 낫기 때문이다.
+    """
+    older = today.year - year
+    return older - 1, older
 
 
 def question(questions: list[dict], question_id: str) -> dict:

@@ -11,7 +11,8 @@ from datetime import date, datetime
 
 from . import clock
 from .loader import KIND_ALWAYS, KIND_LIST, KIND_PERIOD, NATIONWIDE, UNCONFIRMED, split_multi
-from .selection import AGE_MAX_COLUMN, AGE_MIN_COLUMN, AGE_Q, PROFILE_CHOICES, chosen_detail_options, detail_of
+from .selection import (AGE_MAX_COLUMN, AGE_MIN_COLUMN, AGE_Q, PROFILE_CHOICES, ages_from_birth_year,
+                        chosen_detail_options, detail_of)
 
 KIND_ORDER = {KIND_ALWAYS: 0, KIND_PERIOD: 1}   # 언제든 문의할 수 있는 곳을 먼저
 
@@ -42,28 +43,31 @@ def _still_open(program: dict, day: str, time: str) -> bool:
     return not (time and program["종료시각"] and time >= program["종료시각"])
 
 
-def fits_profile(program: dict, profile: dict | None) -> bool:
-    """답한 성별·나이·일 여부가 이 프로그램의 대상 조건에 맞는지.
+def fits_profile(program: dict, profile: dict | None, today: date) -> bool:
+    """답한 성별·태어난 해·일 여부가 이 프로그램의 대상 조건에 맞는지.
 
     profile은 설문 답({문항 id: 답})이다. 그 자리에서 견주기만 하고 어디에도 남기지 않는다.
     조건 칸이 비어 있으면 '조건 없음'이고, 답이 없으면(설문 없이 둘러볼 때) 거르지 않는다.
+    나이는 태어난 해를 today의 연도로 만 나이로 바꿔서 본다. 생일 전후로 한 살이 다를 수 있으므로,
+    두 나이 가운데 하나라도 조건(최소나이·최대나이)에 맞으면 빼지 않는다.
     """
     answers = profile or {}
     for question_id, column, _ in PROFILE_CHOICES:
         allowed = split_multi(program[column])
         if allowed and answers.get(question_id) is not None and answers[question_id] not in allowed:
             return False
-    age = answers.get(AGE_Q)
-    if type(age) is int:
+    born = answers.get(AGE_Q)
+    if type(born) is int:
         low, high = program[AGE_MIN_COLUMN], program[AGE_MAX_COLUMN]
-        if (low and age < int(low)) or (high and age > int(high)):
+        ages = ages_from_birth_year(born, today)
+        if not any((not low or age >= int(low)) and (not high or age <= int(high)) for age in ages):
             return False
     return True
 
 
 def eligible(programs: list[dict], today: date | datetime, profile: dict | None = None) -> list[dict]:
     """지금 보여줘도 되는 프로그램: 매칭가능 Y, 55~64세 참여 불가가 아님, 표시종료일·종료시각이 지나지 않음,
-    그리고 profile(설문 답)을 주면 성별·나이·일 여부가 대상 조건에 맞음.
+    그리고 profile(설문 답)을 주면 성별·태어난 해·일 여부가 대상 조건에 맞음.
 
     today에 날짜만 주면 날짜로만 판단한다. 시각까지 주면(clock.now()) 종료일 당일의 종료시각부터 뺀다.
     시각은 clock.now()처럼 시간대가 붙은 것을 넘긴다. 시간대가 없는 시각은 바꾸지 않고 한국 시각으로 본다.
@@ -76,7 +80,7 @@ def eligible(programs: list[dict], today: date | datetime, profile: dict | None 
     return [
         p for p in programs
         if p["매칭가능"] == "Y" and p["55~64세참여"] != "불가" and _still_open(p, day, time)
-        and fits_profile(p, profile)
+        and fits_profile(p, profile, today)
     ]
 
 

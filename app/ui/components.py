@@ -41,17 +41,23 @@ def heading(value: str) -> None:
     html(f'<h2 class="q-title">{escape(value)}</h2>')
 
 
-def topbar(title: str, team: str) -> None:
-    """모든 화면 맨 위의 띠: 로고, 앱 이름, 팀 이름."""
-    html(f'<p class="topbar"><span class="logo" aria-hidden="true"></span>'
-         f'<span class="topbar-name">{escape(title)}</span><span class="topbar-team">{escape(team)}</span></p>')
+def topbar(title: str, sub: str, home_label: str = "", on_home=None) -> None:
+    """모든 화면 맨 위의 노란 띠: 왼쪽에 앱 이름과 작은 풀이, 오른쪽에 '처음으로' 단추.
+
+    home_label을 주면 단추를 그리고, 누르면 on_home을 부른다. 주지 않으면 단추가 없다.
+    설문 화면에는 단추를 두지 않는다(잘못 누르면 답이 지워진다). 띠의 모양은 style.py의 .st-key-topbar 다.
+    """
+    with st.container(key="topbar"):
+        html(f'<p class="topbar"><b class="topbar-name">{escape(title)}</b>'
+             f'<span class="topbar-sub">{escape(sub)}</span></p>')
+        if home_label:
+            st.button(home_label, key="to_start", icon=":material/home:", on_click=on_home)
 
 
-def steps(items: list[str]) -> None:
-    """시작 화면의 순서 안내. 1, 2, 3 번호가 붙은 칸으로 보여준다."""
-    rows = "".join(f'<div class="step"><span class="num">{n}</span><p>{escape(item)}</p></div>'
-                   for n, item in enumerate(items, start=1))
-    html(f'<div class="steps">{rows}</div>')
+def fine_print(title: str, items: list[str]) -> None:
+    """유의사항: 화면 맨 아래의 작은 회색 글. 상자·굵은 글씨·색 바탕 없이 한 줄씩 보여준다(11/25)."""
+    rows = "".join(f"<li>{escape(item)}</li>" for item in items)
+    html(f'<div class="fine"><p>{escape(title)}</p><ul>{rows}</ul></div>')
 
 
 # 공유 단추를 누르면 실행되는 코드. 앱 화면(부모 문서)에 한 번만 심는다.
@@ -192,14 +198,16 @@ def page_nav(text: dict, type_name: str, places_title: str, places_short: str) -
     )
 
 
-def progress(label: str, fraction: float) -> None:
+def progress(label: str, fraction: float, cheer: str = "") -> None:
     """label은 '질문 3 / 28' 같은 진행 글자, fraction은 전체 설문에서 지금까지 온 비율(0~1)이다.
 
+    cheer는 진행 글자 오른쪽에 붙는 짧은 응원('절반 왔어요')이다. 비워 두면 나오지 않는다.
     화면 읽기 도구에도 퍼센트 대신 같은 진행 글자를 읽어 준다(aria-valuetext).
     """
     percent = round(fraction * 100)
+    cheer_line = f'<span class="q-cheer">{escape(cheer)}</span>' if cheer else ""
     # 퍼센트 숫자는 보여주지 않는다. 진행 글자('질문 1 / 24')와 기준이 달라 어긋나 보인다
-    html(f'<p class="q-progress" aria-live="polite">{escape(label)}</p>'
+    html(f'<p class="q-progress" aria-live="polite"><span>{escape(label)}</span>{cheer_line}</p>'
          f'<div class="bar" role="progressbar" aria-label="진행 정도" aria-valuemin="0" aria-valuemax="100" '
          f'aria-valuenow="{percent}" aria-valuetext="{escape(label, quote=True)}">'
          f'<i style="width:{percent}%"></i></div>')

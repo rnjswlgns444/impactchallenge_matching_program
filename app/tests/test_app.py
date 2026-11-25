@@ -70,17 +70,30 @@ def take_survey(at: AppTest, base: int = 1, barrier: str = "none", **by_type) ->
     click(at, "start")
     answer_profile(at)
     for qid, value in values.items():
-        click(at, f"opt_{qid}_{value}")
-    click(at, f"opt_Q_BARRIER_{barrier}")
-    click(at, "next_Q_BARRIER")
+        choose(at, qid, value)
+    choose(at, "Q_BARRIER", barrier)
+
+
+BORN = 1965          # 테스트 응답자가 태어난 해. 시계를 2026년에 고정했으므로 만 60~61세다
+
+
+def choose(at: AppTest, qid: str, option) -> None:
+    """선택지를 고른 뒤 '다음'을 누른다. 고르기만 해서는 넘어가지 않는다(11/25)."""
+    click(at, f"opt_{qid}_{option}")
+    click(at, f"next_{qid}")
 
 
 def answer_profile(at: AppTest) -> None:
-    """기본정보 세 문항(성별, 나이, 일 여부)에 답한다."""
-    click(at, "opt_P_GENDER_female")
-    at.number_input(key="num_P_AGE").set_value(61)
+    """기본정보 세 문항(성별, 태어난 해, 일 여부)에 답한다."""
+    choose(at, "P_GENDER", "female")
+    at.number_input(key="num_P_AGE").set_value(BORN)
     click(at, "next_P_AGE")
-    click(at, "opt_P_WORK_not_working")
+    choose(at, "P_WORK", "not_working")
+
+
+def is_chosen(at: AppTest, key: str) -> bool:
+    """그 단추가 '고른 것'으로 그려졌는지. 고른 선택지는 type="primary"로 그리고, style.py가 물빛 바탕과 굵은 테두리를 입힌다."""
+    return at.button(key=key).proto.type == "primary"
 
 
 # ── 설문 ──
@@ -95,12 +108,26 @@ def test_survey_shows_one_question_at_a_time_without_type_names(app):
     assert text["progress_scale"].format(number=4, total=28) in page and text["scale_help"] in page   # 기본정보 3문항 다음
     assert [b.label for b in app.button][:5] == [opt["label"] for opt in data.scale]
     assert not [t["name"] for t in data.types.values() if t["name"] in page]
+    assert not [key for key in ("opt_Q01_5", "opt_Q01_4") if is_chosen(app, key)]     # 처음에는 고른 것이 없다
 
+    # 고르기만 하면 표시만 되고 넘어가지 않는다. 답으로 치지도 않는다
     click(app, "opt_Q01_4")
+    assert text["progress_scale"].format(number=4, total=28) in page_text(app)
+    assert "Q01" not in app.session_state.answers
+    assert is_chosen(app, "opt_Q01_4") and not is_chosen(app, "opt_Q01_5")
+    assert app.button(key="opt_Q01_4").label == data.scale[1]["label"]            # 4점 = '그래요'. 글 앞에 ✓를 붙이지 않는다
+    assert not [b.label for b in app.button if "✓" in b.label]
+    click(app, "opt_Q01_5")                                                       # '다음'을 누르기 전에는 바꿔 고를 수 있다
+    assert is_chosen(app, "opt_Q01_5") and not is_chosen(app, "opt_Q01_4")
+    click(app, "opt_Q01_4")
+
+    click(app, "next_Q01")                                                        # '다음'을 눌러야 답이 되고 넘어간다
+    assert app.session_state.answers["Q01"] == 4
     assert text["progress_scale"].format(number=5, total=28) in page_text(app)
+
     click(app, "back_survey")
-    assert "✓ " + data.scale[1]["label"] in [b.label for b in app.button]      # 4점 = '그래요'
-    click(app, "opt_Q01_2")                                                      # 고쳐서 답할 수 있다
+    assert is_chosen(app, "opt_Q01_4") and not app.button(key="next_Q01").disabled   # 앞서 낸 답이 골라진 채로 보인다
+    choose(app, "Q01", 2)                                                         # 고쳐서 답할 수 있다
     assert app.session_state.answers["Q01"] == 2
 
 
@@ -169,7 +196,8 @@ def test_tie_lets_the_user_choose(app, tmp_path):
 
     page = page_text(app)
     assert text["tie_two"] in page and text["type_label"] not in page
-    assert [b.label for b in app.button][:2] == [data.types["T05"]["statement"], data.types["T07"]["statement"]]
+    choices = [b.label for b in app.button if b.key.startswith("priority_")]      # 맨 위 띠의 '처음으로'는 빼고 본다
+    assert choices == [data.types["T05"]["statement"], data.types["T07"]["statement"]]
     assert [b.key for b in app.button if b.key.startswith("priority_")] == ["priority_T05", "priority_T07"]
     # 선택지 아래의 예시는 그 유형에서 지금 안내할 수 있는 곳(걸러진 후보의 첫 번째)이다
     first = candidates.for_type(data.programs, data.types["T05"], None, clock.now())
@@ -232,35 +260,55 @@ def test_all_same_answers_let_the_user_choose(app, tmp_path):
 
 
 def test_every_question_must_be_answered(app):
-    """넘어가기 단추가 없다. 나이를 비우면 넘어가지 않고, 걸림돌은 하나를 골라야 '다음'이 켜진다."""
+    """넘어가기 단추가 없다. 고르기 전에는 '다음'이 꺼져 있고, 태어난 해를 비우면 넘어가지 않는다."""
     data = loader.load_all()
     text = data.settings["text"]
+    survey = sel.survey_questions(data.questions)
+    seen_keys: list[str] = []
 
     def keys() -> list[str]:
-        return [b.key for b in app.button]
+        found = [b.key for b in app.button]
+        seen_keys.extend(found)
+        return found
+
+    def next_is_off(qid: str) -> bool:
+        return app.button(key=f"next_{qid}").disabled and app.button(key=f"next_{qid}").label == text["next_button"]
 
     click(app, "start")
-    assert keys() == ["opt_P_GENDER_male", "opt_P_GENDER_female", "back_survey"]       # 성별: 선택지와 이전뿐
+    # 성별: 선택지, 다음, 이전뿐이다. 맨 위 띠의 '처음으로'도 설문 중에는 없다
+    assert keys() == ["opt_P_GENDER_male", "opt_P_GENDER_female", "next_P_GENDER", "back_survey"]
+    assert next_is_off("P_GENDER")
     click(app, "opt_P_GENDER_female")
+    assert not app.button(key="next_P_GENDER").disabled and "P_GENDER" not in app.session_state.answers
+    click(app, "next_P_GENDER")
 
-    assert "skip_P_AGE" not in keys()
-    click(app, "next_P_AGE")                                                             # 나이를 적지 않고 다음
+    assert keys() == ["next_P_AGE", "back_survey"]
+    click(app, "next_P_AGE")                                                             # 태어난 해를 적지 않고 다음
     assert text["number_required"] in page_text(app) and "P_AGE" not in app.session_state.answers
-    app.number_input(key="num_P_AGE").set_value(61)
+    app.number_input(key="num_P_AGE").set_value(BORN)
     click(app, "next_P_AGE")
-    assert app.session_state.answers["P_AGE"] == 61
-    click(app, "opt_P_WORK_not_working")
+    assert app.session_state.answers["P_AGE"] == BORN
+    assert next_is_off("P_WORK")
+    choose(app, "P_WORK", "not_working")
 
     for question in sel.scale_questions(data.questions):
-        assert keys() == [f"opt_{question['id']}_{opt['value']}" for opt in data.scale] + ["back_survey"]
-        click(app, f"opt_{question['id']}_3")
+        qid = question["id"]
+        assert keys() == [f"opt_{qid}_{opt['value']}" for opt in data.scale] + [f"next_{qid}", "back_survey"]
+        assert next_is_off(qid)
+        # 응원 한 줄은 딱 절반째 문항에서만 '절반 왔어요'가 나온다
+        position = survey.index(question) + 1
+        assert (text["cheer_half"] in page_text(app)) == (position * 2 == len(survey))
+        choose(app, qid, 3)
 
-    assert app.button(key="next_Q_BARRIER").disabled and app.button(key="next_Q_BARRIER").label == text["next_button"]
+    assert next_is_off("Q_BARRIER") and text["cheer_last"] in page_text(app)             # 마지막 문항
     click(app, "opt_Q_BARRIER_none")
     assert not app.button(key="next_Q_BARRIER").disabled
+    assert not [b.label for b in app.button if "✓" in b.label]                           # 여러 개 고르는 문항도 ✓ 없이 표시한다
+    assert is_chosen(app, "opt_Q_BARRIER_none")
     click(app, "next_Q_BARRIER")
     assert app.session_state.screen == "result"
     assert None not in app.session_state.answers.values()
+    assert not [key for key in seen_keys if "skip" in key or key == "to_start"]
 
 
 def test_changed_answer_is_an_event_not_a_new_row(app, tmp_path):
@@ -327,15 +375,58 @@ def test_row_disappears_from_the_screen_at_its_end_time(app, monkeypatch):
     assert not app.exception and not shown()
 
 
+def start_page(monkeypatch, tmp_path, saving: bool) -> str:
+    """save_log를 켜거나 끈 채로 연 시작 화면의 글."""
+    real_load = loader.load_all
+
+    def load():
+        data = real_load()
+        data.settings["save_log"] = saving
+        return data
+
+    monkeypatch.setattr(loader, "load_all", load)
+    monkeypatch.setattr(logger, "LOG_DIR", tmp_path)
+    monkeypatch.setattr(logger, "set_enabled", lambda on: None)   # 앱이 기록 설정을 바꿔 다른 테스트에 남지 않게 한다
+    at = AppTest.from_file(MAIN, default_timeout=30)
+    at.run()
+    assert not at.exception
+    return page_text(at)
+
+
+def notes_of(page: str) -> str:
+    """시작 화면 맨 아래 유의사항(작은 글씨) 안의 글."""
+    start = page.index('<div class="fine">')
+    return page[start:page.index("</div>", start)]
+
+
 def test_start_screen_warns_that_refresh_clears_answers(app):
-    assert escape(loader.load_all().settings["text"]["start_refresh"]) in page_text(app)
+    """새로고침·뒤로 가기를 하면 답이 지워진다는 안내는 맨 아래 유의사항에 있다. 눈에 띄는 상자로 두지 않는다(11/25)."""
+    text = loader.load_all().settings["text"]
+    page = page_text(app)
+    notes = notes_of(page)
+    assert text["start_notes_title"] in notes and escape(text["start_refresh"]) in notes
+    assert escape(text["disclaimer"]) in notes
+    assert 'class="notice' not in page and 'class="steps"' not in page                 # 상자와 순서 안내는 없다
+    assert [b.key for b in app.button] == ["start", "start_browse"]
 
 
-def test_start_screen_tells_the_truth_about_saving(app):
-    """시작 화면의 저장 안내가 settings.yaml의 save_log 값과 맞는다."""
-    settings = loader.load_all().settings
-    key = "start_privacy_saving" if settings.get("save_log", False) else "start_privacy"
-    assert settings["text"][key] in page_text(app)
+def test_start_screen_tells_the_truth_about_saving(monkeypatch, tmp_path):
+    """저장하지 않을 때: 개인정보 안내와 AI 전송 안내가 유의사항에 있고, '저장해요'라는 말은 없다."""
+    text = loader.load_all().settings["text"]
+    page = start_page(monkeypatch, tmp_path, saving=False)
+    notes = notes_of(page)
+    assert escape(text["start_privacy"]) in notes and escape(text["start_ai_note"]) in notes
+    assert escape(text["start_privacy_saving"]) not in page
+
+
+def test_start_screen_says_so_loudly_when_it_saves(monkeypatch, tmp_path):
+    """저장할 때(save_log): 저장 안내는 작은 글씨로 내리지 않고 상자로 보여 준다. '저장하지 않아요'라는 글은 내지 않는다."""
+    text = loader.load_all().settings["text"]
+    page = start_page(monkeypatch, tmp_path, saving=True)
+    assert f'<div class="notice info">{escape(text["start_privacy_saving"])}</div>' in page
+    assert page.index(text["start_privacy_saving"][:20]) < page.index('<div class="fine">')
+    assert escape(text["start_privacy"]) not in page and escape(text["start_ai_note"]) not in page
+    assert escape(text["start_refresh"]) in notes_of(page)                             # 나머지 유의사항은 그대로 있다
 
 
 # ── 직접 적기와 AI 추가 추천 (AI는 가짜 함수로 바꾼다) ──
@@ -406,7 +497,7 @@ def test_free_text_adds_ai_picks_with_reasons(app, fake_ai, tmp_path):
     prompt = fake_ai["prompts"][0]
     assert prompt.count("- id: ") == len(pool) and "010-1234-5678" not in prompt
     assert data.types["T01"]["name"] in prompt
-    assert "female" not in prompt and "not_working" not in prompt and "61세" not in prompt
+    assert "female" not in prompt and "not_working" not in prompt and str(BORN) not in prompt
     blocked = [p["프로그램명"] for p in data.programs if p["매칭가능"] != "Y"]
     assert not [name for name in blocked if name in prompt]
 
@@ -629,15 +720,18 @@ def test_one_answer_can_be_fixed_from_the_result(app):
     page = page_text(app)
     assert sel.question(data.questions, first)["text"] in page
     assert text["edit_notice"] in page and "aria-valuetext" not in page             # 진행 표시 대신 안내 한 줄
-    assert "✓ " + data.scale[0]["label"] in [b.label for b in app.button]          # 지금 답(5점)이 표시되어 있다
+    assert is_chosen(app, f"opt_{first}_5")                                         # 지금 답(5점)이 골라진 채로 보인다
     assert "back_survey" not in [b.key for b in app.button]                         # 고치는 중에는 '이전으로'가 없다
+    assert "to_start" not in [b.key for b in app.button]                            # 답을 고치는 화면도 설문 화면이다
     click(app, "edit_cancel")
     assert app.session_state.screen == "result" and app.session_state.answers[first] == 5
     assert text["type_label"] in page_text(app)
 
     # 5점을 1점으로 고치면 그 문항만 묻고 바로 결과로 돌아온다. 일터찾기형은 6점이 되지만 여전히 가장 높아 대표로 남는다
     click(app, f"edit_{first}")
-    click(app, f"opt_{first}_1")
+    click(app, f"opt_{first}_1")                                                    # 고르기만 해서는 바뀌지 않는다
+    assert app.session_state.screen == "survey" and app.session_state.answers[first] == 5
+    click(app, f"next_{first}")
     assert app.session_state.screen == "result" and "edit_q" not in app.session_state
     assert app.session_state.answers[first] == 1 and app.session_state.answers[second] == 5
     assert len([q for q in sel.survey_questions(data.questions) if q["id"] in app.session_state.answers]) == 28
@@ -734,14 +828,53 @@ def test_start_screen_shows_the_home_characters(app):
     assert not app.get("image")
 
 
-def test_top_bar_and_start_steps_are_shown(app):
-    """시작 화면에는 순서 안내가, 그 뒤 화면에는 맨 위에 앱 이름 띠가 나온다."""
+def has_top_bar(at: AppTest, text: dict) -> bool:
+    return f'<p class="topbar"><b class="topbar-name">{text["top_title"]}</b>' in page_text(at) and text["top_sub"] in page_text(at)
+
+
+def test_top_bar_is_on_every_screen_and_home_only_where_it_is_safe(app):
+    """맨 위 띠(앱 이름 + 풀이)는 모든 화면에 있다. '처음으로' 단추는 결과·둘러보기 화면에만 있고, 설문 중에는 없다."""
     text = loader.load_all().settings["text"]
-    page = page_text(app)
-    assert 'class="topbar"' not in page                        # 시작 화면은 큰 제목이 있어 띠를 겹쳐 그리지 않는다
-    assert all(step in page for step in text["start_steps"])
+
+    def home_button() -> list[str]:
+        return [b.label for b in app.button if b.key == "to_start"]
+
+    assert has_top_bar(app, text) and not home_button()        # 시작 화면: 이미 처음이다
+    click(app, "start_browse")
+    assert has_top_bar(app, text) and home_button() == [text["to_start_button"]]
+    click(app, "to_start")                                     # 둘러보기에는 지울 답이 없어 되묻지 않고 바로 간다
+    assert app.session_state.screen == "start" and escape(text["restart_ask_body"]) not in page_text(app)
+
     click(app, "start")
-    assert 'class="topbar"' in page_text(app) and text["top_title"] in page_text(app)
+    assert has_top_bar(app, text) and not home_button()        # 설문: 잘못 누르면 답이 지워지므로 두지 않는다
+    click(app, "back_survey")
+    take_survey(app, T01=(5, 5))
+    assert has_top_bar(app, text) and home_button() == [text["to_start_button"]]
+
+
+@pytest.mark.parametrize("opener", ["to_start", "restart"])
+def test_going_home_asks_first(app, opener):
+    """'처음으로'(띠)와 '처음부터 다시 하기'(결과 아래)는 한 번 되묻는다. '처음으로 가기'를 눌러야만 답이 지워진다."""
+    text = loader.load_all().settings["text"]
+    ask = escape(text["restart_ask_body"])
+    take_survey(app, T01=(5, 5))
+    answers = dict(app.session_state.answers)
+    assert ask not in page_text(app)
+
+    click(app, opener)
+    assert ask in page_text(app)                               # 되묻는 창이 뜬다. 아직 아무것도 지우지 않았다
+    assert app.session_state.screen == "result" and dict(app.session_state.answers) == answers
+    assert [app.button(key=key).label for key in ("restart_keep", "restart_go")] == [text["restart_keep"], text["restart_go"]]
+
+    click(app, "restart_keep")                                 # 계속 보기: 창만 닫히고 답과 결과는 그대로다
+    assert ask not in page_text(app) and "restart_go" not in [b.key for b in app.button]
+    assert app.session_state.screen == "result" and dict(app.session_state.answers) == answers
+    assert loader.load_all().types["T01"]["name"] in page_text(app)
+
+    click(app, opener)
+    click(app, "restart_go")                                   # 처음으로 가기: 답을 지우고 시작 화면으로
+    assert app.session_state.screen == "start" and not app.session_state.answers
+    assert ask not in page_text(app) and [b.key for b in app.button] == ["start", "start_browse"]
 
 
 def test_share_box_sends_no_answers(app):
@@ -754,7 +887,7 @@ def test_share_box_sends_no_answers(app):
 
     sent = " ".join(str(frame.proto) for frame in app.get("iframe"))
     assert text["share_message"] in sent
-    assert data.types["T01"]["name"] not in sent and "female" not in sent and "61" not in sent
+    assert data.types["T01"]["name"] not in sent and "female" not in sent and str(BORN) not in sent
 
 
 # ── 결과 화면의 구역 순서, 따라다니는 목차, 내 결과 저장하기 (11/23) ──
@@ -828,7 +961,7 @@ def test_card_has_type_and_place_names_only(app, cards):
     words = " ".join([title, team, footer, heading, type_name, statement, feature, *sum(map(list, places), [])])
     phones = [p["공식연락처"] for p in data.programs if p["공식연락처"]]
     assert not [phone for phone in phones if phone in words]
-    assert "61" not in words and "혼자" not in words          # 나이, 걸림돌 답
+    assert str(BORN) not in words and "혼자" not in words     # 태어난 해, 걸림돌 답
 
 
 def test_type_with_lists_only_names_the_section_differently(app, cards):

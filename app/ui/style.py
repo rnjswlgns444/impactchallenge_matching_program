@@ -1,8 +1,9 @@
 """50~60대 사용자를 위한 큰 글씨·큰 버튼 CSS. (11/21 팀원 디자인: 연녹색 바탕, 청록 글자, 노란 주요 단추)
 
 기준: 본문 20px(1.25rem), 문항 제목 25px 이상, 줄간격 1.5 이상, 버튼 높이 62px(3.875rem).
+예외 둘(11/25 사용자 결정): 맨 위 띠의 '처음으로' 단추는 44px, 유의사항 글(.fine)은 10px이다.
 휴대폰 세로 화면(폭 320~430px) 기준. 색 값은 아래 :root 한 곳에서 고친다.
-노란색은 주요 단추의 바탕 칠로만 쓴다(시작 화면 그림 상자의 연노랑은 예외이고 home.css에 있다). 고른 답은 물빛 바탕과 청록 테두리로 구분한다.
+노란색은 주요 단추의 바탕 칠과 맨 위 띠에 쓴다(시작 화면 그림 상자의 연노랑은 예외이고 home.css에 있다). 고른 답은 물빛 바탕과 굵은 청록 테두리로 구분한다.
 """
 import streamlit as st
 
@@ -48,24 +49,37 @@ CSS = """
 /* 동점 선택지 아래의 '예: 기관 · 프로그램'. 어느 단추의 예인지 알 수 있게 위 단추에 붙인다 */
 .stApp .example-note { margin: -.4rem 0 .5rem; padding-left: .3rem; }
 
-/* 해와 물결 표식은 홈, 질문, 결과에서 같은 크기 비율로 쓴다. */
-.stApp .logo {
-  position: relative; display: inline-block; width: 2.4rem; height: 2.4rem; flex: none;
-  overflow: hidden; border-radius: 27%; background-color: var(--ink);
+/* 맨 위 띠(ui.topbar): 노란 바탕, 왼쪽에 앱 이름과 작은 풀이, 오른쪽에 '처음으로' 단추(있을 때만).
+   상자(st-key-topbar) 안의 글 하나와 단추 하나를 한 줄에 놓는다. 넓은 화면에서는 본문 폭의 둥근 띠,
+   휴대폰에서는 화면 양 끝까지 닿는 띠다(--bleed 는 본문 양옆 여백과 같은 값) */
+.stApp .st-key-topbar {
+  --bleed: 0rem;
+  flex-direction: row; flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: .6rem;
+  box-sizing: border-box; width: calc(100% + 2 * var(--bleed)); max-width: none; min-height: 3.6rem;
+  margin: 0 calc(-1 * var(--bleed)) .35rem; padding: .45rem 1rem; border-radius: .85rem; background: var(--yellow);
 }
-.stApp .logo::before {
-  content: ""; position: absolute; left: 21%; top: 18%; width: 42%; height: 25%;
-  border-radius: 999px 999px 0 0; background: #FFBF6C;
+.stApp .st-key-topbar > div { width: auto; min-width: 0; flex: 0 1 auto; }
+.stApp .st-key-topbar > div:has(.stButton) { flex: none; }
+.stApp .topbar { display: flex; flex-direction: column; margin: 0; padding: 0; color: var(--ink); line-height: 1.2; }
+.stApp .topbar-name { font-size: 1.45rem; font-weight: 800; letter-spacing: .06em; }
+.stApp .topbar-sub { font-size: .9375rem; font-weight: 650; white-space: nowrap; }
+@media (max-width: 600px) {
+  .stApp .st-key-topbar { --bleed: 1rem; border-radius: 0; }
 }
-.stApp .logo::after {
-  content: ""; position: absolute; left: 17%; top: 48%; width: 66%; height: 24%;
-  border-top: .125rem solid #8EDFCB; border-bottom: .125rem solid #8EDFCB;
-  border-radius: 42% 16% 42% 16%; transform: skewY(-7deg);
+@media (max-width: 420px) {
+  .stApp .st-key-topbar { --bleed: .85rem; padding-inline: .85rem; }
 }
-.stApp .topbar {
-  display: flex; align-items: center; gap: .7rem; padding: 0 0 .85rem; margin: 0 0 .35rem;
-  border-bottom: 1px solid var(--rule); color: var(--ink); font-size: 1.1875rem; font-weight: 750;
+/* 폭이 아주 좁으면 '처음으로' 옆에서 풀이 글이 두 줄로 꺾이지 않게 조금 줄인다 */
+@media (max-width: 340px) {
+  .stApp .topbar-sub { font-size: .875rem; letter-spacing: -.03em; }
 }
+/* 유의사항(ui.fine_print): 계약서의 유의사항처럼 맨 아래 작은 회색 글. 상자·굵은 글씨·색 바탕이 없다.
+   크기는 사용자가 정한 10px이다(11/25). 휴대폰에서 글씨를 키운 사람에게는 함께 커지도록 rem 으로 적는다 */
+.stApp .fine { margin: 1.75rem 0 0; padding: 0; color: var(--muted); font-size: .625rem; line-height: 1.6; }
+.stApp .fine :is(p, ul, li) { margin: 0; padding: 0; color: inherit; font-size: inherit; line-height: inherit; }
+.stApp .fine ul { list-style: none; }
+.stApp .fine li { padding-left: .8em; text-indent: -.8em; }
+.stApp .fine li::before { content: "· "; }
 .stApp .app-title, .stApp .q-title, .stApp .area, .stApp .sec, .stApp .p-name, .stApp .type-name {
   color: var(--ink); margin: 0; padding: 0; line-height: 1.4; font-weight: 750;
 }
@@ -112,6 +126,15 @@ CSS = """
   background: #EBEBE2; border-color: var(--rule); color: #58645D;
 }
 .stApp :is(.stButton,.stFormSubmitButton) > button:disabled p { color: #58645D; }
+/* 띠의 '처음으로': 흰 알약 모양의 작은 단추. 높이 44px */
+.stApp .st-key-topbar .st-key-to_start button {
+  width: auto; min-height: 2.75rem; padding: 0 .85rem; gap: .3rem;
+  border: 1.5px solid var(--ink); border-radius: 999px; background: var(--surface);
+}
+.stApp .st-key-topbar .st-key-to_start button p { font-size: 1.0625rem; font-weight: 700; white-space: nowrap; }
+@media (max-width: 340px) {
+  .stApp .st-key-topbar .st-key-to_start button { padding: 0 .65rem; }
+}
 .stApp :is(a,button,summary,input,textarea,[role="combobox"]):focus-visible {
   outline: 3px solid var(--focus); outline-offset: 3px;
 }
@@ -129,6 +152,21 @@ CSS = """
 .stApp :is([class*="st-key-opt_"],[class*="st-key-detail_"],[class*="st-key-browse_T"]) button[kind="primary"] {
   border: 2px solid var(--teal); background: var(--aqua);
 }
+/* 설문 선택지의 글은 왼쪽부터 쓴다. Streamlit이 단추 안에 한 겹 더 씌운 상자가 글을 가운데로 모으므로 그 상자에도 적는다 */
+.stApp [class*="st-key-opt_"] button > div { justify-content: flex-start; }
+/* 설문에서 고른 답: 글 앞의 ✓ 없이 물빛 바탕 + 굵은 청록 테두리(11/25). 앞 동그라미가 채워지는 것은 그대로다(색을 구분하기 어려운 분도 모양으로 안다) */
+.stApp [class*="st-key-opt_"] button[kind="primary"] { border-width: 2.5px; }
+/* 선택지 앞에 그림이 있으면(questions.yaml의 icon) 동그라미 대신 둥근 바탕의 그림을 보여 준다 */
+.stApp [class*="st-key-opt_"] button:has([data-testid="stIconMaterial"])::before { content: none; }
+.stApp [class*="st-key-opt_"] button [data-testid="stIconMaterial"] {
+  flex: none; width: 2.6rem; height: 2.6rem; display: grid; place-items: center; border-radius: 50%;
+  background: var(--aqua); color: var(--teal); font-size: 1.6rem;
+}
+/* 그림을 감싼 칸은 Streamlit이 작은 폭으로 잡아 둔다. 둥근 바탕만큼 넓히고 글과 사이를 띄운다 */
+.stApp [class*="st-key-opt_"] button span:has(> [data-testid="stIconMaterial"]) {
+  flex: none; display: flex; width: auto; height: auto; margin: 0 .75rem 0 0;
+}
+.stApp [class*="st-key-opt_"] button[kind="primary"] [data-testid="stIconMaterial"] { background: var(--teal); color: #fff; }
 .stApp :is([class*="st-key-opt_"],[class*="st-key-detail_"]) button[kind="primary"]::before {
   border: .39rem solid var(--teal);
 }
@@ -140,9 +178,11 @@ CSS = """
 
 /* 설문 */
 .stApp .q-progress {
+  display: flex; align-items: baseline; justify-content: space-between; gap: .6rem;
   margin: .35rem 0 .4rem; color: var(--teal); font-size: 1.125rem; font-weight: 750;
   font-variant-numeric: tabular-nums;
 }
+.stApp .q-cheer { color: var(--clay); font-weight: 700; }     /* 진행 글자 오른쪽의 응원 한 줄 */
 .stApp .bar { height: .55rem; overflow: hidden; border-radius: 999px; background: #D9DFD3; }
 .stApp .bar i { display: block; height: 100%; border-radius: inherit; background: var(--teal); }
 .stApp .st-key-q_card, .stApp [data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] .p-name) {
@@ -168,6 +208,8 @@ CSS = """
   color: var(--body); background: var(--surface); font-size: 1.25rem; line-height: 1.55;
 }
 .stApp .stNumberInput input { min-height: 3.25rem; }
+/* 숫자 칸의 +/- 단추는 숨긴다. 태어난 해는 직접 적는 값이고, 좁은 화면에서 이 단추가 칸 안의 안내 글을 가린다 */
+.stApp .stNumberInput :is([data-testid="stNumberInputStepUp"], [data-testid="stNumberInputStepDown"]) { display: none; }
 .stApp .stTextArea label p, .stApp [data-testid="stSelectbox"] label p { font-size: 1.125rem; }
 /* 입력칸 구석에 뜨는 영어 안내('Press Ctrl+Enter to submit form')는 숨긴다 */
 .stApp [data-testid="InputInstructions"] { display: none; }
@@ -218,22 +260,10 @@ CSS = """
 .stApp .share .share-status:empty, .stApp .share .share-url:empty { display: none; }
 .stApp ul.facts { margin: 0; padding-left: 1.4rem; }
 
-/* 시작 화면의 순서 안내(1·2·3), 가운데 정렬, 줄바꿈 막기 */
+/* 가운데 정렬, 줄바꿈 막기 */
 .stApp .center { text-align: center; }
-.stApp .steps { display: flex; flex-direction: column; gap: .6rem; margin: .25rem 0; }
-.stApp .step {
-  display: flex; align-items: center; gap: .85rem; padding: .8rem 1rem;
-  background: var(--surface); border: 1px solid var(--rule); border-radius: .85rem;
-}
-.stApp .step .num {
-  flex: none; width: 2.4rem; height: 2.4rem; border-radius: 50%; background: var(--aqua); color: var(--teal);
-  display: flex; align-items: center; justify-content: center; font-size: 1.25rem; font-weight: 750;
-}
-.stApp .step p { margin: 0; font-size: 1.1875rem; line-height: 1.5; font-weight: 650; color: var(--ink); }
 .stApp .nowrap { white-space: nowrap; }
 
-.stApp .topbar-name { flex: 1; min-width: 0; }
-.stApp .topbar-team { font-size: 1rem; font-weight: 650; color: var(--muted); }
 .stApp :is([data-area="work"], .st-key-type_hero:has([data-area="work"])) {
   --area-ink: var(--teal); --area-wash: var(--aqua); --area-rule: #B8D0C2;
 }
@@ -338,6 +368,24 @@ CSS = """
 }
 .stApp .send .send-status:empty { display: none; }
 
+/* 되묻는 창(st.dialog, main.restart_dialog). 창은 .stApp 밖에 그려져서 위의 규칙이 닿지 않는다.
+   그래서 본문 글씨와 단추 모양(높이 62px, 노란 주요 단추)을 여기에 한 번 더 적는다 */
+[data-testid="stDialog"] :where(h2, p, button) { font-family: var(--font-ui); word-break: keep-all; overflow-wrap: anywhere; }
+[data-testid="stDialog"] [role="dialog"] { border-radius: var(--card-radius); background: var(--surface); }
+[data-testid="stDialog"] [role="dialog"] :is(h2, [data-testid="stDialogHeader"]) {
+  color: var(--ink); font-size: 1.55rem; font-weight: 750; line-height: 1.4;
+}
+[data-testid="stDialog"] [data-testid="stVerticalBlock"] { gap: .75rem; }
+[data-testid="stDialog"] .body { margin: 0 0 .6rem; padding: 0; color: var(--body); font-size: 1.25rem; line-height: 1.62; }
+[data-testid="stDialog"] .stButton > button {
+  width: 100%; min-height: 3.875rem; box-sizing: border-box; padding: .68rem 1.1rem;
+  background: var(--surface); color: var(--ink); border: 1.5px solid var(--line); border-radius: .85rem; box-shadow: none;
+}
+[data-testid="stDialog"] .stButton > button p { color: var(--ink); font-size: 1.25rem; line-height: 1.45; font-weight: 650; }
+[data-testid="stDialog"] .stButton > button[kind="primary"] { background: var(--yellow); border-color: #857810; }
+[data-testid="stDialog"] .stButton > button[kind="primary"] p { color: #202E27; font-weight: 750; }
+[data-testid="stDialog"] :is(button, [role="button"]):focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+
 @media (max-width: 420px) {
   .block-container { padding-inline: .85rem; }
   .stApp .st-key-q_card { padding: .95rem; }
@@ -346,7 +394,7 @@ CSS = """
 }
 @media (max-width: 600px) and (max-height: 740px) {
   .block-container { padding-top: 2.4rem; }
-  .stApp .topbar { padding-bottom: .5rem; margin-bottom: 0; }
+  .stApp .st-key-topbar { margin-bottom: 0; }
   .stApp .st-key-q_card { gap: .45rem; padding: .8rem; }
   .stApp .st-key-q_card button { min-height: 3.5rem; }
   .stApp .q-progress { margin: .1rem 0 .25rem; }

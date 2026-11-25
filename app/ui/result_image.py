@@ -111,7 +111,7 @@ class _Pen:
         return y
 
     def logo(self, x, y, size) -> None:
-        """앱의 해와 물결 표식(style.py의 .logo)을 단순하게 그린다."""
+        """해와 물결 표식을 단순하게 그린다. 사진 맨 위, 앱 이름 왼쪽에 들어간다."""
         self.box(x, y, size, size, 14, INK)
         sun = [(x + size * .21) * SCALE, (y + size * .18) * SCALE, (x + size * .63) * SCALE, (y + size * .68) * SCALE]
         self.draw.pieslice(sun, 180, 360, fill="#FFBF6C")

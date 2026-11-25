@@ -50,15 +50,17 @@ SCOPES = {"안산", NATIONWIDE}
 PAY_VALUES = {"해당없음", "유급", "활동비", "무보수", UNCONFIRMED}
 TASTE_KINDS = {"", "영상", "공개강좌", "앱체험"}
 DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+ICON = re.compile(r":material/[a-z0-9_]+:")               # 선택지 앞에 붙이는 그림 이름(questions.yaml의 icon)
 CLOCK_TIME = re.compile(r"(?:[01]\d|2[0-3]):[0-5]\d")     # 09:00, 16:30 (24시간, 한국 시각)
 
 # 화면(main.py, ui/components.py)이 쓰는 settings.yaml의 text 문구. 화면에 문구를 더하면 여기에도 적는다
 # (test_text_keys_match_the_screen_code가 둘이 어긋나면 알려 준다)
 TEXT_KEYS = """
-    start_heading team_name start_audience
-    start_intro start_time start_refresh start_privacy start_privacy_saving start_button
+    top_sub to_start_button restart_ask_title restart_ask_body restart_keep restart_go
+    start_heading team_name
+    start_intro start_notes_title start_privacy start_ai_note start_refresh start_privacy_saving start_button
     start_browse_button browse_intro browse_to_survey browse_to_start type_label_browse
-    scale_help number_placeholder number_next number_required multi_help next_button back_button
+    scale_help cheer_half cheer_last number_placeholder number_next number_required multi_help next_button back_button
     type_label type_label_other result_intro secondary_heading more_types_button also_heading
     tie_two tie_many repick_button edit_heading edit_select edit_notice edit_cancel
     detail_label detail_first widened_note contacts_heading lists_heading no_program no_program_at_all
@@ -143,6 +145,9 @@ def _check_options(where: str, options: list[dict], problems: list[str]) -> None
         elif opt["id"] in seen:
             problems.append(f"{where}에 선택지 id '{opt['id']}'가 두 번 나옵니다.")
         seen.add(opt.get("id"))
+        # 그림 이름이 틀리면 그 문항 화면에서만 오류가 나므로 켤 때 미리 알린다
+        if "icon" in opt and not (isinstance(opt["icon"], str) and ICON.fullmatch(opt["icon"])):
+            problems.append(f"{where} 선택지 '{opt.get('id')}'의 icon은 \":material/work:\" 같은 꼴로 적습니다.")
 
 
 def _check_rule(where: str, rule, problems: list[str]) -> None:
@@ -290,7 +295,7 @@ def validate_questions(questions: list[dict], types_list: list[dict] | None = No
         if q.get("selection") == "number":
             low, top = q.get("min"), q.get("max")
             if not _is_int(low) or not _is_int(top) or low > top:
-                problems.append(f"{where}에는 min과 max를 숫자로 적어야 합니다. 예) min: 0, max: 120")
+                problems.append(f"{where}에는 min과 max를 숫자로 적어야 합니다. 예) min: 1920, max: 2010")
         options = q.get("options") or []
         if q.get("selection") in ("single", "multi") and not q.get("options_from") and len(options) < 2:
             problems.append(f"{where}에 선택지가 2개 이상 있어야 합니다.")
