@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 import uuid
 from html import escape
 from pathlib import Path
@@ -80,6 +81,7 @@ def init_state() -> None:
 def restart() -> None:
     for key in list(st.session_state.keys()):
         del st.session_state[key]
+    st.session_state.to_top = True                            # 처음 화면도 맨 위부터 보이게 한다
 
 
 def go(screen: str) -> None:
@@ -88,16 +90,25 @@ def go(screen: str) -> None:
 
 
 SCROLL_TOP = """<script>
-const d = window.parent.document;
-d.querySelectorAll('section, [data-testid="stMain"], [data-testid="stAppViewContainer"]').forEach(e => e.scrollTo(0, 0));
-window.parent.scrollTo(0, 0);
+// 올리기 표시 {count}. 이 값이 달라야 Streamlit이 새 요소로 보고 스크립트를 다시 돌린다
+function up() {{
+  const d = window.parent.document;
+  d.querySelectorAll('section, [data-testid="stMain"], [data-testid="stAppViewContainer"]').forEach(e => e.scrollTo(0, 0));
+  window.parent.scrollTo(0, 0);
+}}
+// 새 화면이 다 그려진 뒤에도 한 번 더 올린다(긴 화면은 늦게 그려진다)
+up(); setTimeout(up, 100); setTimeout(up, 300);
 </script>"""
 
 
 def scroll_to_top() -> None:
-    """화면이 바뀌면 맨 위부터 보이게 한다. Streamlit은 화면이 바뀌어도 스크롤 위치를 그대로 둔다."""
+    """화면이 바뀌면 맨 위부터 보이게 한다. Streamlit은 화면이 바뀌어도 스크롤 위치를 그대로 둔다.
+
+    설문 끝 → 결과처럼 연달아 두 번 다시 그릴 때, 내용이 똑같은 iframe은 다시 실행되지 않는다.
+    그래서 올릴 때마다 다른 값(지금 시각)을 넣는다.
+    """
     if st.session_state.pop("to_top", False):
-        st.iframe(SCROLL_TOP, height=1)
+        st.iframe(SCROLL_TOP.format(count=time.time_ns()), height=1)
 
 
 def back_one(questions: list[dict]) -> None:
