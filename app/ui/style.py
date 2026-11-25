@@ -423,11 +423,11 @@ CSS = """
 }
 /* 별의 뜻: 지도 안 왼쪽 위의 작은 딱지(별이 붙은 곳이 있을 때만) */
 .stApp .st-key-place_map .map-legend {
-  position: relative; z-index: 1; width: fit-content; max-width: 100%; margin: -.5rem 0 -.2rem; padding: .3rem .7rem;
+  position: relative; z-index: 1; width: fit-content; max-width: 100%; margin: -.5rem 0 -.2rem; padding: .2rem .6rem;
   background: rgba(255, 255, 255, .9); border: 1px solid var(--map-rule); border-radius: .7rem;
 }
-.stApp .st-key-place_map .map-legend .map-note.star { align-items: flex-start; font-size: 1rem; }
-.stApp .st-key-place_map .map-legend .map-note.star::before { margin-top: .15rem; }
+.stApp .st-key-place_map .map-legend .map-note.star { align-items: flex-start; font-size: .875rem; font-weight: 500; }   /* 14px: 핀의 글보다 작게(11/26) */
+.stApp .st-key-place_map .map-legend .map-note.star::before { width: 1rem; height: 1rem; margin-top: .15rem; }
 /* 지도 제목 아래의 작은 글: 누르면 자세히 볼 수 있다는 안내 */
 .stApp .map-notes { margin: -.35rem .1rem .1rem; }      /* 제목 바로 아래, 지도 위에 놓인다 */
 .stApp .map-note { margin: 0; color: var(--muted); font-size: 1.0625rem; line-height: 1.5; }
