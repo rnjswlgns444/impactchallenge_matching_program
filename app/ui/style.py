@@ -53,8 +53,8 @@ CSS = """
 /* 동점 선택지 아래의 '예: 기관 · 프로그램'. 어느 단추의 예인지 알 수 있게 위 단추에 붙인다 */
 .stApp .example-note { margin: -.4rem 0 .5rem; padding-left: .3rem; }
 
-/* 맨 위 띠(ui.topbar): 노란 바탕, 왼쪽에 앱 이름과 작은 풀이, 오른쪽에 '처음으로' 단추(있을 때만).
-   상자(st-key-topbar) 안의 글 하나와 단추 하나를 한 줄에 놓는다. 넓은 화면에서는 본문 폭의 둥근 띠,
+/* 맨 위 띠(ui.topbar): 노란 바탕에 앱 이름과 작은 풀이. 앱 이름은 누를 수 있는 화면에서만 단추다(to_start).
+   넓은 화면에서는 본문 폭의 둥근 띠,
    휴대폰에서는 화면 양 끝까지 닿는 띠다(--bleed 는 본문 양옆 여백과 같은 값) */
 .stApp .st-key-topbar {
   --bleed: 0rem;
@@ -130,14 +130,19 @@ CSS = """
   background: #EBEBE2; border-color: var(--rule); color: #58645D;
 }
 .stApp :is(.stButton,.stFormSubmitButton) > button:disabled p { color: #58645D; }
-/* 띠의 '처음으로': 흰 알약 모양의 작은 단추. 높이 44px */
+/* 띠의 앱 이름 단추(누르면 처음 화면으로): 글자처럼 보이게 테두리와 바탕을 뺀다. 글자 모양은 .topbar-name 과 같다 */
+.stApp .st-key-topbar .st-key-topbar_brand { gap: 0; width: auto; }
+.stApp .st-key-topbar .st-key-topbar_brand > div { width: auto; }
 .stApp .st-key-topbar .st-key-to_start button {
-  width: auto; min-height: 2.75rem; padding: 0 .85rem; gap: .3rem;
-  border: 1.5px solid var(--ink); border-radius: 999px; background: var(--surface);
+  width: auto; min-height: 1.9rem; padding: 0; border: 0; border-radius: .3rem; background: none; box-shadow: none;
+  justify-content: flex-start;
 }
-.stApp .st-key-topbar .st-key-to_start button p { font-size: 1.0625rem; font-weight: 700; white-space: nowrap; }
-@media (max-width: 340px) {
-  .stApp .st-key-topbar .st-key-to_start button { padding: 0 .65rem; }
+.stApp .st-key-topbar .st-key-to_start button p {
+  color: var(--ink); font-size: 1.45rem; font-weight: 800; letter-spacing: .06em; line-height: 1.2; white-space: nowrap;
+}
+@media (hover: hover) {
+  .stApp .st-key-topbar .st-key-to_start button:enabled:hover { background: none; }
+  .stApp .st-key-topbar .st-key-to_start button:enabled:hover p { text-decoration: underline; }
 }
 .stApp :is(a,button,summary,input,textarea,[role="combobox"]):focus-visible {
   outline: 3px solid var(--focus); outline-offset: 3px;
@@ -337,7 +342,7 @@ CSS = """
 
 /* ── 첫걸음 지도(ui.place_map) ──
    상자(st-key-place_map) 안에는 단추만 있다. 풀밭·길·물·나무는 상자의 바탕 여러 겹이고, 감싸는 요소를 따로 만들지 않는다.
-   핀 그림은 단추의 ::before, 이름표는 단추의 글(p), 이름표 끝 '›'는 글의 ::after, 손가락은 단추의 ::after 다.
+   핀 그림은 단추의 ::before, 이름표는 단추의 글(p), 이름표 끝 '›'는 글의 ::after 다.
    어느 핀 그림을 쓸지는 단추를 감싼 상자의 이름(pinbox_번호_k_그림이름)이 정한다(규칙은 ui/pins.py의 css가 만든다) */
 .stApp .st-key-place_map {
   position: relative; overflow: hidden; gap: 1rem; padding: 1.2rem .6rem 1.3rem;
@@ -385,22 +390,22 @@ CSS = """
   .stApp .st-key-place_map .stButton > button:enabled:hover { background: none; }
   .stApp .st-key-place_map .stButton > button:enabled:hover p { border-color: var(--teal); }
 }
-/* 첫 핀의 손가락 그림. 세 번만 살짝 움직이고 멈춘다. 한 곳이라도 보고 오면 붙지 않는다(_hint 가 빠진다) */
-.stApp .st-key-place_map [class*="_hint"] .stButton > button::after {
-  content: ""; position: absolute; right: -.5rem; bottom: -1.05rem; width: 2.3rem; height: 2.3rem; pointer-events: none;
-  background: var(--pin-hand) center / contain no-repeat; filter: drop-shadow(0 1px 1px rgba(20, 63, 60, .3));
-  animation: pin-tap 1.3s ease-in-out 3;
+/* AI가 고른 곳(적어 주신 내용에 맞춘 곳): 이름 앞에 별을 붙이고 이름표 테두리를 노랗게 한다. 뜻은 지도 아래 글이 알린다 */
+.stApp .st-key-place_map [class*="st-key-pinbox_"][class*="_ai"] .stButton > button p { border: 2.5px solid var(--yellow); }
+.stApp :is(.st-key-place_map [class*="st-key-pinbox_"][class*="_ai"], [class*="st-key-more_ai_"]) .stButton > button p::before {
+  content: ""; flex: none; display: inline-block; width: 1.25rem; height: 1.25rem; margin-right: .1rem;
+  background: var(--pin-star) center / contain no-repeat; vertical-align: -.2rem;
 }
-@keyframes pin-tap { 0%, 100% { transform: none; } 50% { transform: translate(-3px, -5px); } }
-@media (prefers-reduced-motion: reduce) {
-  .stApp .st-key-place_map [class*="_hint"] .stButton > button::after { animation: none; }
+/* 지도 아래의 작은 글: 누르면 자세히 볼 수 있다는 안내와 별의 뜻 */
+.stApp .map-notes { margin: .15rem .2rem 0; }
+.stApp .map-note { margin: 0; color: var(--muted); font-size: 1.0625rem; line-height: 1.5; }
+.stApp .map-note.star { display: flex; align-items: center; gap: .35rem; color: var(--body); font-weight: 650; }
+.stApp .map-note.star::before {
+  content: ""; flex: none; width: 1.2rem; height: 1.2rem; background: var(--pin-star) center / contain no-repeat;
 }
-/* 별의 뜻을 알리는 작은 글. 첫 핀의 이름표 윗선에 살짝 걸친다 */
-.stApp .st-key-place_map .ai-note {
-  position: relative; z-index: 2; display: inline-block; margin: -.35rem 0 -1.6rem 3.1rem; padding: .05rem .65rem;
-  border: 1px solid #DDC4AD; border-radius: 999px; background: #F6E9D8; color: #6F432F;
-  font-size: 1rem; font-weight: 700; line-height: 1.45;
-}
+/* 직접 적기 글 상자의 회색 글: 적으려고 누르면 사라진다(브라우저 기본은 글자를 칠 때까지 남는다) */
+.stApp .st-key-free_text textarea::placeholder { color: #66736C; opacity: 1; }
+.stApp .st-key-free_text textarea:focus::placeholder { color: transparent; }
 
 /* ── 저장·공유: 단추 두 개를 한 줄로. 노란색은 쓰지 않는다 ── */
 .stApp .st-key-save_share { display: grid; grid-template-columns: 1fr 1fr; align-items: start; gap: .6rem; margin-top: .6rem; }

@@ -564,7 +564,9 @@ def test_free_text_adds_ai_picks_with_reasons(app, fake_ai, tmp_path):
     assert len(fake_ai["prompts"]) == 1
     text = page_text(app)
     assert pin_labels(app)[0] == picked["프로그램명"]                # AI가 고른 곳이 맨 앞
-    assert f'<p class="ai-note">{settings["ai_heading"]}</p>' in text
+    # 별의 뜻은 지도 아래 글이 알리고, 별은 고른 곳의 핀 상자(_ai)에만 붙는다(11/26). 손가락 그림은 없다
+    assert f'<p class="map-note star">{escape(settings["map_star_note"])}</p>' in text
+    assert f'<p class="map-note">{escape(settings["map_hint"])}</p>' in text and "_hint" not in text
     names = map_names(app)
     assert len(names) == len(set(names))                            # 고른 곳이 뒤에 한 번 더 나오지 않는다
     pool_names = {p["프로그램명"] for p in candidates.ai_pool(data.programs, data.types, ["T01"], {}, clock.now(),
@@ -628,6 +630,8 @@ def test_skipping_tune_gives_the_same_type_and_pins(app, fake_ai):
     to_tune_with_t01(app)
     page = page_text(app)
     assert text["tune_heading"] in page and escape(text["free_privacy"]) in page
+    assert f'<div class="notice info">{escape(text["tune_help"])}</div>' in page      # 안내 상자로 보인다
+    assert app.text_area(key="free_text").placeholder == text["free_placeholder"]     # 적기 전에만 보이는 회색 글
     assert data.types["T01"]["name"] not in page                    # 유형 이름은 결과 화면에서 처음 본다
     assert [key for key in keys(app) if key != "to_start"][0] == "tune_skip"     # 건너뛰기가 맨 위에 있다
     app.text_area(key="free_text").set_value(WISH)
@@ -652,7 +656,7 @@ def test_meaningless_free_text_does_not_call_ai(app, fake_ai, tmp_path, wish):
     write_wish(app, wish)
     text = page_text(app)
     assert escape(settings["free_unclear"]) in text and not fake_ai["prompts"]
-    assert 'class="ai-note"' not in text and escape(settings["ai_none"]) not in text
+    assert 'class="map-note star"' not in text and escape(settings["ai_none"]) not in text
     assert data.types["T01"]["name"] in text
     assert pin_labels(app) == [p["프로그램명"] for p in type_places(data, "T01", app)[:3]]
     event = [e for e in rows(tmp_path, "events.csv") if e["event"] == "ai"]
@@ -680,7 +684,8 @@ def test_nothing_matched_leads_to_general_window(app, fake_ai):
     write_wish(app, "해외여행을 가고 싶어요")
     text = page_text(app)
     assert escape(data.settings["text"]["ai_none"]) in text
-    assert 'class="ai-note"' not in text                       # 고른 곳이 없으면 별도 그 글도 없다
+    assert 'class="map-note star"' not in text                 # 고른 곳이 없으면 별의 뜻을 알리는 글도 없다
+    assert escape(data.settings["text"]["map_hint"]) in text   # 누르면 자세히 볼 수 있다는 글은 늘 있다
     assert pin_labels(app) == [p["프로그램명"] for p in type_places(data, "T01", app)[:3]]
     pool = candidates.ai_pool(data.programs, data.types, ["T01"], {}, clock.now(), app.session_state.answers)
     assert fake_ai["prompts"][0].count("- id: ") == len(pool)
@@ -984,11 +989,18 @@ def test_start_screen_shows_the_home_characters(app):
 
 
 def has_top_bar(at: AppTest, text: dict) -> bool:
-    return f'<p class="topbar"><b class="topbar-name">{text["top_title"]}</b>' in page_text(at) and text["top_sub"] in page_text(at)
+    """띠에 앱 이름과 풀이가 있는지. 앱 이름은 글자이거나(설문·시작), 누르면 처음으로 가는 단추(to_start)다."""
+    page = page_text(at)
+    as_text = f'<b class="topbar-name">{text["top_title"]}</b>' in page
+    as_button = [b.label for b in at.button if b.key == "to_start"] == [text["top_title"]]
+    return as_text != as_button and text["top_sub"] in page
 
 
 def test_top_bar_is_on_every_screen_and_home_only_where_it_is_safe(app):
-    """맨 위 띠(앱 이름 + 풀이)는 모든 화면에 있다. '처음으로' 단추는 결과·둘러보기 화면에만 있고, 설문 중에는 없다."""
+    """맨 위 띠(앱 이름 + 풀이)는 모든 화면에 있다. 앱 이름을 눌러 처음으로 갈 수 있는 것은 설문 밖에서만이다(11/26).
+
+    오른쪽의 '처음으로' 단추는 없앴다(안내 화면에서 '결과로 돌아가기'로 착각할 수 있어서).
+    """
     text = loader.load_all().settings["text"]
 
     def home_button() -> list[str]:
@@ -996,15 +1008,19 @@ def test_top_bar_is_on_every_screen_and_home_only_where_it_is_safe(app):
 
     assert has_top_bar(app, text) and not home_button()        # 시작 화면: 이미 처음이다
     click(app, "start_browse")
-    assert has_top_bar(app, text) and home_button() == [text["to_start_button"]]
+    assert has_top_bar(app, text) and home_button() == [text["top_title"]]
+    assert app.button(key="to_start").help == text["to_start_button"]      # 화면 읽기 도구가 읽을 설명
     click(app, "to_start")                                     # 둘러보기에는 지울 답이 없어 되묻지 않고 바로 간다
     assert app.session_state.screen == "start" and escape(text["restart_ask_body"]) not in page_text(app)
 
     click(app, "start")
-    assert has_top_bar(app, text) and not home_button()        # 설문: 잘못 누르면 답이 지워지므로 두지 않는다
+    assert has_top_bar(app, text) and not home_button()        # 설문: 잘못 누르면 답이 지워지므로 누를 수 없다
     click(app, "back_survey")
     take_survey(app, T01=(5, 5))
-    assert has_top_bar(app, text) and home_button() == [text["to_start_button"]]
+    assert has_top_bar(app, text) and home_button() == [text["top_title"]]
+    click(app, "pin_1")                                        # 안내 화면에도 '처음으로'라는 글 단추는 없다
+    assert app.session_state.screen == "place" and home_button() == [text["top_title"]]
+    assert "처음으로" not in [b.label for b in app.button]
 
 
 def test_phone_back_points_at_a_button_that_is_on_the_screen(app):
@@ -1019,6 +1035,9 @@ def test_phone_back_points_at_a_button_that_is_on_the_screen(app):
         return found[0] if found else None
 
     assert back_key() is None                                  # 시작 화면
+    click(app, "start_browse")
+    assert back_key() == "browse_to_start" and "browse_to_start" in keys(app)
+    click(app, "browse_to_start")
     click(app, "start")
     assert back_key() == "back_survey" and "back_survey" in keys(app)
     click(app, "back_survey")                                 # 첫 문항에서는 시작 화면으로 돌아간다

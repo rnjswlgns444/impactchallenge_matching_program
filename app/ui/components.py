@@ -43,16 +43,20 @@ def heading(value: str) -> None:
 
 
 def topbar(title: str, sub: str, home_label: str = "", on_home=None) -> None:
-    """모든 화면 맨 위의 노란 띠: 왼쪽에 앱 이름과 작은 풀이, 오른쪽에 '처음으로' 단추.
+    """모든 화면 맨 위의 노란 띠: 앱 이름과 작은 풀이. 앱 이름을 누르면 처음 화면으로 간다(11/26).
 
-    home_label을 주면 단추를 그리고, 누르면 on_home을 부른다. 주지 않으면 단추가 없다.
-    설문 화면에는 단추를 두지 않는다(잘못 누르면 답이 지워진다). 띠의 모양은 style.py의 .st-key-topbar 다.
+    home_label을 주면 앱 이름이 단추(to_start)가 되고, 누르면 on_home을 부른다. home_label은 화면 읽기 도구와
+    마우스를 올렸을 때 보이는 설명이다. 주지 않으면 앱 이름은 그냥 글자다.
+    설문 화면에서는 주지 않는다(잘못 누르면 답이 지워진다). 띠의 모양은 style.py의 .st-key-topbar 다.
     """
     with st.container(key="topbar"):
-        html(f'<p class="topbar"><b class="topbar-name">{escape(title)}</b>'
-             f'<span class="topbar-sub">{escape(sub)}</span></p>')
         if home_label:
-            st.button(home_label, key="to_start", icon=":material/home:", on_click=on_home)
+            with st.container(key="topbar_brand"):
+                st.button(title, key="to_start", help=home_label, on_click=on_home)
+                html(f'<p class="topbar"><span class="topbar-sub">{escape(sub)}</span></p>')
+        else:
+            html(f'<p class="topbar"><b class="topbar-name">{escape(title)}</b>'
+                 f'<span class="topbar-sub">{escape(sub)}</span></p>')
 
 
 def fine_print(title: str, items: list[str]) -> None:
@@ -225,24 +229,28 @@ def pin_name(program: dict) -> str:
     return "phone" if _no_visit(program["장소"] or program["진행방식"]) else pins.DEFAULT
 
 
-def place_map(places: list[dict], picked: set[str], picked_note: str, seen: set[str], on_open,
+def map_notes(hint: str, star_note: str = "") -> None:
+    """지도 아래의 작은 글: 누르면 자세히 볼 수 있다는 안내와, 별이 붙은 곳이 있을 때 별의 뜻."""
+    rows = "".join(f'<p class="map-note{extra}">{escape(line)}</p>'
+                   for line, extra in ((hint, ""), (star_note, " star")) if line)
+    html(f'<div class="map-notes">{rows}</div>')
+
+
+def place_map(places: list[dict], picked: set[str], seen: set[str], on_open,
               more_label: str = "", on_more=None) -> None:
     """첫걸음 지도: 꾸밈 그림 바탕 위에 곳마다 핀 하나. 핀 하나가 단추 하나다(pin_1, pin_2, …, pin_more).
 
     places는 이미 걸러진 후보 가운데 지도에 놓을 곳이다(여기서 새로 거르지 않는다).
-    picked는 AI가 고른 곳의 id(별이 붙는다), seen은 이미 보고 온 곳의 id(물빛이 된다)다.
-    단추 글에는 곳 이름만 넣는다. 핀 그림·별·손가락·이름표 끝의 '›'는 style.py가 상자 이름을 보고 붙인다:
-      pinbox_{번호}_k_{그림 이름}[_ai][_seen][_hint]
-    아직 아무 곳도 보지 않았으면 첫 핀에 손가락 그림(_hint)을 붙여, 글 없이 누를 수 있음을 알린다.
+    picked는 AI가 고른 곳의 id(핀과 이름 앞에 별이 붙는다), seen은 이미 보고 온 곳의 id(물빛이 된다)다.
+    단추 글에는 곳 이름만 넣는다. 핀 그림·별·이름표 끝의 '›'는 style.py가 상자 이름을 보고 붙인다:
+      pinbox_{번호}_k_{그림 이름}[_ai][_seen]
+    누를 수 있다는 것과 별의 뜻은 지도 아래의 글(map_notes)이 알린다(11/26: 손가락 그림과 첫 핀 위의 글을 뺐다).
     more_label을 주면 맨 끝에 '다른 곳 n곳' 핀을 하나 더 놓는다.
     """
     with st.container(key="place_map"):
         for number, program in enumerate(places, start=1):
             pid = program["id"]
-            if number == 1 and pid in picked:
-                html(f'<p class="ai-note">{escape(picked_note)}</p>')       # 별이 무슨 뜻인지 알리는 작은 글
-            marks = "".join(f"_{mark}" for mark, on in (("ai", pid in picked), ("seen", pid in seen),
-                                                         ("hint", number == 1 and not seen)) if on)
+            marks = "".join(f"_{mark}" for mark, on in (("ai", pid in picked), ("seen", pid in seen)) if on)
             with st.container(key=f"pinbox_{number}_k_{pin_name(program)}{marks}"):
                 st.button(program["프로그램명"], key=f"pin_{number}", on_click=on_open, args=(pid,))
         if more_label:

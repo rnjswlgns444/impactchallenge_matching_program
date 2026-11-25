@@ -74,14 +74,6 @@ def star() -> str:
                 f'5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8z" fill="{YELLOW}" stroke="{INK}" stroke-width="1.6" stroke-linejoin="round"/></svg>')
 
 
-def hand() -> str:
-    """첫 핀 옆의 손가락 그림. '눌러 보세요'를 글 없이 알린다."""
-    return _url('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><g fill="none" stroke="' + CLAY + '" stroke-width="2" '
-                'stroke-linecap="round"><path d="M6.5 7.5 4 5M12 5V1.5M17.5 7.5 20 5"/></g><path d="M10 17V9.5a2 2 0 0 1 4 0V15l7.6 1.5a2.5 '
-                '2.5 0 0 1 2 2.8l-.8 6a4 4 0 0 1-4 3.7h-5a4 4 0 0 1-3.2-1.6L6 21.2a1.8 1.8 0 0 1 2.8-2.2z" '
-                f'fill="{WHITE}" stroke="{INK}" stroke-width="2" stroke-linejoin="round"/></svg>')
-
-
 def map_art() -> str:
     """지도 바탕: 물(호수)과 굽은 길. 상자 크기에 맞춰 늘어난다. 실제 지도가 아니라 꾸밈 그림이다."""
     road = "M-6 13C34 6 46 24 34 37S50 58 78 55 96 70 60 80 30 96 110 97"
@@ -99,4 +91,4 @@ def css() -> str:
     names = list(dict.fromkeys(list(WORDS.values()) + [DEFAULT, MORE]))
     variables = "".join(f"  --pin-{name}: {pin(name)};\n" for name in names)
     rules = "".join(f'.stApp .st-key-place_map [class*="_k_{name}"] {{ --pin: var(--pin-{name}); }}\n' for name in names)
-    return (":root {\n" + variables + f"  --pin-star: {star()};\n  --pin-hand: {hand()};\n  --map-art: {map_art()};\n}}\n" + rules)
+    return (":root {\n" + variables + f"  --pin-star: {star()};\n  --map-art: {map_art()};\n}}\n" + rules)

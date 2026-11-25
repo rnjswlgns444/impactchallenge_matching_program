@@ -86,7 +86,7 @@ def init_state() -> None:
         st.session_state.setdefault(key, value)
 
 
-HOME_SCREENS = ("tune", "result", "place", "more_places", "browse")   # 맨 위 띠에 '처음으로' 단추를 두는 화면(설문 중에는 없다)
+HOME_SCREENS = ("tune", "result", "place", "more_places", "browse")   # 맨 위 띠의 앱 이름을 눌러 처음으로 갈 수 있는 화면(설문 중에는 안 된다)
 MAP_PINS = 3                              # 첫걸음 지도에 핀으로 놓는 곳의 수. 더 있으면 '다른 곳 n곳' 핀 하나로 묶는다
 
 
@@ -636,7 +636,7 @@ def screen_tune(data, text) -> None:
 
     ui.html(f'<p class="tune-badge">{escape(text["tune_badge"])}</p>')
     ui.heading(text["tune_heading"])
-    ui.html(f'<p class="q-help">{escape(text["tune_help"])}</p>')
+    ui.notice(text["tune_help"], "info")
     st.button(width="stretch", label=text["tune_skip"], key="tune_skip", type="tertiary", on_click=skip)
 
     detail = sel.detail_of(type_info)
@@ -648,7 +648,8 @@ def screen_tune(data, text) -> None:
         ui.html(f'<p class="q-help">{escape(question["help"])}</p>')
     with st.form(key="free_form", border=False):
         st.text_area(question["text"], value=state.get("ai_wish") or "", key="free_text",
-                     max_chars=int(question.get("max_characters", 500)), label_visibility="collapsed")
+                     max_chars=int(question.get("max_characters", 500)), label_visibility="collapsed",
+                     placeholder=text["free_placeholder"])    # 적기 전에만 보이는 회색 글. 누르면 사라진다(style.py)
         # AI로 무엇을 보내는지는 작은 글이지만 단추 바로 위에 둔다. 누르기 전에 읽을 수 있어야 한다
         ui.html(f'<p class="fine tight">{escape(text["free_privacy"])}</p>')
         st.form_submit_button(text["tune_done"], key="tune_done", type="primary", width="stretch", on_click=done)
@@ -804,8 +805,10 @@ def place_area(data, text, context: SimpleNamespace) -> None:
     if result.widened:
         ui.notice(text["widened_note"], "info")
     rest = len(context.places) - MAP_PINS
-    ui.place_map(context.places[:MAP_PINS], set(context.reasons), text["ai_heading"], set(state.seen_places), open_place,
+    ui.place_map(context.places[:MAP_PINS], set(context.reasons), set(state.seen_places), open_place,
                  text["pin_more"].format(count=rest) if rest > 0 else "", go_more_places)
+    # 지도 아래 작은 글: 누르면 자세히 볼 수 있다는 것과, 별이 붙은 곳이 있으면 별의 뜻
+    ui.map_notes(text["map_hint"], text["map_star_note"] if context.reasons else "")
 
 
 def go_more_places() -> None:
@@ -893,6 +896,7 @@ def screen_browse(data, text) -> None:
               on_click=leave, args=("survey",))
     st.button(width="stretch", label=text["browse_to_start"], key="browse_to_start", type="tertiary",
               on_click=leave, args=("start",))
+    ui.back_guard("browse_to_start")                          # 휴대폰 '뒤로 가기'를 눌러도 시작 화면으로 간다
 
 
 def screen_result(data, text) -> None:
@@ -1014,9 +1018,14 @@ def screen_more_places(data, text) -> None:
     ui.title_row(text["more_places_heading"].format(type=data.types[context.primary]["name"]), text["back_label"],
                  go, ("result",))
     for program in rest:
-        st.button(width="stretch", label=program["프로그램명"], key=f"open_{program['id']}",
-                  on_click=open_place, args=(program["id"],))
+        # AI가 고른 곳은 상자 이름(more_ai_…)으로 표시해 이름 앞에 별을 붙인다(style.py). 지도에 못 놓인 곳일 수 있다
+        picked = program["id"] in context.reasons
+        with st.container(key=f"more_{'ai' if picked else 'row'}_{program['id']}"):
+            st.button(width="stretch", label=program["프로그램명"], key=f"open_{program['id']}",
+                      on_click=open_place, args=(program["id"],))
         ui.html(f'<p class="small-note example-note">{escape(program["한줄설명"])}</p>')
+    if any(program["id"] in context.reasons for program in rest):
+        ui.map_notes("", text["map_star_note"])
     st.button(width="stretch", label=text["back_to_result"], key="back_bottom", on_click=go, args=("result",))
     ui.back_guard("back_bottom")
 
@@ -1033,7 +1042,8 @@ def main() -> None:
     init_state()
     scroll_to_top()
     # 맨 위 띠는 모든 화면에 있다. '처음으로' 단추는 결과·둘러보기 화면에만 둔다.
-    # 설문 중에는 두지 않는다(잘못 누르면 답이 지워진다. 앞 문항으로는 화면 아래 '이전으로'로 간다)
+    # 앱 이름(ANTI)을 누르면 처음 화면으로 간다(11/26: 오른쪽 '처음으로' 단추를 없앴다).
+    # 설문 중에는 누를 수 없다(잘못 누르면 답이 지워진다. 앞 문항으로는 화면 아래 '이전으로'로 간다)
     home = st.session_state.screen in HOME_SCREENS
     ui.topbar(text.get("top_title") or data.settings["app_title"], text["top_sub"],
               text["to_start_button"] if home else "", ask_restart)
