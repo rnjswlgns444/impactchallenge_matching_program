@@ -197,7 +197,7 @@ def test_one_type_to_the_end(app, tmp_path):
     click(app, "pin_1")                                        # 핀을 누르면 그 곳의 안내 화면으로 간다
     assert app.session_state.screen == "place" and app.session_state.place == places[0]["id"]
     page = page_text(app)
-    assert f'<h1 class="q-title">{escape(places[0]["프로그램명"])}</h1>' in page
+    assert f'<h1 class="q-title">{escape(ui.place_name(places[0]))}</h1>' in page
     assert "혼자 가도 괜찮을까요?" in page                      # 걸림돌이 물어볼 문장으로 이어진다
     assert text["say_prefix"] in page and text["call_button"] in page     # 물어볼 문장과 전화 단추는 접지 않고 보인다
     click(app, "back_top")
@@ -1235,8 +1235,8 @@ def test_place_screen_goes_back_to_the_same_result(app, tmp_path):
         program = places[number - 1]
         assert app.session_state.screen == "place"
         page = page_text(app)
-        assert f'<h1 class="q-title">{escape(program["프로그램명"])}</h1>' in page
-        assert f'<h3 class="p-name">' not in page              # 이름은 화면 제목에 있으므로 카드에서 되풀이하지 않는다
+        assert f'<h1 class="q-title">{escape(ui.place_name(program))}</h1>' in page          # 제목은 기관 이름(11/26)
+        assert f'<h3 class="p-name">{escape(program["프로그램명"])}</h3>' in page             # 하는 일은 카드의 이름 줄에 나온다
         assert program["기관명"] in page and escape(program["한줄설명"]) in page
         assert text["say_prefix"] in page and text["call_button"] in page and text["detail_button"] in page
         assert app.button(key="back_top").label == text["back_label"]      # 화살표 단추를 읽어 주는 이름

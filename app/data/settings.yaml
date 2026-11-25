@@ -1,7 +1,7 @@
 # 화면 문구와 동작 설정
 # 문구를 바꾸고 싶으면 이 파일만 고치면 됩니다.
 
-app_title: "나에게 맞는 안산 프로그램 찾기"
+app_title: "ANTI - 안산 다음걸음 유형 찾기"
 top_n: 1                      # 유형마다 먼저 보여줄 곳의 수. 나머지는 '더 보기'를 눌러야 나옵니다.
 ai_top_n: 3                   # 직접 적은 글로 AI가 더 찾아 주는 곳의 최대 개수
 # 응답 기록(app/logs)을 남길지. 기본은 남기지 않습니다(false).
@@ -200,7 +200,7 @@ text:
   # 친구에게 공유하기(결과 화면 맨 아래). 보내는 것은 share_message와 앱 주소뿐이고, 고른 답이나 결과는 보내지 않습니다.
   share_help: "함께 해 보고, 같이 가 볼 곳을 찾아보세요. 내가 고른 답은 전해지지 않아요."
   share_button: "친구에게 공유하기"
-  share_message: "나에게 맞는 안산 프로그램 찾기: 질문에 답하면 안산에서 물어볼 수 있는 곳을 알려 줘요."   # 친구에게 가는 글
+  share_message: "ANTI(안산 다음걸음 유형 찾기): 질문에 답하면 나의 유형과 안산에서 물어볼 수 있는 곳을 알려 줘요."   # 친구에게 가는 글
   share_copied: "주소를 복사했어요. 카카오톡 대화창에 붙여 넣어 보내 주세요."          # 공유 창을 띄우지 못해 주소를 복사했을 때
   share_failed: "자동으로 복사하지 못했어요. 아래 주소를 길게 눌러 복사해 주세요."      # 복사도 못 했을 때. 이 글 뒤에 주소가 나옵니다
   share_url: "https://impactchallengematchingprogram-bukykbtaehsl53kbjv74an.streamlit.app/?embed=true"   # 공유할 앱 주소(Streamlit Cloud). 비워 두면 지금 열려 있는 주소를 보냅니다. 뒤의 ?embed=true는 만든 사람 아이디 배지를 숨깁니다

@@ -952,7 +952,7 @@ def screen_place(data, text) -> None:
 
     그릴 때마다 지금의 후보를 다시 만든다. state.place가 그 안에 없으면(끝난 곳, 답을 고쳐 빠진 곳, 없는 id)
     아무것도 그리지 않고 결과로 돌려보낸다. 두 돌아가기 단추는 늘 결과 화면으로 간다.
-    카드의 내용·순서·문구는 결과 화면에 있던 것과 같다. 곳 이름만 화면 제목으로 올렸다.
+    화면 제목은 지도의 핀과 같은 기관 이름이다(11/26, ui.place_name). 카드에는 하는 일(프로그램명)과 온전한 기관 이름이 나온다.
     """
     state = st.session_state
     if sel.next_question(state.answers, data.questions) is not None:
@@ -964,18 +964,18 @@ def screen_place(data, text) -> None:
         go("result")
         st.rerun()
 
-    ui.title_row(program["프로그램명"], text["back_label"], go, ("result",))
+    ui.title_row(ui.place_name(program), text["back_label"], go, ("result",))
     reason = context.reasons.get(program["id"])
     if reason:
         ui.ai_reason(text["ai_reason"], reason)
     type_info = data.types[context.primary]
     own = context.primary in loader.split_multi(program["유형태그"])     # 대표 유형의 곳인지(AI가 고른 다른 유형의 곳, 일반 창구는 아니다)
     if program["종류"] == loader.KIND_LIST:
-        ui.list_card(program, text, show_name=False)
+        ui.list_card(program, text)
     else:
         asked = [opt["label"] for opt in sel.chosen_detail_options(type_info, state.details.get(context.primary))]
         ui.program_card(program, text, type_info if own else None, context.guides, asked if own else None,
-                        key=f"place_{program['id']}", show_name=False)
+                        key=f"place_{program['id']}")
     st.button(width="stretch", label=text["back_to_result"], key="back_bottom", on_click=go, args=("result",))
     ui.back_guard("back_bottom")                              # 휴대폰 '뒤로 가기'를 눌러도 결과로 돌아간다
 
