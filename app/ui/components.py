@@ -113,6 +113,40 @@ def share_script(text: dict, title: str, url: str = "") -> None:
                                          "copied": text["share_copied"], "failed": text["share_failed"], "url": url})
 
 
+# 휴대폰의 '뒤로 가기'를 앱 안의 돌아가기 단추로 잇는 코드. 앱 화면(부모 문서)에 한 번만 심는다.
+# 이 앱은 브라우저에게는 한 페이지라서, 뒤로 가기를 누르면 앱을 벗어나 답이 모두 지워진다.
+# 화면에 표시(data-back-key)가 있으면 브라우저 기록에 한 걸음을 더해 두고, 뒤로 가기가 오면 표시가 가리키는
+# 단추(이미 화면에 있는 '이전으로'·'결과로 돌아가기')를 대신 누른다. 표시가 없는 화면에서는 아무것도 하지 않는다.
+_BACK_CODE = """(function () {
+  let busy = false;
+  function mark() { return document.querySelector('[data-back-key]'); }
+  function arm() {
+    if (busy || !mark() || (history.state && history.state.appBack)) return;
+    history.pushState({ appBack: true }, '');
+  }
+  window.addEventListener('popstate', function () {
+    const m = mark();
+    const b = m && document.querySelector('.st-key-' + m.dataset.backKey + ' button');
+    if (!b) return;
+    // 단추를 누른 뒤 화면이 바뀌는 동안에는 한 걸음을 다시 더하지 않는다(옛 화면의 표시가 잠깐 남아 있다)
+    busy = true;
+    b.click();
+    setTimeout(function () { busy = false; arm(); }, 1200);
+  });
+  new MutationObserver(arm).observe(document.body, { childList: true, subtree: true });
+  arm();
+})();"""
+
+
+def back_guard(target_key: str) -> None:
+    """이 화면에서 휴대폰 '뒤로 가기'를 누르면 target_key 단추를 누른 것과 같게 한다(11/26).
+
+    target_key는 이 화면에 실제로 그려지는 st.button의 key여야 한다. 새 동작을 만들지 않고 그 단추를 대신 누를 뿐이다.
+    """
+    html(f'<span data-back-key="{escape(target_key, quote=True)}" hidden></span>')
+    _plant("__backBound", _BACK_CODE, {})
+
+
 # '카카오톡·메시지로 보내기'를 누르면 실행되는 코드. 화면에 보이는 결과 사진을 휴대폰 공유 창에 파일로 넘긴다.
 # 공유 창은 누른 직후에만 띄울 수 있어서(아이폰), 단추에 손이 닿는 순간 사진을 미리 받아 둔다.
 # 사진 파일을 공유하지 못하는 브라우저에서는 안내 글만 보여준다. 보내는 것은 사진 한 장뿐이다.

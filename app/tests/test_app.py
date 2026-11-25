@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 from datetime import datetime
 from html import escape
 from pathlib import Path
@@ -1004,6 +1005,43 @@ def test_top_bar_is_on_every_screen_and_home_only_where_it_is_safe(app):
     click(app, "back_survey")
     take_survey(app, T01=(5, 5))
     assert has_top_bar(app, text) and home_button() == [text["to_start_button"]]
+
+
+def test_phone_back_points_at_a_button_that_is_on_the_screen(app):
+    """휴대폰 '뒤로 가기'는 화면에 이미 있는 돌아가기 단추를 대신 누른다(11/26). 표시가 가리키는 단추가 그 화면에 있어야 한다.
+
+    결과·시작·맞춰 보기 화면에는 표시가 없다(거기서는 뒤로 가기가 평소대로 움직인다).
+    실제 브라우저 기록은 AppTest가 흉내 내지 못하므로, 표시와 단추가 짝이 맞는지만 본다.
+    """
+    def back_key() -> str | None:
+        found = re.findall(r'data-back-key="([^"]+)"', page_text(app))
+        assert len(found) <= 1
+        return found[0] if found else None
+
+    assert back_key() is None                                  # 시작 화면
+    click(app, "start")
+    assert back_key() == "back_survey" and "back_survey" in keys(app)
+    click(app, "back_survey")                                 # 첫 문항에서는 시작 화면으로 돌아간다
+    assert app.session_state.screen == "start"
+    take_survey(app, T12=(5, 5), skip_tune=False)
+    assert app.session_state.screen == "tune" and back_key() is None
+    skip_tune_screen(app)
+    assert back_key() is None                                  # 결과 화면
+    click(app, "pin_more")
+    assert app.session_state.screen == "more_places"
+    assert back_key() == "back_bottom" and "back_bottom" in keys(app)
+    click(app, "back_bottom")
+    click(app, "pin_1")
+    assert app.session_state.screen == "place"
+    assert back_key() == "back_bottom" and "back_bottom" in keys(app)
+    click(app, "back_bottom")
+    edit = next(k for k in keys(app) if k.startswith("edit_")) if any(k.startswith("edit_") for k in keys(app)) else None
+    if edit is None:                                           # 답변 확인·수정은 '더 보기' 안에 있다
+        click(app, "more_toggle")
+        edit = next(k for k in keys(app) if k.startswith("edit_"))
+    click(app, edit)
+    assert app.session_state.screen == "survey"
+    assert back_key() == "edit_cancel" and "edit_cancel" in keys(app)
 
 
 @pytest.mark.parametrize("opener", ["to_start", "restart"])

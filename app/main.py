@@ -199,7 +199,7 @@ def screen_start(data, text) -> None:
                     ui.notice(text["start_privacy_saving"], "info")
                 st.button(width="stretch", label=text["start_button"], key="start", type="primary",
                           on_click=go, args=("survey",))
-                # 설문 없이 어떤 곳이 있는지 먼저 볼 수 있는 길(11/22 결정). 주된 길은 위의 '시작하기'다
+                # 설문 없이 어떤 곳이 있는지 먼저 볼 수 있는 길(11/22 결정). 주된 길은 위의 시작 단추다
                 st.button(width="stretch", label=text["start_browse_button"], key="start_browse",
                           on_click=go, args=("browse",))
     # 유의사항: 저장·전송 안내, 답이 지워지는 경우, 면책 문구. 저장 안내를 위에서 이미 했으면 되풀이하지 않는다
@@ -314,9 +314,11 @@ def screen_survey(data, text) -> None:
             state.draft.pop(qid, None)
             go("result")
         st.button(width="stretch", label=text["edit_cancel"], key="edit_cancel", type="tertiary", on_click=cancel_edit)
+        ui.back_guard("edit_cancel")
     else:
         st.button(width="stretch", label=text["back_button"], key="back_survey", type="tertiary",
                   on_click=back_one, args=(data.questions,))
+        ui.back_guard("back_survey")                          # 휴대폰 '뒤로 가기'를 눌러도 앞 문항으로 간다
 
 
 # ── 결과 화면 ──
@@ -994,6 +996,7 @@ def screen_place(data, text) -> None:
         ui.program_card(program, text, type_info if own else None, context.guides, asked if own else None,
                         key=f"place_{program['id']}", show_name=False)
     st.button(width="stretch", label=text["back_to_result"], key="back_bottom", on_click=go, args=("result",))
+    ui.back_guard("back_bottom")                              # 휴대폰 '뒤로 가기'를 눌러도 결과로 돌아간다
 
 
 def screen_more_places(data, text) -> None:
@@ -1015,6 +1018,7 @@ def screen_more_places(data, text) -> None:
                   on_click=open_place, args=(program["id"],))
         ui.html(f'<p class="small-note example-note">{escape(program["한줄설명"])}</p>')
     st.button(width="stretch", label=text["back_to_result"], key="back_bottom", on_click=go, args=("result",))
+    ui.back_guard("back_bottom")
 
 
 def main() -> None:
