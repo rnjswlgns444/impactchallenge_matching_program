@@ -229,30 +229,50 @@ def pin_name(program: dict) -> str:
     return "phone" if _no_visit(program["장소"] or program["진행방식"]) else pins.DEFAULT
 
 
+_PAREN = re.compile(r"\([^)]*\)")                 # 기관 이름의 괄호 풀이(운영 주체·부서)
+_MARKDOWN = re.compile(r"([\\`*_\[\]~$:<>#|])")    # 단추 글에서 꾸밈 기호로 읽힐 수 있는 글자
+
+
+def place_name(program: dict) -> str:
+    """지도와 목록에 크게 보여 줄 기관 이름. 괄호 안의 풀이(운영 주체·부서)만 뺀다. 온전한 이름은 안내 화면의 카드에 나온다."""
+    return _PAREN.sub("", program["기관명"]).strip() or program["기관명"]
+
+
+def place_label(program: dict) -> str:
+    """핀·목록 단추의 글(11/26): 굵은 기관 이름, 줄을 바꿔 그 아래에 작게 하는 일(프로그램명).
+
+    글자 크기는 style.py가 정한다(굵은 글 = 이름, 나머지 = 작은 소개).
+    """
+    name, intro = (_MARKDOWN.sub(r"\\\1", part) for part in (place_name(program), program["프로그램명"]))
+    return f"**{name}**  \n{intro}"
+
+
 def map_notes(hint: str, star_note: str = "") -> None:
-    """지도 아래의 작은 글: 누르면 자세히 볼 수 있다는 안내와, 별이 붙은 곳이 있을 때 별의 뜻."""
+    """제목 아래의 작은 글: 누르면 자세히 볼 수 있다는 안내. star_note는 지도가 없는 화면(다른 곳 목록)에서 별의 뜻을 알릴 때 쓴다."""
     rows = "".join(f'<p class="map-note{extra}">{escape(line)}</p>'
                    for line, extra in ((hint, ""), (star_note, " star")) if line)
     html(f'<div class="map-notes">{rows}</div>')
 
 
 def place_map(places: list[dict], picked: set[str], seen: set[str], on_open,
-              more_label: str = "", on_more=None) -> None:
+              more_label: str = "", on_more=None, star_note: str = "") -> None:
     """첫걸음 지도: 꾸밈 그림 바탕 위에 곳마다 핀 하나. 핀 하나가 단추 하나다(pin_1, pin_2, …, pin_more).
 
     places는 이미 걸러진 후보 가운데 지도에 놓을 곳이다(여기서 새로 거르지 않는다).
     picked는 AI가 고른 곳의 id(핀과 이름 앞에 별이 붙는다), seen은 이미 보고 온 곳의 id(물빛이 된다)다.
-    단추 글에는 곳 이름만 넣는다. 핀 그림·별·이름표 끝의 '›'는 style.py가 상자 이름을 보고 붙인다:
+    단추 글은 기관 이름(크게)과 하는 일(작게) 두 줄이다(place_label). 핀 그림·별·이름표 끝의 '›'는 style.py가 상자 이름을 보고 붙인다:
       pinbox_{번호}_k_{그림 이름}[_ai][_seen]
-    누를 수 있다는 것과 별의 뜻은 지도 아래의 글(map_notes)이 알린다(11/26: 손가락 그림과 첫 핀 위의 글을 뺐다).
+    누를 수 있다는 것은 제목 아래의 글(map_notes)이 알린다. star_note(별의 뜻)를 주면 지도 안 왼쪽 위에 적는다(11/26).
     more_label을 주면 맨 끝에 '다른 곳 n곳' 핀을 하나 더 놓는다.
     """
     with st.container(key="place_map"):
+        if star_note:
+            html(f'<div class="map-legend"><p class="map-note star">{escape(star_note)}</p></div>')
         for number, program in enumerate(places, start=1):
             pid = program["id"]
             marks = "".join(f"_{mark}" for mark, on in (("ai", pid in picked), ("seen", pid in seen)) if on)
             with st.container(key=f"pinbox_{number}_k_{pin_name(program)}{marks}"):
-                st.button(program["프로그램명"], key=f"pin_{number}", on_click=on_open, args=(pid,))
+                st.button(place_label(program), key=f"pin_{number}", on_click=on_open, args=(pid,))
         if more_label:
             with st.container(key=f"pinbox_more_k_{pins.MORE}"):
                 st.button(more_label, key="pin_more", on_click=on_more)

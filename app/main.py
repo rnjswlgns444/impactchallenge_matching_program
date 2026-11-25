@@ -800,11 +800,12 @@ def place_area(data, text, context: SimpleNamespace) -> None:
     if result.widened:
         ui.notice(text["widened_note"], "info")
     rest = len(context.places) - MAP_PINS
-    # 제목 바로 아래의 작은 글: 누르면 자세히 볼 수 있다는 것과, 별이 붙은 곳이 있으면 별의 뜻.
-    # 지도 아래에 두면 휴대폰에서 지도에 밀려 먼저 보이지 않는다(11/26)
-    ui.map_notes(text["map_hint"], text["map_star_note"] if context.reasons else "")
+    # 제목 바로 아래의 작은 글: 누르면 자세히 볼 수 있다는 것. 지도 아래에 두면 휴대폰에서 지도에 밀려 먼저 보이지 않는다.
+    # 별의 뜻은 별이 붙은 곳이 있을 때만 지도 안 왼쪽 위에 적는다(11/26)
+    ui.map_notes(text["map_hint"])
     ui.place_map(context.places[:MAP_PINS], set(context.reasons), set(state.seen_places), open_place,
-                 text["pin_more"].format(count=rest) if rest > 0 else "", go_more_places)
+                 text["pin_more"].format(count=rest) if rest > 0 else "", go_more_places,
+                 star_note=text["map_star_note"] if context.reasons else "")
 
 
 def go_more_places() -> None:
@@ -999,7 +1000,7 @@ def screen_more_places(data, text) -> None:
         # AI가 고른 곳은 상자 이름(more_ai_…)으로 표시해 이름 앞에 별을 붙인다(style.py). 지도에 못 놓인 곳일 수 있다
         picked = program["id"] in context.reasons
         with st.container(key=f"more_{'ai' if picked else 'row'}_{program['id']}"):
-            st.button(width="stretch", label=program["프로그램명"], key=f"open_{program['id']}",
+            st.button(width="stretch", label=ui.place_label(program), key=f"open_{program['id']}",
                       on_click=open_place, args=(program["id"],))
         ui.html(f'<p class="small-note example-note">{escape(program["한줄설명"])}</p>')
     st.button(width="stretch", label=text["back_to_result"], key="back_bottom", on_click=go, args=("result",))

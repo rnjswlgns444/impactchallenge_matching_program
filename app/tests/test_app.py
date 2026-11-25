@@ -18,6 +18,7 @@ from streamlit.testing.v1 import AppTest
 
 from app.core import candidates, clock, llm_matcher, loader, logger
 from app.core import selection as sel
+from app.ui import components as ui
 from app.ui import result_image
 
 MAIN = str(Path(__file__).resolve().parents[1] / "main.py")
@@ -93,7 +94,12 @@ def keys(at: AppTest) -> list[str]:
 
 def pin_labels(at: AppTest) -> list[str]:
     """지도에 핀으로 놓인 곳의 이름(순서대로). '다른 곳 n곳' 핀은 뺀다."""
-    return [b.label for b in at.button if b.key.startswith("pin_") and b.key != "pin_more"]
+    return [program_line(b.label) for b in at.button if b.key.startswith("pin_") and b.key != "pin_more"]
+
+
+def program_line(label: str) -> str:
+    """핀·목록 단추의 글(굵은 기관 이름 + 줄바꿈 + 프로그램명)에서 프로그램명만 꺼낸다(ui.place_label의 거꾸로)."""
+    return re.sub(r"\\(.)", r"\1", label.split("\n")[1])
 
 
 def map_names(at: AppTest) -> list[str]:
@@ -101,7 +107,7 @@ def map_names(at: AppTest) -> list[str]:
     names = pin_labels(at)
     if "pin_more" in keys(at):
         click(at, "pin_more")
-        names += [b.label for b in at.button if b.key.startswith("open_")]
+        names += [program_line(b.label) for b in at.button if b.key.startswith("open_")]
         click(at, "back_bottom")
     return names
 
@@ -556,8 +562,14 @@ def test_free_text_adds_ai_picks_with_reasons(app, fake_ai, tmp_path):
     assert len(fake_ai["prompts"]) == 1
     text = page_text(app)
     assert pin_labels(app)[0] == picked["프로그램명"]                # AI가 고른 곳이 맨 앞
-    # 별의 뜻은 지도 아래 글이 알리고, 별은 고른 곳의 핀 상자(_ai)에만 붙는다(11/26). 손가락 그림은 없다
-    assert f'<p class="map-note star">{escape(settings["map_star_note"])}</p>' in text
+    # 별의 뜻은 지도 안 왼쪽 위의 딱지가 알리고, 별은 고른 곳의 핀 상자(_ai)에만 붙는다(11/26). 손가락 그림은 없다
+    assert f'<div class="map-legend"><p class="map-note star">{escape(settings["map_star_note"])}</p></div>' in text
+    inside = [e.key if e.type == "button" else "legend" for e in app.main
+              if (e.type == "button" and e.key == "pin_1") or (e.type == "markdown" and 'class="map-legend"' in e.value)]
+    assert inside == ["legend", "pin_1"]                             # 지도 안에서 첫 핀보다 앞(왼쪽 위)
+    # 핀의 글은 기관 이름(크게) + 줄을 바꿔 하는 일(작게)
+    assert app.button(key="pin_1").label == ui.place_label(picked)
+    assert ui.place_label(picked).startswith(f"**{ui.place_name(picked)}**  \n") and "(" not in ui.place_name(picked)
     assert f'<p class="map-note">{escape(settings["map_hint"])}</p>' in text and "_hint" not in text
     names = map_names(app)
     assert len(names) == len(set(names))                            # 고른 곳이 뒤에 한 번 더 나오지 않는다
@@ -1201,7 +1213,7 @@ def test_more_pin_appears_only_past_three_places(app, type_id):
     assert app.session_state.screen == "more_places"
     page = page_text(app)
     assert escape(text["more_places_heading"].format(type=data.types[type_id]["name"])) in page
-    assert [b.label for b in app.button if b.key.startswith("open_")] == [p["프로그램명"] for p in rest]
+    assert [b.label for b in app.button if b.key.startswith("open_")] == [ui.place_label(p) for p in rest]
     assert all(escape(p["한줄설명"]) in page for p in rest)
     click(app, f"open_{rest[0]['id']}")                        # 줄을 누르면 그 곳의 안내 화면으로
     assert app.session_state.screen == "place" and rest[0]["기관명"] in page_text(app)

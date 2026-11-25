@@ -255,22 +255,22 @@ CSS = """
 }
 .stApp [data-testid="stExpander"] summary { min-height: 3.25rem; }
 /* 결과 화면 '더 보기' 안의 줄: 접힌 칸(답변 확인·수정, 함께 찾아 주는 곳)과 단추(바라는 점 다시 적기, 다시 고르기)를
-   같은 테두리·높이·글자로 맞춘다. 단추는 다른 화면으로 가므로 오른쪽 끝에 '›'를 둔다 */
+   같은 테두리·높이·글자로 맞춘다. '›'도 접힌 칸과 같은 자리(글 왼쪽)·같은 크기로 둔다(11/26) */
 .stApp .st-key-more_rows .stButton > button {
-  min-height: 3.4375rem; padding: 0 1rem; justify-content: space-between; text-align: left;   /* 접힌 칸의 실제 높이(55px)와 같게 */
+  min-height: 3.4375rem; padding: 0 .75rem; justify-content: flex-start; gap: .5rem; text-align: left;   /* 접힌 칸의 실제 높이(55px)와 같게 */
   background: var(--surface); border: 1px solid var(--rule); border-radius: .85rem; box-shadow: none;
 }
 .stApp .st-key-more_rows .stButton > button > div { justify-content: flex-start; }
 .stApp .st-key-more_rows .stButton > button p { color: var(--ink); font-size: 1.1875rem; font-weight: 650; }
-.stApp .st-key-more_rows .stButton > button::after {
-  content: ""; flex: none; width: .55rem; height: .55rem; margin-right: .2rem;
-  border: solid var(--ink); border-width: 0 2px 2px 0; transform: rotate(-45deg);
+.stApp .st-key-more_rows .stButton > button::before {
+  content: ""; flex: none; width: .4rem; height: .4rem; margin: 0 .35rem 0 .25rem;
+  border: solid var(--ink); border-width: 0 1.5px 1.5px 0; transform: rotate(-45deg);
 }
 /* 접힌 칸 안의 단추(문항 목록 등)는 예전 모양 그대로 둔다 */
 .stApp .st-key-more_rows [data-testid="stExpander"] .stButton > button {
   min-height: 3.875rem; padding: .25rem .75rem; justify-content: center; border: 1.5px solid var(--line); border-radius: .9rem;
 }
-.stApp .st-key-more_rows [data-testid="stExpander"] .stButton > button::after { content: none; }
+.stApp .st-key-more_rows [data-testid="stExpander"] .stButton > button::before { content: none; }
 .stApp [data-testid="stExpander"] summary p {
   color: var(--ink); font-size: 1.1875rem; font-weight: 650;
 }
@@ -393,12 +393,20 @@ CSS = """
 }
 .stApp .st-key-place_map [class*="st-key-pinbox_"][class*="_ai"] { --badge: var(--pin-star); }
 .stApp .st-key-place_map .stButton > button p {           /* 이름표: 흰 바탕 + 테두리 + 바닥 그림자(단추다운 모양) */
-  display: flex; align-items: center; gap: .55rem; min-height: 3.25rem; margin: 0; padding: .4rem .75rem .4rem .8rem;
+  display: block; position: relative; min-height: 3.25rem; margin: 0; padding: .45rem 2rem .45rem .8rem;
   background: var(--surface); border: 1.5px solid var(--line); border-radius: .9rem; box-shadow: 0 4px 0 #A3B3A6;
-  color: var(--ink); font-size: 1.1875rem; font-weight: 750; line-height: 1.35; text-align: left;
+  color: var(--body); font-size: 1rem; font-weight: 500; line-height: 1.4; text-align: left; word-break: keep-all;
+}
+/* 이름표의 첫 줄(굵은 글)은 기관 이름: 크게. 둘째 줄은 하는 일: 작게(11/26). '다른 곳' 목록의 줄도 같다 */
+.stApp :is(.st-key-place_map, [class*="st-key-more_row_"], [class*="st-key-more_ai_"]) .stButton > button p strong {
+  color: var(--ink); font-size: 1.1875rem; font-weight: 750; line-height: 1.35;
+}
+.stApp :is([class*="st-key-more_row_"], [class*="st-key-more_ai_"]) .stButton > button p {
+  color: var(--body); font-size: 1rem; font-weight: 500; line-height: 1.4; word-break: keep-all;
 }
 .stApp .st-key-place_map .stButton > button p::after {    /* 이름표 끝의 '›' */
-  content: ""; flex: none; width: .6rem; height: .6rem; border: solid var(--teal); border-width: 0 2.5px 2.5px 0; transform: rotate(-45deg);
+  content: ""; position: absolute; right: .8rem; top: 50%; width: .6rem; height: .6rem; margin-top: -.35rem;
+  border: solid var(--teal); border-width: 0 2.5px 2.5px 0; transform: rotate(-45deg);
 }
 /* 누르는 순간과, 보고 온 곳: 물빛 */
 .stApp .st-key-place_map .stButton > button:active p { background: var(--aqua); box-shadow: none; transform: translateY(4px); }
@@ -413,7 +421,14 @@ CSS = """
   content: ""; flex: none; display: inline-block; width: 1.25rem; height: 1.25rem; margin-right: .1rem;
   background: var(--pin-star) center / contain no-repeat; vertical-align: -.2rem;
 }
-/* 지도 제목 아래의 작은 글: 누르면 자세히 볼 수 있다는 안내와 별의 뜻 */
+/* 별의 뜻: 지도 안 왼쪽 위의 작은 딱지(별이 붙은 곳이 있을 때만) */
+.stApp .st-key-place_map .map-legend {
+  position: relative; z-index: 1; width: fit-content; max-width: 100%; margin: -.5rem 0 -.2rem; padding: .3rem .7rem;
+  background: rgba(255, 255, 255, .9); border: 1px solid var(--map-rule); border-radius: .7rem;
+}
+.stApp .st-key-place_map .map-legend .map-note.star { align-items: flex-start; font-size: 1rem; }
+.stApp .st-key-place_map .map-legend .map-note.star::before { margin-top: .15rem; }
+/* 지도 제목 아래의 작은 글: 누르면 자세히 볼 수 있다는 안내 */
 .stApp .map-notes { margin: -.35rem .1rem .1rem; }      /* 제목 바로 아래, 지도 위에 놓인다 */
 .stApp .map-note { margin: 0; color: var(--muted); font-size: 1.0625rem; line-height: 1.5; }
 .stApp .map-note.star { display: flex; align-items: center; gap: .35rem; color: var(--body); font-weight: 650; }
