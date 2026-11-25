@@ -30,6 +30,10 @@ REQUIRED_COLUMNS = [
     "진행방식", "첫방문안내", "혼자참여", "초보참여", "첫연락문장",
     "체험유형", "체험제목", "체험URL", "체험내용", "확인날짜", "출처URL",
 ]
+# 없어도 되는 열: 첫걸음 지도에서 그 곳의 핀에 넣을 그림. 열이 없거나 칸이 비면 기본 핀이 나온다.
+# 낱말을 더하려면 ui/pins.py의 WORDS·ICONS에도 함께 더한다(그림이 있어야 한다)
+PIN_COLUMN = "핀그림"
+PIN_WORDS = ("건강", "상담", "일", "가게", "배움", "문화", "운동", "모임", "봉사", "돌봄", "돈", "혜택", "전화", "온라인")
 PLACEHOLDERS = ["{type_name}", "{type_summary}", "{wish_examples}", "{wish_text}", "{candidates}", "{max_n}"]
 
 QUESTION_IDS = [BARRIER_Q, PRIORITY_Q, FREE_Q, GENDER_Q, AGE_Q, WORK_Q]   # 코드가 id로 찾는 문항 (이름은 selection.py)
@@ -61,28 +65,28 @@ TEXT_KEYS = """
     start_intro start_notes_title start_privacy start_ai_note start_refresh start_privacy_saving start_button
     start_browse_button browse_intro browse_to_survey browse_to_start type_label_browse
     scale_help cheer_half cheer_last number_placeholder number_next number_required multi_help next_button back_button
-    type_label type_label_other result_intro secondary_heading more_types_button also_heading
+    type_label type_label_other secondary_heading more_types_button also_heading
     tie_two tie_many repick_button edit_heading edit_select edit_notice edit_cancel
     detail_label detail_first widened_note contacts_heading lists_heading no_program no_program_at_all
     browse_heading browse_help consult_heading
-    free_privacy free_button free_empty free_unclear free_wait ai_heading ai_reason ai_stale ai_none ai_fail
+    tune_badge tune_heading tune_help tune_skip tune_done tune_again
+    free_privacy free_unclear free_wait ai_heading ai_reason ai_none ai_fail
+    feature_open feature_close map_heading back_label back_to_result more_toggle more_toggle_close
     kind_always kind_period kind_list nationwide card_ask target_label first_visit_label
     check_heading age_unconfirmed worry_heading say_prefix call_button apply_button detail_button home_button
     list_note list_button
     restart_button disclaimer
-    share_heading share_help share_button share_message share_copied share_failed
-    feature_heading tune_heading tune_help places_heading
-    nav_label nav_type_label nav_feature nav_tune nav_contacts nav_places nav_save
-    save_heading save_help save_help_plain save_image_alt save_button save_send_button save_send_failed
-    card_places_heading card_plain_title
+    share_help share_button share_message share_copied share_failed
+    save_heading save_help save_image_alt save_button save_send_button save_send_failed
+    card_places_heading
 """.split()
 # 값을 끼워 넣는 문구와, 그 문구에 쓸 수 있는 자리표시자
 TEXT_FIELDS = {
     "progress_scale": {"number", "total"}, "priority_example": {"org", "program"},
     "edit_option": {"number", "question", "answer"}, "type_image_alt": {"name"},
     "more_button": {"count"}, "ai_unmatched": {"items"},
-    "ai_seen_note": {"type"}, "seen_note": {"type"}, "unconfirmed": {"column"}, "checked_note": {"date"},
-    "card_footer": {"date"},
+    "seen_note": {"type"}, "unconfirmed": {"column"}, "checked_note": {"date"},
+    "card_footer": {"date"}, "pin_more": {"count"}, "more_places_heading": {"type"}, "map_checked_note": {"date"},
 }
 FEATURE_MAX = 160                 # 유형 특징 글(types.yaml의 feature)의 최대 글자 수. 결과 사진에 들어가는 길이다
 FALLBACK_KEYS = ["name", "org", "description", "phone", "say"]   # url은 없어도 된다
@@ -384,6 +388,9 @@ def validate_programs(programs: list[dict], types_list: list[dict]) -> list[str]
             problems.append(f"{where}: 최소나이·최대나이는 만 나이를 숫자로만 적습니다. 제한이 없으면 비워 둡니다.")
         elif all(limits) and int(limits[0]) > int(limits[1]):
             problems.append(f"{where}: 최소나이가 최대나이보다 큽니다.")
+        if row.get(PIN_COLUMN) and row[PIN_COLUMN] not in PIN_WORDS:
+            problems.append(f"{where}: '{PIN_COLUMN}' 칸은 비워 두거나 {' / '.join(PIN_WORDS)} 중 하나로 적습니다. "
+                            f"(지금: '{row[PIN_COLUMN]}')")
         if row["매칭가능"] == "Y" and not row["출처URL"]:
             problems.append(f"{where}: 매칭가능이 Y이면 출처URL이 있어야 합니다. 확인한 공식 페이지 주소를 적어 주세요.")
 

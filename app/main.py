@@ -1,10 +1,11 @@
-"""지원 탐색 앱. 화면 흐름만 담당한다: 시작 → 설문(기본정보, 척도 24문항, 걸림돌) → 먼저 살펴볼 유형과 결과.
+"""지원 탐색 앱. 화면 흐름만 담당한다: 시작 → 설문(기본정보, 척도 24문항, 걸림돌) → 조금 더 맞춰 보기 → 결과
+→ (핀을 누르면) 센터 정보.
 
 실행: 프로젝트 루트에서  streamlit run app/main.py
 내용(문항, 유형, 프로그램, 문구)은 app/data의 파일에서 읽는다. 판단은 app/core가 한다.
 유형은 척도 문항 점수로 정하고(core/scoring.py), 기본 결과는 AI 없이 정보표에서 걸러서 만든다.
 대표 유형은 하나만 크게 보여주되, 다른 유형도 본인이 눌러서 열어 볼 수 있다.
-결과 화면에서 원하는 점을 직접 적은 사람에게만, AI가 정보표 후보 안에서 고른 곳을 덧붙인다.
+'맞춰 보기' 화면에서 원하는 점을 직접 적은 사람에게만, AI가 정보표 후보 안에서 고른 곳을 지도 맨 앞에 놓는다.
 """
 from __future__ import annotations
 
@@ -14,6 +15,7 @@ import time
 import uuid
 from html import escape
 from pathlib import Path
+from types import SimpleNamespace
 
 import streamlit as st
 
@@ -70,15 +72,22 @@ def init_state() -> None:
         "opened": [],         # 결과 화면에서 본인이 눌러서 연 유형(대표 유형 외)
         "show_all": False,    # 대표 유형이 있을 때 '다른 분야도 보기'를 눌렀는지
         "logged": None,       # 기록한 응답의 모양. 한 번 진행에 responses.csv 한 행만 남기려고 둔다
-        "ai": None,           # AI 추가 추천 결과(llm_matcher.AiResult). '찾아보기'를 누를 때만 바뀐다
-        "free_empty": False,  # 글을 적지 않고 '찾아보기'를 눌렀는지
-        "ai_pending": False,  # AI에게 묻는 중인지. 켜져 있는 동안 '찾아보기' 단추와 글 상자를 잠근다
+        "ai": None,           # AI 추가 추천 결과(llm_matcher.AiResult). 맞춰 보기에서 '결과 보기'를 누를 때만 바뀐다
+        "ai_pending": False,  # AI에게 물어야 하는지. 결과 화면이 지도 자리에서 한 번 부르고 끈다
+        "ai_wish": None,      # AI에게 보낼(보낸) 글. 화면에만 두고 기록하지 않는다
+        "tuned": False,       # '조금 더 맞춰 보기' 화면을 지나왔는지. 한 번만 거친다
+        "feature_open": False,  # 결과 화면에서 '내 특징 자세히 보기'를 펼쳤는지
+        "save_open": False,   # '내 결과 저장하기'를 눌러 사진을 펼쳤는지
+        "more_open": False,   # 결과 화면의 '더 보기'를 펼쳤는지
+        "place": None,        # 센터 정보 화면에서 보여 줄 곳의 id. 그릴 때마다 지금 후보에 있는지 다시 확인한다
+        "seen_places": [],    # 센터 정보를 열어 본 곳의 id. 지도에서 물빛으로 보여 준다
     }
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
 
 
-HOME_SCREENS = ("result", "browse")       # 맨 위 띠에 '처음으로' 단추를 두는 화면
+HOME_SCREENS = ("tune", "result", "place", "more_places", "browse")   # 맨 위 띠에 '처음으로' 단추를 두는 화면(설문 중에는 없다)
+MAP_PINS = 3                              # 첫걸음 지도에 핀으로 놓는 곳의 수. 더 있으면 '다른 곳 n곳' 핀 하나로 묶는다
 
 
 def restart() -> None:
@@ -161,7 +170,6 @@ def back_one(questions: list[dict]) -> None:
     state.answers.pop(sel.PRIORITY_Q, None)
     state.ai = None
     state.ai_pending = False
-    state.free_empty = False
     go("survey")
 
 
@@ -238,7 +246,6 @@ def screen_survey(data, text) -> None:
             state.pop("edit_q", None)
             state.ai = None
             state.ai_pending = False
-            state.free_empty = False
             go("result")
 
     # 질문과 선택지는 흰 카드(q_card) 안에, '다음'과 이전 단추는 카드 밖에 둔다. 모든 문항은 답해야 넘어간다.
@@ -344,7 +351,8 @@ def priority_question(data, text, type_ids: list[str], today) -> None:
 def detail_question(text, type_info: dict, detail: dict, plain: bool = False) -> None:
     """유형의 세부 질문(선택). 답은 후보의 순서와 '이렇게 물어보세요' 문장에 쓰인다.
 
-    plain: 대표 유형의 '조금 더 맞춰 보기' 구역에서는 접지 않고 상자 없이 그린다(구역 제목이 이미 있다).
+    plain: 대표 유형의 세부 질문('조금 더 맞춰 보기' 화면, 돌봄형의 결과 화면)은 접지 않고 상자 없이 그린다.
+           고른 선택지는 설문처럼 글 앞의 ✓ 없이 물빛 바탕과 테두리로 보여 준다.
     """
     state = st.session_state
     tid = type_info["id"]
@@ -373,7 +381,8 @@ def detail_question(text, type_info: dict, detail: dict, plain: bool = False) ->
                 else f'<p class="q-help"><b>{escape(detail["text"])}</b></p>')
         for option in detail["options"]:
             selected = option["id"] in chosen
-            st.button(width="stretch", label=check_label(option["label"], selected), key=f"detail_{tid}_{option['id']}",
+            label = option["label"] if plain else check_label(option["label"], selected)
+            st.button(width="stretch", label=label, key=f"detail_{tid}_{option['id']}",
                       type="primary" if selected else "secondary", on_click=pick, args=(option["id"],))
 
 
@@ -402,7 +411,7 @@ def consult_instead(data, text, result: candidates.TypeResult, guides, seen: dic
 
 def type_section(data, text, result: candidates.TypeResult, label: str, guides, top_n: int,
                  seen: dict[str, str], consults: list[dict]) -> None:
-    """본인이 연 유형 하나의 구역(결과 화면의 다른 유형, 둘러보기 화면). 대표 유형은 primary_section이 그린다.
+    """본인이 연 유형 하나의 구역(결과 화면 '더 보기'의 다른 유형, 둘러보기 화면). 대표 유형은 screen_result가 그린다.
 
     seen은 {이미 카드로 나온 프로그램 id: 그 유형 이름}이고, 여기서 나온 것을 더한다.
     label은 유형 이름 위의 작은 글이다.
@@ -422,47 +431,6 @@ def type_section(data, text, result: candidates.TypeResult, label: str, guides, 
     if detail:
         detail_question(text, type_info, detail)
     type_places(data, text, result, guides, top_n, seen)
-
-
-def primary_section(data, text, result: candidates.TypeResult, guides, top_n: int, seen: dict[str, str],
-                    consults: list[dict], gender: str | None):
-    """대표 유형의 구역(11/23 순서): 유형 상자 → 목차 → 1 특징 → 2 맞춰 보기(세부 질문 + 직접 적기) → 3 곳.
-
-    AI가 고른 곳이 들어갈 자리를 돌려준다. 자리만 먼저 잡고, 아래 구역을 모두 그린 뒤에 채운다(seen을 알아야 해서).
-    gender(P_GENDER의 답)는 캐릭터 그림을 고르는 데만 쓴다. 결과 화면의 맨 바깥에서 불러야 목차가 따라다닌다.
-    """
-    type_info = data.types[result.type_id]
-    has_contacts = bool(result.contacts)
-    places_title = text["contacts_heading"] if has_contacts else text["places_heading"]
-    ui.type_header(text["type_label"], type_info, ui.character_image(result.type_id, gender),
-                   text["type_image_alt"].format(name=type_info["name"]))
-    ui.page_nav(text, type_info["name"], places_title, text["nav_contacts"] if has_contacts else text["nav_places"])
-
-    ui.section_head(1, text["feature_heading"], "sec-traits")
-    ui.feature_text(type_info["feature"])
-
-    ui.section_head(2, text["tune_heading"], "sec-tune")
-    detail = sel.detail_of(type_info)
-    if result.needs_choice:
-        detail_question(text, type_info, detail, plain=True)      # 꼭 골라야 하므로 '안 골라도 돼요'를 말하지 않는다
-    else:
-        ui.html(f'<p class="q-help">{escape(text["tune_help"])}</p>')
-        if detail and not no_place(result):                       # 안내할 곳이 없으면 세부 질문을 묻지 않는다
-            detail_question(text, type_info, detail, plain=True)
-    with st.container():
-        free_wish_form(data, text, compact=True)
-
-    ui.section_head(3, places_title, "sec-places")
-    picks = st.container()
-    if result.needs_choice:
-        ui.notice(text["detail_first"], "info")
-    elif no_place(result):
-        consult_instead(data, text, result, guides, seen, consults)
-    else:
-        if has_contacts:                                          # '문의할 수 있다고 확인한 곳'은 문의할 곳이 있을 때만 말한다
-            ui.body(text["result_intro"])                         # (목록 행은 모집 여부를 확인하지 못한 것일 수 있다)
-        type_places(data, text, result, guides, top_n, seen, heading=False)
-    return picks
 
 
 def type_places(data, text, result: candidates.TypeResult, guides, top_n: int, seen: dict[str, str],
@@ -580,111 +548,106 @@ def ask_ai(data, type_ids: list[str], pool: list[dict], wish: str) -> llm_matche
                                  wish, pool, int(data.settings.get("ai_top_n", 3)), caller)
 
 
-def free_wish_form(data, text, compact: bool = False) -> None:
-    """원하는 점을 직접 적는 칸(Q_FREE)과 '찾아보기' 단추. 접지 않고 펼친 채로 둔다(11/22 결정).
+def judge(data) -> scoring.Score:
+    """지금 답으로 유형을 판정한다. 점수는 화면에 보여주지 않는다. 본인이 고른 것(Q_PRIORITY)은 지금 후보에 있을 때만 쓰인다."""
+    state = st.session_state
+    return scoring.score(state.answers, sel.type_questions(data.questions, data.types),
+                         data.settings["scoring"]["high"], state.answers.get(sel.PRIORITY_Q))
 
-    compact: 대표 유형의 '조금 더 맞춰 보기' 구역 안에서는 질문을 작은 제목으로 그린다(구역 제목이 이미 있다).
 
-    단추는 AI를 바로 부르지 않고 '찾는 중'(ai_pending)만 켠다. 찾는 동안에는 단추가 잠겨서
-    다시 눌러도 AI를 또 부르지 않는다. 실제 호출은 free_wish_result가 한다. 적은 글은 기록하지 않는다.
-    글 상자와 단추는 한 폼이다. 글은 단추를 누를 때만 넘어오므로, 찾는 동안 글을 고쳐도 실행이 끊기지 않는다.
+def result_context(data, today) -> SimpleNamespace:
+    """결과·센터 정보·다른 곳 목록 화면이 함께 쓰는 것. 저장해 두지 않고 화면을 그릴 때마다 답과 정보표에서 다시 만든다.
+
+    거르기는 모두 candidates가 한다(운영 중, 종료일·종료시각, 기본정보, 유형). 여기서는 걸러진 것의 순서만 정한다.
+    places: 지도와 '다른 곳' 목록에 놓을 곳 전체. 대표 유형의 문의할 곳 → 목록 순서이고, 둘 다 없으면 일반 창구다.
+            AI가 고른 곳은 맨 앞으로 옮긴다. AI가 준 id는 지금의 AI 후보(pool)에 있을 때만 쓴다.
+    reasons: {AI가 고른 곳의 id: 추천 이유}. 센터 정보 화면은 places에 있는 곳만 그린다.
     """
     state = st.session_state
+    judged = judge(data)
+    primary = judged.primary
+    opened = [tid for tid in data.types if tid in state.opened and tid != primary]
+    shown_types = ([primary] if primary else []) + opened        # 동점이라 아직 고르기 전이면 대표가 없다
+    results = candidates.build_result(data.programs, data.types, shown_types, state.details, today, state.answers)
+    by_type = {r.type_id: r for r in results}
+    consults = candidates.first_consult(data.programs, today, state.answers)
+    pool, places, reasons = [], [], {}
+    if primary:
+        pool = candidates.ai_pool(data.programs, data.types, shown_types, state.details, today, state.answers)
+        result = by_type[primary]
+        base = result.contacts + result.lists
+        if not base and not result.needs_choice:                   # 먼저 골라야 하는 유형(돌봄)은 고르기 전에 창구로 대신하지 않는다
+            base = consults
+        by_id = {p["id"]: p for p in pool}
+        for match in (state.ai.matches if state.ai is not None else []):
+            if match["id"] in by_id:
+                reasons.setdefault(match["id"], match["reason"])
+        places = [by_id[pid] for pid in reasons] + [p for p in base if p["id"] not in reasons]
+    return SimpleNamespace(judged=judged, primary=primary, opened=opened, shown_types=shown_types, by_type=by_type,
+                           consults=consults, guides=sel.barrier_guides(state.answers, data.questions),
+                           pool=pool, places=places, reasons=reasons)
+
+
+# ── 조금 더 맞춰 보기 (설문 끝과 결과 사이, 전부 선택 사항) ──
+
+def screen_tune(data, text) -> None:
+    """대표 유형의 세부 질문과 직접 적기. 둘 다 안 해도 되고, 맨 위에서 바로 건너뛸 수 있다. 한 번만 거친다.
+
+    유형 이름은 여기서 보여 주지 않는다(결과 화면에서 처음 본다).
+    글 상자와 '결과 보기'는 한 폼(free_form)이다. 묶지 않으면 휴대폰(한글 자판)에서 단추 누름이 먼저 오고
+    마지막 글자가 뒤늦게 와서, 적은 글의 끝이 빠진 채 넘어간다. 글 상자는 잠그지 않는다(폼 안에서 잠그면 글이 지워진다).
+    '결과 보기'는 AI를 바로 부르지 않고 '물어야 함'(ai_pending)만 켠다. 실제 호출은 결과 화면이 한 번 한다.
+    적은 글은 기록하지 않는다. AI에는 privacy.scrub을 거친 글만 간다(llm_matcher.build_prompt).
+    """
+    state = st.session_state
+    if sel.next_question(state.answers, data.questions) is not None:
+        go("survey")
+        st.rerun()
+    context = result_context(data, clock.now())
+    if not context.primary:                                   # 동점이면 결과 화면에서 먼저 고른다
+        go("result")
+        st.rerun()
+    type_info = data.types[context.primary]
     question = sel.question(data.questions, sel.FREE_Q)
 
-    def find() -> None:
-        wish = (state.get("free_text") or "").strip()
-        state.free_empty = not wish
+    def leave(wish: str) -> None:
+        state.tuned = True
         state.ai = None
         state.ai_pending = False
-        if not wish:
-            return
-        state.ai_wish = wish                              # 어떤 글로 찾는지. 화면에만 두고 기록하지 않는다
-        if llm_matcher.has_wish(wish, data.settings.get("free_empty_words") or []):
-            state.ai_pending = True
-        else:
-            # "ㅇ", "없어"처럼 원하는 점이 없는 글: AI를 부르지 않고 조금 더 적어 달라고 한다
-            state.ai = llm_matcher.AiResult(llm_matcher.UNCLEAR)
-            logger.log_event(state.sid, "ai", state.ai.status, "")
+        state.ai_wish = wish or None
+        if wish:
+            if llm_matcher.has_wish(wish, data.settings.get("free_empty_words") or []):
+                state.ai_pending = True
+            else:
+                # "ㅇ", "없어"처럼 원하는 점이 없는 글: AI를 부르지 않고, 결과 화면에서 조금 더 적어 달라고 한다
+                state.ai = llm_matcher.AiResult(llm_matcher.UNCLEAR)
+                logger.log_event(state.sid, "ai", state.ai.status, "")
+        go("result")
 
-    if compact:
-        ui.html(f'<p class="sec">{escape(question["text"])}</p>')
-    else:
-        ui.heading(question["text"])
+    def done() -> None:
+        leave((state.get("free_text") or "").strip())
+
+    def skip() -> None:
+        leave("")                                             # 건너뛰기: 적던 글은 버린다
+
+    ui.html(f'<p class="tune-badge">{escape(text["tune_badge"])}</p>')
+    ui.heading(text["tune_heading"])
+    ui.html(f'<p class="q-help">{escape(text["tune_help"])}</p>')
+    st.button(width="stretch", label=text["tune_skip"], key="tune_skip", type="tertiary", on_click=skip)
+
+    detail = sel.detail_of(type_info)
+    if detail and not no_place(context.by_type[context.primary]):     # 안내할 곳이 없는 유형에는 세부 질문을 묻지 않는다
+        detail_question(text, type_info, detail, plain=True)
+
+    ui.html(f'<p class="sec">{escape(question["text"])}</p>')
     if question.get("help"):
         ui.html(f'<p class="q-help">{escape(question["help"])}</p>')
-    ui.notice(text["free_privacy"], "info")                # 적기 전에 읽도록 글 상자 위에, 작은 글이 아니라 상자로 둔다
-    # 폼으로 묶어야, 단추를 누르는 순간의 글이 단추와 함께 넘어온다. 묶지 않으면 휴대폰(한글 자판)에서
-    # 단추 누름이 먼저 오고 마지막 글자가 뒤늦게 와서, '글을 고치셨으면…'(ai_stale)만 뜨고 결과가 가려진다.
-    # 글 상자는 잠그지 않는다. 폼 안에서 잠그면 적은 글이 지워져서 같은 문제가 다시 생긴다(11/22 브라우저에서 확인)
     with st.form(key="free_form", border=False):
-        st.text_area(question["text"], key="free_text", max_chars=int(question.get("max_characters", 500)),
-                     label_visibility="collapsed")
-        st.form_submit_button(text["free_button"], key="free_find", type="primary", width="stretch",
-                              on_click=find, disabled=state.ai_pending)
-    if state.free_empty:
-        ui.notice(text["free_empty"])
-
-
-def free_wish_result(data, text, type_ids: list[str], pool: list[dict], guides,
-                     seen: dict[str, str], consults: list[dict]) -> None:
-    """글을 적은 사람에게만 보여주는 AI 추가 추천. 아래 유형 구역을 그린 뒤에 채운다(seen을 알아야 해서).
-
-    pool은 candidates.ai_pool이 걸러 준 후보다. AI에는 이 후보만 보내고, 답도 이 후보와 대조한다.
-    """
-    state = st.session_state
-    if state.ai_pending:
-        # 찾는 중: 한 번만 부르고, 끝나면 화면을 다시 그려 단추를 푼다
-        with st.spinner(text["free_wait"]):
-            state.ai = ask_ai(data, type_ids, pool, state.get("ai_wish") or "")
-        state.ai_pending = False
-        logger.log_event(state.sid, "ai", state.ai.status, "|".join(m["id"] for m in state.ai.matches))
-        if state.ai.status == "fail":
-            logger.log_error(f"AI 추가 추천 실패 {state.ai.error}")
-        st.rerun()
-
-    result = state.ai
-    if result is None:
-        return
-    if (state.get("free_text") or "").strip() != state.get("ai_wish"):
-        ui.notice(text["ai_stale"], "info")               # 글을 고쳤으면 예전 글로 찾은 결과를 보여주지 않는다
-        return
-    if result.status == llm_matcher.UNCLEAR:
-        ui.notice(text["free_unclear"])
-        return
-    if result.status == "fail":
-        ui.notice(text["ai_fail"], "fail")
-        if data.settings.get("show_error_kind"):
-            ui.html(f'<p class="small-note">(점검용) {escape(result.error)}</p>')
-        return
-
-    # 답을 받은 뒤 유형이나 세부 답이 바뀌었을 수 있으므로, 지금의 후보에 있는 것만 그린다
-    by_id = {p["id"]: p for p in pool}
-    matches = [m for m in result.matches if m["id"] in by_id]
-    if matches:
-        ui.heading(text["ai_heading"])
-    for match in matches:
-        program = by_id[match["id"]]
-        if program["id"] in seen:
-            # 아래쪽 유형 구역에 카드가 있는 곳도 이유, 물어볼 문장, 전화 단추는 여기서 바로 볼 수 있게 한다
-            ui.picked_card(program, text, match["reason"], seen[program["id"]])
-        else:
-            seen[program["id"]] = text["ai_heading"]
-            if match["reason"]:
-                ui.ai_reason(text["ai_reason"], match["reason"])
-            ui.program_card(program, text, None, guides, None, key=f"ai_{program['id']}")
-    if not matches:
-        ui.notice(text["ai_none"], "info")
-    elif result.unmatched:
-        ui.notice(text["ai_unmatched"].format(items=", ".join(result.unmatched)))
-    if not matches or result.unmatched:
-        for program in consults[:1]:                       # 맞는 곳이 없으면 함께 찾아 주는 창구로 잇는다
-            if program["id"] in seen:
-                # 아래쪽에 이미 카드가 있는 창구: 물어볼 문장과 전화 단추만 여기서 바로 보여준다
-                ui.picked_card(program, text, "", seen[program["id"]])
-            else:
-                seen[program["id"]] = text["ai_heading"]
-                ui.program_card(program, text, None, guides, None, key=f"ai_consult_{program['id']}")
+        st.text_area(question["text"], value=state.get("ai_wish") or "", key="free_text",
+                     max_chars=int(question.get("max_characters", 500)), label_visibility="collapsed")
+        # AI로 무엇을 보내는지는 작은 글이지만 단추 바로 위에 둔다. 누르기 전에 읽을 수 있어야 한다
+        ui.html(f'<p class="fine tight">{escape(text["free_privacy"])}</p>')
+        st.form_submit_button(text["tune_done"], key="tune_done", type="primary", width="stretch", on_click=done)
 
 
 def log_once(data, judged: scoring.Score, shown_ids: list[str]) -> None:
@@ -737,64 +700,162 @@ def edit_answers(data, text) -> None:
             st.button(width="stretch", label=line, key=f"edit_{qid}", on_click=edit, args=(qid,))
 
 
-def card_places(text, result: candidates.TypeResult | None, consults: list[dict]) -> tuple[str, list[dict]]:
+def card_places(text, result: candidates.TypeResult, consults: list[dict]) -> tuple[str, list[dict]]:
     """결과 사진에 이름을 넣을 곳과 그 소제목. 대표 유형의 문의할 곳 → 둘러볼 목록 → 일반 창구 순서로 처음 있는 것.
 
-    새로 거르지 않는다. candidates가 이미 거른 후보의 앞에서부터 고른다(화면의 순서와 같다).
+    새로 거르지 않는다. candidates가 이미 거른 후보의 앞에서부터 고른다.
     """
-    if result is not None and result.contacts:
+    if result.contacts:
         return text["card_places_heading"], result.contacts[:result_image.MAX_PLACES]
-    if result is not None and result.lists:
+    if result.lists:
         return text["lists_heading"], result.lists[:result_image.MAX_PLACES]
     return text["consult_heading"], consults[:result_image.MAX_PLACES]
 
 
 @st.cache_data(show_spinner=False, max_entries=64)
 def draw_card(title: str, team: str, footer: str, heading: str, places: tuple, type_name: str, statement: str,
-              feature: str, area: str, character: str, plain_title: str) -> bytes:
+              feature: str, area: str, character: str) -> bytes:
     """결과 사진을 그린다. 같은 내용이면 다시 그리지 않는다(화면을 누를 때마다 그리면 느리다).
 
     받는 것은 사진에 찍히는 글자와 그림 경로뿐이다. 설문 답은 여기로 오지 않는다.
     """
     return result_image.render(title, team, footer, heading, list(places), type_name, statement, feature, area,
-                               Path(character) if character else None, plain_title)
+                               Path(character) if character else None)
 
 
-def save_result(data, text, result: candidates.TypeResult | None, consults: list[dict], gender: str | None,
-                today) -> None:
-    """'내 결과 저장하기': 유형·특징과 곳 이름만 담은 사진을 보여 주고 저장·보내기 단추를 둔다.
+def save_result(data, text, result: candidates.TypeResult, consults: list[dict], gender: str | None, today) -> None:
+    """'내 결과 저장하기'를 눌렀을 때: 유형·특징과 곳 이름만 담은 사진을 보여 주고 저장·보내기 단추를 둔다.
 
-    result는 대표 유형의 결과이고, 대표 유형이 없으면 None이다(그때는 일반 창구 이름만 넣는다).
-    사진은 그 자리에서 만들어 보여 줄 뿐이고 앱에 남기지 않는다.
+    result는 대표 유형의 결과다. 사진은 그 자리에서 만들어 보여 줄 뿐이고 앱에 남기지 않는다.
+    사진에 넘기는 것은 글자와 그림 경로뿐이다. 답(answers)이나 프로그램 행을 통째로 넘기지 않는다.
     """
     heading, places = card_places(text, result, consults)
     names = tuple((p["프로그램명"], p["기관명"]) for p in places)
     footer = text["card_footer"].format(date=f"{today.month}월 {today.day}일")
     title = text.get("top_title") or data.settings["app_title"]
-    if result is None:
-        image = draw_card(title, text["team_name"], footer, heading, names, "", "", "", "", "", text["card_plain_title"])
-    else:
-        type_info = data.types[result.type_id]
-        character = ui.character_image(result.type_id, gender)
-        image = draw_card(title, text["team_name"], footer, heading, names, type_info["name"], type_info["statement"],
-                          type_info["feature"], type_info.get("area", ""), str(character or ""), "")
-    ui.save_box(text, data.settings["app_title"], image, text["save_help_plain"] if result is None else text["save_help"])
+    type_info = data.types[result.type_id]
+    character = ui.character_image(result.type_id, gender)
+    image = draw_card(title, text["team_name"], footer, heading, names, type_info["name"], type_info["statement"],
+                      type_info["feature"], type_info.get("area", ""), str(character or ""))
+    ui.save_box(text, data.settings["app_title"], image, text["save_help"])
 
 
-def result_footer(data, text, judged: scoring.Score) -> None:
+def flip(key: str) -> None:
+    """펼침 표시(feature_open, save_open, more_open)를 뒤집는다."""
+    st.session_state[key] = not st.session_state.get(key)
+
+
+def open_place(program_id: str) -> None:
+    """지도의 핀이나 목록의 줄을 눌렀을 때: 그 곳의 안내 화면으로 간다. 어느 곳을 열었는지만 기록한다."""
     state = st.session_state
+    state.place = program_id
+    if program_id not in state.seen_places:
+        state.seen_places = state.seen_places + [program_id]
+    logger.log_event(state.sid, "place", program_id)
+    go("place")
 
-    def repick() -> None:
-        state.answers.pop(sel.PRIORITY_Q, None)
-        state.to_top = True
 
-    if sel.PRIORITY_Q in state.answers:
-        st.button(width="stretch", label=text["repick_button"], key="repick", type="tertiary", on_click=repick)
+def place_area(data, text, context: SimpleNamespace) -> None:
+    """첫걸음 지도 구역. 글을 적고 온 사람은 여기서 AI에게 한 번 묻는다(찾는 동안의 표시도 이 자리에 나온다).
+
+    AI가 실패하거나 못 찾아도 지도는 그대로 그린다. 그 사실만 지도 위에 한 줄로 알린다.
+    """
+    state = st.session_state
+    result = context.by_type[context.primary]
+    type_info = data.types[context.primary]
+    if state.ai_pending:
+        # 한 번만 부르고, 끝나면 화면을 다시 그려 고른 곳을 지도 맨 앞에 놓는다. 후보는 candidates.ai_pool이 걸러 준 것뿐이다
+        with st.spinner(text["free_wait"]):
+            state.ai = ask_ai(data, context.shown_types, context.pool, state.get("ai_wish") or "")
+        state.ai_pending = False
+        logger.log_event(state.sid, "ai", state.ai.status, "|".join(m["id"] for m in state.ai.matches))
+        if state.ai.status == "fail":
+            logger.log_error(f"AI 추가 추천 실패 {state.ai.error}")
+        st.rerun()
+
+    answer = state.ai
+    if answer is not None:
+        if answer.status == llm_matcher.UNCLEAR:
+            ui.notice(text["free_unclear"])
+        elif answer.status == "fail":
+            ui.notice(text["ai_fail"], "fail")
+            if data.settings.get("show_error_kind"):
+                ui.html(f'<p class="small-note">(점검용) {escape(answer.error)}</p>')
+        elif not context.reasons:
+            ui.notice(text["ai_none"], "info")
+        elif answer.unmatched:
+            ui.notice(text["ai_unmatched"].format(items=", ".join(answer.unmatched)))
+
+    if result.needs_choice:
+        # 먼저 골라야 하는 세부 질문(돌봄: 누구의 돌봄인지). 이 경우만 결과 화면에 질문이 남는다. 고르면 그 자리에 지도가 나온다
+        detail_question(text, type_info, sel.detail_of(type_info), plain=True)
+        ui.notice(text["detail_first"], "info")
+        return
+    if not context.places:
+        ui.notice(text["no_program_at_all"], "fail")
+        ui.fallback_card(data.settings["fallback_card"], text)
+        return
+    if no_place(result):
+        ui.notice(text["no_program"])                              # 이 유형의 곳은 없어 일반 창구를 지도에 놓았다
+    if result.widened:
+        ui.notice(text["widened_note"], "info")
+    rest = len(context.places) - MAP_PINS
+    ui.place_map(context.places[:MAP_PINS], set(context.reasons), text["ai_heading"], set(state.seen_places), open_place,
+                 text["pin_more"].format(count=rest) if rest > 0 else "", go_more_places)
+
+
+def go_more_places() -> None:
+    logger.log_event(st.session_state.sid, "more_places")
+    go("more_places")
+
+
+def more_area(data, text, context: SimpleNamespace, today) -> None:
+    """'더 보기'를 펼쳤을 때: 함께 볼 유형, 다른 분야, 함께 찾아 주는 곳, 답변 확인·수정, 바라는 점 다시 적기.
+
+    본인이 연 다른 유형과 창구는 예전 모양(카드) 그대로 이 안에 그린다. 지도에 이미 놓인 곳은 카드를 되풀이하지 않는다.
+    """
+    state = st.session_state
+    judged, primary, opened = context.judged, context.primary, context.opened
+    top_n = int(data.settings.get("top_n", 1))
+    seen = {p["id"]: text["map_heading"] for p in context.places}
+
+    def draw_section(type_id: str) -> None:
+        type_section(data, text, context.by_type[type_id], text["type_label_other"], context.guides, top_n, seen,
+                     context.consults)
+
+    if judged.secondary:
+        ui.html(f'<p class="sec">{escape(text["secondary_heading"])}</p>')
+        type_buttons(data, [judged.secondary], opened, draw_section)
+
+    # 다른 유형은 늘어놓지 않고, 원하는 사람만 펼쳐 본다
+    others = [tid for tid in data.types if tid not in (primary, judged.secondary)]
+
+    def show_all() -> None:
+        state.show_all = True
+
+    # 한 번 펼치면 단추는 사라지고 목록만 남는다. 다시 접는 단추는 두지 않는다(연 유형이 숨어 버리지 않게)
+    if not (state.show_all or any(tid in opened for tid in others)):
+        st.button(width="stretch", label=text["more_types_button"], key="more_types", on_click=show_all)
+    else:
+        tied = [] if judged.secondary else judged.secondary_candidates
+        browse_types(data, text, others, tied, opened, draw_section)
+
+    rest = [p for p in context.consults if p["id"] not in seen]     # 지도나 위 구역에 이미 나온 창구는 다시 내지 않는다
+    if rest:
+        consult_section(data, text, rest, context.guides, folded=True)
     edit_answers(data, text)
-    st.button(width="stretch", label=text["back_button"], key="back_result", type="tertiary",
-              on_click=back_one, args=(data.questions,))
-    st.button(width="stretch", label=text["restart_button"], key="restart", on_click=ask_restart)
-    ui.html(f'<p class="small-note">{escape(text["disclaimer"])}</p>')
+    st.button(width="stretch", label=text["tune_again"], key="tune_again", on_click=go, args=("tune",))
+    if sel.PRIORITY_Q in state.answers:
+        st.button(width="stretch", label=text["repick_button"], key="repick", on_click=repick)
+
+
+def repick() -> None:
+    """동점에서 고른 '먼저 볼 분야'를 다시 고른다. 예전 유형으로 AI가 찾아 준 것은 지운다."""
+    state = st.session_state
+    state.answers.pop(sel.PRIORITY_Q, None)
+    state.ai = None
+    state.ai_pending = False
+    state.to_top = True
 
 
 def screen_browse(data, text) -> None:
@@ -831,78 +892,127 @@ def screen_browse(data, text) -> None:
 
 
 def screen_result(data, text) -> None:
+    """결과 화면(11/25): 유형 카드 → 내 특징 자세히 보기 → 첫걸음 지도 → 저장·공유 → 더 보기 → 처음부터 다시 하기 → 작은 글.
+
+    센터 정보는 여기에 늘어놓지 않는다. 지도의 핀을 누르면 그 곳의 화면(screen_place)으로 간다.
+    """
     state = st.session_state
     if sel.next_question(state.answers, data.questions) is not None:
         # 결과를 보는 동안 문항 파일이 바뀌어 답이 빠진 문항이 생겼으면, 오류 화면 대신 그 문항을 다시 묻는다
         go("survey")
         st.rerun()
     today = clock.now()                                       # 시각까지 넘겨야 종료시각이 지난 회차가 빠진다
-    top_n = int(data.settings.get("top_n", 1))
-
-    # 유형 판정. 점수는 화면에 보여주지 않는다. 본인이 고른 것(Q_PRIORITY)은 지금 후보에 있을 때만 쓰인다.
-    setting = data.settings["scoring"]
-    priority = state.answers.get(sel.PRIORITY_Q)
-    judged = scoring.score(state.answers, sel.type_questions(data.questions, data.types),
-                           setting["high"], priority)
-    primary = judged.primary
-    opened = [tid for tid in data.types if tid in state.opened and tid != primary]
-    shown_types = ([primary] if primary else []) + opened   # 동점이라 아직 고르기 전이면 대표가 없다
-
-    # 기본 결과는 저장해 두지 않고 화면을 그릴 때마다 정보표에서 다시 만든다
-    results = candidates.build_result(data.programs, data.types, shown_types, state.details, today, state.answers)
-    consults = candidates.first_consult(data.programs, today, state.answers)
-    guides = sel.barrier_guides(state.answers, data.questions)
-    shown_ids = [p["id"] for r in results for p in visible_contacts(r, top_n) + r.lists]
-    log_once(data, judged, shown_ids or [p["id"] for p in consults])
+    context = result_context(data, today)
+    judged, primary = context.judged, context.primary
+    # 기록: 지도에 핀으로 놓이는 곳. 곳이 없으면(동점이라 아직 고르기 전 포함) 일반 창구
+    shown_ids = [p["id"] for p in context.places[:MAP_PINS]]
+    log_once(data, judged, shown_ids or [p["id"] for p in context.consults])
 
     if judged.state == scoring.CHOOSE:
         # 가장 높은 유형이 여럿: 먼저 볼 유형을 본인이 고른 뒤에 결과를 보여준다
         priority_question(data, text, judged.candidates, today)
-        result_footer(data, text, judged)
+        edit_answers(data, text)
+        st.button(width="stretch", label=text["restart_button"], key="restart", type="tertiary", on_click=ask_restart)
+        ui.fine_print("", [text["disclaimer"]])
         return
+    if not state.tuned:
+        go("tune")                                            # 대표 유형이 정해진 뒤 한 번만 '조금 더 맞춰 보기'를 거친다
+        st.rerun()
 
-    seen: dict[str, str] = {}
-    by_type = {r.type_id: r for r in results}
-    pool = candidates.ai_pool(data.programs, data.types, shown_types, state.details, today, state.answers)
-
-    def draw_section(type_id: str) -> None:
-        type_section(data, text, by_type[type_id], text["type_label_other"], guides, top_n, seen, consults)
-
+    result = context.by_type[primary]
+    type_info = data.types[primary]
     gender = state.answers.get(sel.GENDER_Q)                  # 캐릭터 그림을 고르는 데만 쓴다. 저장하지 않는다
-    # 대표 유형 하나를 크게 보여준다: 유형 상자 → 특징 → 맞춰 보기(직접 적기 포함) → 곳 (11/23 순서)
-    picks = primary_section(data, text, by_type[primary], guides, top_n, seen, consults, gender)
-    if judged.secondary:
-        ui.html(f'<p class="sec">{escape(text["secondary_heading"])}</p>')
-        type_buttons(data, [judged.secondary], opened, draw_section)
 
-    # 다른 유형은 첫 화면에 늘어놓지 않고, 원하는 사람만 펼쳐 본다
-    others = [tid for tid in data.types if tid not in (primary, judged.secondary)]
+    def feature_area() -> None:
+        # 설명 바로 아래의 단추. 누르면 그 자리에 특징 글이 펼쳐지고, 다시 누르면 접힌다
+        opened = state.feature_open
+        st.button(text["feature_close"] if opened else text["feature_open"], key="feature_toggle", icon_position="right",
+                  icon=":material/expand_less:" if opened else ":material/expand_more:", on_click=flip, args=("feature_open",))
+        if opened:
+            ui.feature_text(type_info["feature"])
 
-    def show_all() -> None:
-        state.show_all = True
+    ui.type_header(text["type_label"], type_info, ui.character_image(primary, gender),
+                   text["type_image_alt"].format(name=type_info["name"]), inside=feature_area)
 
-    # 한 번 펼치면 단추는 사라지고 목록만 남는다. 다시 접는 단추는 두지 않는다(연 유형이 숨어 버리지 않게)
-    showing = state.show_all or any(tid in opened for tid in others)
-    if not showing:
-        st.button(width="stretch", label=text["more_types_button"], key="more_types", on_click=show_all)
+    ui.heading(text["map_heading"])
+    place_area(data, text, context)
+
+    # 저장·공유: 단추 두 개를 한 줄로. 사진은 '내 결과 저장하기'를 눌렀을 때만 만든다
+    with st.container(key="save_share"):
+        st.button(width="stretch", label=text["save_heading"], key="save_toggle", on_click=flip, args=("save_open",))
+        ui.share_button(text)
+    ui.share_script(text, data.settings["app_title"], str(text.get("share_url") or ""))
+    if state.save_open:
+        save_result(data, text, result, context.consults, gender, today)
+
+    opened = state.more_open
+    st.button(width="stretch", label=text["more_toggle_close"] if opened else text["more_toggle"], key="more_toggle",
+              icon=":material/expand_less:" if opened else ":material/expand_more:", icon_position="right",
+              on_click=flip, args=("more_open",))
+    if opened:
+        more_area(data, text, context, today)
+
+    st.button(width="stretch", label=text["restart_button"], key="restart", type="tertiary", on_click=ask_restart)
+    notes = [text["disclaimer"]]
+    dates = [p["확인날짜"] for p in context.places[:MAP_PINS]]
+    if dates and not result.needs_choice:
+        notes.append(text["map_checked_note"].format(date=ui.korean_date(min(dates))))
+    ui.fine_print("", notes + [text["share_help"]])
+
+
+# ── 센터 정보 화면, 다른 곳 목록 화면 ──
+
+def screen_place(data, text) -> None:
+    """핀이나 목록의 줄을 눌러서 온 화면: '←' + 곳 이름 → 기관 카드 그대로 → '← 결과로 돌아가기'.
+
+    그릴 때마다 지금의 후보를 다시 만든다. state.place가 그 안에 없으면(끝난 곳, 답을 고쳐 빠진 곳, 없는 id)
+    아무것도 그리지 않고 결과로 돌려보낸다. 두 돌아가기 단추는 늘 결과 화면으로 간다.
+    카드의 내용·순서·문구는 결과 화면에 있던 것과 같다. 곳 이름만 화면 제목으로 올렸다.
+    """
+    state = st.session_state
+    if sel.next_question(state.answers, data.questions) is not None:
+        go("survey")
+        st.rerun()
+    context = result_context(data, clock.now())
+    program = next((p for p in context.places if p["id"] == state.get("place")), None)
+    if program is None or not state.tuned:
+        go("result")
+        st.rerun()
+
+    ui.title_row(program["프로그램명"], text["back_label"], go, ("result",))
+    reason = context.reasons.get(program["id"])
+    if reason:
+        ui.ai_reason(text["ai_reason"], reason)
+    type_info = data.types[context.primary]
+    own = context.primary in loader.split_multi(program["유형태그"])     # 대표 유형의 곳인지(AI가 고른 다른 유형의 곳, 일반 창구는 아니다)
+    if program["종류"] == loader.KIND_LIST:
+        ui.list_card(program, text, show_name=False)
     else:
-        tied = [] if judged.secondary else judged.secondary_candidates
-        browse_types(data, text, others, tied, opened, draw_section)
+        asked = [opt["label"] for opt in sel.chosen_detail_options(type_info, state.details.get(context.primary))]
+        ui.program_card(program, text, type_info if own else None, context.guides, asked if own else None,
+                        key=f"place_{program['id']}", show_name=False)
+    st.button(width="stretch", label=text["back_to_result"], key="back_bottom", on_click=go, args=("result",))
 
-    # 함께 찾아 주는 창구는 맨 아래에 접어 둔다. 유형에 맞는 곳을 이미 받았기 때문이다
-    rest = [p for p in consults if p["id"] not in seen]           # 위에 이미 나온 창구는 다시 내지 않는다
-    if rest:
-        consult_section(data, text, rest, guides, folded=True)
-        seen.update({p["id"]: text["consult_heading"] for p in rest})
-    elif not shown_ids:
-        ui.notice(text["no_program_at_all"], "fail")
-        ui.fallback_card(data.settings["fallback_card"], text)
 
-    with picks:
-        free_wish_result(data, text, shown_types, pool, guides, seen, consults)
-    save_result(data, text, by_type[primary], consults, gender, today)
-    ui.share_box(text, data.settings["app_title"], str(text.get("share_url") or ""))
-    result_footer(data, text, judged)
+def screen_more_places(data, text) -> None:
+    """'다른 곳 n곳' 핀을 눌러서 온 화면: 지도에 못 놓은 나머지 곳의 이름 줄. 줄을 누르면 그 곳의 안내 화면으로 간다."""
+    state = st.session_state
+    if sel.next_question(state.answers, data.questions) is not None:
+        go("survey")
+        st.rerun()
+    context = result_context(data, clock.now())
+    rest = context.places[MAP_PINS:]
+    if not rest or not state.tuned:
+        go("result")
+        st.rerun()
+
+    ui.title_row(text["more_places_heading"].format(type=data.types[context.primary]["name"]), text["back_label"],
+                 go, ("result",))
+    for program in rest:
+        st.button(width="stretch", label=program["프로그램명"], key=f"open_{program['id']}",
+                  on_click=open_place, args=(program["id"],))
+        ui.html(f'<p class="small-note example-note">{escape(program["한줄설명"])}</p>')
+    st.button(width="stretch", label=text["back_to_result"], key="back_bottom", on_click=go, args=("result",))
 
 
 def main() -> None:
@@ -921,7 +1031,8 @@ def main() -> None:
     home = st.session_state.screen in HOME_SCREENS
     ui.topbar(text.get("top_title") or data.settings["app_title"], text["top_sub"],
               text["to_start_button"] if home else "", ask_restart)
-    screens = {"start": screen_start, "survey": screen_survey, "result": screen_result, "browse": screen_browse}
+    screens = {"start": screen_start, "survey": screen_survey, "tune": screen_tune, "result": screen_result,
+               "place": screen_place, "more_places": screen_more_places, "browse": screen_browse}
     screens[st.session_state.screen](data, text)
     if st.session_state.get("confirm_restart"):
         restart_dialog(text)

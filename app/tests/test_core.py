@@ -205,6 +205,32 @@ def test_birth_year_is_never_off_by_one_against_the_user():
     assert ids(eligible(programs, datetime(2027, 1, 1, 9, 0, tzinfo=clock.KST), born(1977))) == ["from50", "to69", "any"]
 
 
+def test_pin_word_must_be_one_of_the_known_words(data):
+    """정보표의 '핀그림' 칸에는 정해 둔 낱말만 적는다. 없는 낱말이면 앱을 켤 때 알려 준다. 열이 없거나 비어 있으면 괜찮다."""
+    types_list = list(data.types.values())
+    assert loader.validate_programs([row("a", "T01"), row("b", "T01", 핀그림=""), row("c", "T01", 핀그림="건강")], types_list) == []
+    problems = loader.validate_programs([row("a", "T01", 핀그림="병원")], types_list)
+    assert len(problems) == 1 and "핀그림" in problems[0] and "병원" in problems[0]
+    with pytest.raises(loader.DataError):                    # load_all은 이런 문제를 DataError로 알린다
+        raise loader.DataError(problems)
+    # 실제 정보표: 운영 중인 곳에는 모두 값이 있고, 모두 아는 낱말이다
+    running = [p for p in data.programs if p["매칭가능"] == "Y"]
+    assert all(p.get(loader.PIN_COLUMN) in loader.PIN_WORDS for p in running)
+
+
+def test_every_pin_word_has_a_picture():
+    """낱말마다 핀 그림이 있어야 한다(ui/pins.py). 그림이 없는 낱말을 정보표에 적으면 핀이 비어 보인다."""
+    from app.ui import components, pins, style
+    assert set(pins.WORDS) == set(loader.PIN_WORDS)
+    names = set(pins.WORDS.values()) | {pins.DEFAULT, pins.MORE}
+    assert names <= set(pins.ICONS)
+    assert all(f"--pin-{name}:" in style.CSS and f'_k_{name}"]' in style.CSS for name in names)
+    # 칸이 비어 있으면: 찾아가지 않고 쓰는 곳은 전화 핀, 나머지는 기본 핀
+    assert components.pin_name(row("a", "T01", 장소="전화 상담")) == "phone"
+    assert components.pin_name(row("a", "T01", 장소="어느 센터 2층")) == pins.DEFAULT
+    assert components.pin_name(row("a", "T01", 장소="어느 센터 2층", 핀그림="배움")) == "learn"
+
+
 def test_option_icon_must_be_a_material_name(data):
     """선택지 앞의 그림(icon)은 ':material/이름:' 꼴이어야 한다. 틀리면 그 문항 화면이 열릴 때 오류가 나므로 미리 알린다."""
     work = question(data.questions, "P_WORK")
@@ -575,13 +601,13 @@ def test_question_between_scale_questions_is_reported(data):
 def test_missing_screen_text_is_reported_at_start(data):
     assert loader.validate_text(data.settings) == []
     settings = copy.deepcopy(data.settings)
-    del settings["text"]["ai_stale"]                      # 드물게 나오는 문구
+    del settings["text"]["ai_none"]                       # 드물게 나오는 문구
     settings["text"]["more_button"] = "더 보기 ({num}곳)"   # 코드가 채워 주지 않는 자리표시자
     settings["text"]["ai_unmatched"] = "못 찾음 {items"   # 중괄호 짝이 안 맞음
     del settings["fallback_card"]["phone"]
     del settings["app_title"]
     text = "\n".join(loader.validate_text(settings))
-    for expected in ("'ai_stale' 문구가 없습니다", "'more_button'에는 중괄호를 {count} 꼴로만", "'ai_unmatched'에는 중괄호를",
+    for expected in ("'ai_none' 문구가 없습니다", "'more_button'에는 중괄호를 {count} 꼴로만", "'ai_unmatched'에는 중괄호를",
                      "fallback_card에 'phone'", "app_title"):
         assert expected in text, expected
     assert loader.validate_text({}) != []

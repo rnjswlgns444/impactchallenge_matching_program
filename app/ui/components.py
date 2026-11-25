@@ -9,7 +9,8 @@ from pathlib import Path
 import streamlit as st
 
 from app.core import candidates
-from app.core.loader import KIND_ALWAYS, KIND_LIST, KIND_PERIOD, NATIONWIDE, UNCONFIRMED, split_multi
+from app.core.loader import KIND_ALWAYS, KIND_LIST, KIND_PERIOD, NATIONWIDE, PIN_COLUMN, UNCONFIRMED, split_multi
+from app.ui import pins
 
 _RANGE = re.compile(r"~\s*\d+")                                   # '1619~21'의 '~21'
 _NUMBER = re.compile(r"\d{2,4}-\d{3,4}-\d{4}|\d{4}-\d{4}|\d{3,4}")  # 031-481-2919 / 1666-1234 / 129
@@ -55,9 +56,10 @@ def topbar(title: str, sub: str, home_label: str = "", on_home=None) -> None:
 
 
 def fine_print(title: str, items: list[str]) -> None:
-    """유의사항: 화면 맨 아래의 작은 회색 글. 상자·굵은 글씨·색 바탕 없이 한 줄씩 보여준다(11/25)."""
+    """유의사항: 화면 맨 아래의 작은 회색 글. 상자·굵은 글씨·색 바탕 없이 한 줄씩 보여준다(11/25). title은 비워도 된다."""
     rows = "".join(f"<li>{escape(item)}</li>" for item in items)
-    html(f'<div class="fine"><p>{escape(title)}</p><ul>{rows}</ul></div>')
+    head = f"<p>{escape(title)}</p>" if title else ""
+    html(f'<div class="fine">{head}<ul>{rows}</ul></div>')
 
 
 # 공유 단추를 누르면 실행되는 코드. 앱 화면(부모 문서)에 한 번만 심는다.
@@ -96,12 +98,17 @@ def _plant(flag: str, code: str, config: dict) -> None:
     st.iframe(loader_script, height=1)
 
 
-def share_box(text: dict, title: str, url: str = "") -> None:
-    """결과 화면 맨 아래의 '친구에게 공유하기'. 답이나 결과는 보내지 않는다."""
-    html(f'<div class="share" id="sec-share"><h2 class="q-title">{escape(text["share_heading"])}</h2>'
-         f'<p class="q-help">{escape(text["share_help"])}</p>'
-         f'<a class="a-btn share-btn" href="#" role="button">💬 {escape(text["share_button"])}</a>'
+def share_button(text: dict) -> None:
+    """'친구에게 공유하기' 단추. 저장 단추와 한 줄에 놓는다. 답이나 결과는 보내지 않는다.
+
+    누르면 실행되는 코드는 share_script가 따로 심는다(줄 맞춤이 흐트러지지 않게 단추 줄 밖에서 부른다).
+    """
+    html(f'<div class="share" id="sec-share"><a class="a-btn share-btn" href="#" role="button">{escape(text["share_button"])}</a>'
          f'<p class="small-note share-status" aria-live="polite"></p><p class="share-url"></p></div>')
+
+
+def share_script(text: dict, title: str, url: str = "") -> None:
+    """공유 단추를 눌렀을 때 실행할 코드를 심는다. 보내는 것은 소개 글(share_message)과 앱 주소뿐이다."""
     _plant("__shareBound", _SHARE_CODE, {"title": title, "message": text["share_message"],
                                          "copied": text["share_copied"], "failed": text["share_failed"], "url": url})
 
@@ -141,16 +148,15 @@ SAVE_FILE_NAME = "내결과.png"
 
 
 def save_box(text: dict, title: str, image: bytes, help_text: str) -> None:
-    """결과 화면 아래의 '내 결과 저장하기'. image는 result_image.render가 만든 사진(PNG)이다.
+    """'내 결과 저장하기'를 눌렀을 때 그 자리에 펼쳐지는 것. image는 result_image.render가 만든 사진(PNG)이다.
 
-    사진 미리보기 → 저장 단추 → 보내기 단추. 사진은 길게 눌러서도 저장할 수 있다(단추가 안 되는 브라우저의 마지막 방법).
-    help_text는 사진에 무엇이 들어가는지 알리는 글이다(대표 유형이 있을 때와 없을 때가 다르다).
+    사진 미리보기 → 사진에 무엇이 들어가는지 알리는 작은 글 → 저장 단추 → 보내기 단추.
+    사진은 길게 눌러서도 저장할 수 있다(단추가 안 되는 브라우저의 마지막 방법).
     """
-    html(f'<div class="save-head" id="sec-save"><h2 class="q-title">{escape(text["save_heading"])}</h2></div>'
-         f'<p class="q-help">{escape(help_text)}</p>')
     with st.container(key="save_card"):
         # PNG 그대로 보여 준다. 정하지 않으면 Streamlit이 JPG로 바꿔서 글자가 흐려지고, 길게 눌러 저장한 사진도 흐리다
         st.image(image, alt=text["save_image_alt"], output_format="PNG")
+    html(f'<p class="fine tight">{escape(help_text)}</p>')
     # 누르면 사진만 내려받고 화면은 다시 그리지 않는다(on_click="ignore")
     st.download_button(text["save_button"], data=image, file_name=SAVE_FILE_NAME, mime="image/png",
                        key="save_image", type="primary", width="stretch", on_click="ignore")
@@ -159,43 +165,55 @@ def save_box(text: dict, title: str, image: bytes, help_text: str) -> None:
     _plant("__sendBound", _SEND_CODE, {"title": title, "name": SAVE_FILE_NAME, "failed": text["save_send_failed"]})
 
 
-def section_head(number: int, title: str, anchor: str) -> None:
-    """대표 유형 아래의 구역 제목: 번호 동그라미 + 제목. anchor는 목차가 찾아오는 표시(id)다.
-
-    표시는 제목(h2)이 아니라 바깥 상자에 붙인다. Streamlit이 제목 태그의 id를 자기 값으로 바꾸기 때문이다.
-    """
-    html(f'<div class="sec-head" id="{escape(anchor, quote=True)}"><span class="sec-num" aria-hidden="true">{number}</span>'
-         f'<h2 class="q-title">{escape(title)}</h2></div>')
-
-
 def feature_text(value: str) -> None:
     """유형의 특징 글(types.yaml의 feature). 상자 없이 본문 글로 보여준다."""
     html(f'<p class="body feature">{escape(value)}</p>')
 
 
-def page_nav(text: dict, type_name: str, places_title: str, places_short: str) -> None:
-    """스크롤을 따라다니는 목차. 휴대폰에서는 화면 위에 붙는 띠, 넓은 화면에서는 본문 오른쪽 상자다(style.py).
+def title_row(title: str, back_label: str, on_back, args: tuple = ()) -> None:
+    """화면 맨 위의 한 줄: '←' 단추 + 제목(센터 정보 화면, 다른 곳 목록 화면).
 
-    링크만으로 움직인다(스크립트 없음). 결과 화면의 맨 바깥에서 그려야 한다. 상자 안에서 그리면 그 상자 안에서만 따라다닌다.
-    places_title, places_short는 3번 구역의 이름이다(문의할 곳이 있을 때와 목록만 있을 때가 다르다).
+    단추에는 화살표만 보인다. back_label('뒤로')은 화면 읽기 도구가 읽는 이름이라 눈에는 숨긴다(style.py).
     """
-    def item(number: int, anchor: str, short: str, long: str) -> str:
-        return (f'<li><a href="#{anchor}"><span class="toc-num">{number}</span>'
-                f'<span class="toc-short">{escape(short)}</span><span class="toc-long">{escape(long)}</span></a></li>')
+    with st.container(key="title_row"):
+        st.button(back_label, key="back_top", icon=":material/arrow_back:", on_click=on_back, args=args)
+        html(f'<h1 class="q-title">{escape(title)}</h1>')
 
-    html(
-        f'<nav class="toc" aria-label="{escape(text["nav_label"], quote=True)}">'
-        f'<div class="toc-head"><p class="toc-label">{escape(text["nav_type_label"])}</p>'
-        f'<p class="toc-name">{escape(type_name)}</p></div>'
-        f'<p class="toc-title">{escape(text["nav_label"])}</p><ol class="toc-row">'
-        + item(1, "sec-traits", text["nav_feature"], text["feature_heading"])
-        + item(2, "sec-tune", text["nav_tune"], text["tune_heading"])
-        + item(3, "sec-places", places_short, places_title)
-        + f'<li class="toc-first-act"><a class="toc-act" href="#sec-save"><span><span class="toc-short">'
-          f'{escape(text["nav_save"])}</span><span class="toc-long">{escape(text["save_heading"])}</span></span></a></li>'
-          f'<li class="toc-wide-only"><a class="toc-act" href="#sec-share"><span>{escape(text["share_button"])}</span></a></li>'
-          '</ol></nav>'
-    )
+
+def pin_name(program: dict) -> str:
+    """그 곳의 핀에 넣을 그림 이름(ui/pins.py). 정보표의 '핀그림' 칸을 따른다.
+
+    칸이 비어 있으면 찾아가지 않고 쓰는 곳은 전화 핀, 나머지는 기본 핀이다.
+    """
+    word = program.get(PIN_COLUMN) or ""
+    if word in pins.WORDS:
+        return pins.WORDS[word]
+    return "phone" if _no_visit(program["장소"] or program["진행방식"]) else pins.DEFAULT
+
+
+def place_map(places: list[dict], picked: set[str], picked_note: str, seen: set[str], on_open,
+              more_label: str = "", on_more=None) -> None:
+    """첫걸음 지도: 꾸밈 그림 바탕 위에 곳마다 핀 하나. 핀 하나가 단추 하나다(pin_1, pin_2, …, pin_more).
+
+    places는 이미 걸러진 후보 가운데 지도에 놓을 곳이다(여기서 새로 거르지 않는다).
+    picked는 AI가 고른 곳의 id(별이 붙는다), seen은 이미 보고 온 곳의 id(물빛이 된다)다.
+    단추 글에는 곳 이름만 넣는다. 핀 그림·별·손가락·이름표 끝의 '›'는 style.py가 상자 이름을 보고 붙인다:
+      pinbox_{번호}_k_{그림 이름}[_ai][_seen][_hint]
+    아직 아무 곳도 보지 않았으면 첫 핀에 손가락 그림(_hint)을 붙여, 글 없이 누를 수 있음을 알린다.
+    more_label을 주면 맨 끝에 '다른 곳 n곳' 핀을 하나 더 놓는다.
+    """
+    with st.container(key="place_map"):
+        for number, program in enumerate(places, start=1):
+            pid = program["id"]
+            if number == 1 and pid in picked:
+                html(f'<p class="ai-note">{escape(picked_note)}</p>')       # 별이 무슨 뜻인지 알리는 작은 글
+            marks = "".join(f"_{mark}" for mark, on in (("ai", pid in picked), ("seen", pid in seen),
+                                                         ("hint", number == 1 and not seen)) if on)
+            with st.container(key=f"pinbox_{number}_k_{pin_name(program)}{marks}"):
+                st.button(program["프로그램명"], key=f"pin_{number}", on_click=on_open, args=(pid,))
+        if more_label:
+            with st.container(key=f"pinbox_more_k_{pins.MORE}"):
+                st.button(more_label, key="pin_more", on_click=on_more)
 
 
 def progress(label: str, fraction: float, cheer: str = "") -> None:
@@ -246,10 +264,11 @@ def home_art() -> None:
             st.image(str(path), width=CHARACTER_WIDTH, alt="")
 
 
-def type_header(label: str, type_info: dict, image: Path | None = None, alt: str = "") -> None:
+def type_header(label: str, type_info: dict, image: Path | None = None, alt: str = "", inside=None) -> None:
     """유형 구역의 머리말: 작은 글(label), 유형 이름, 유형 설명 문장.
 
     image를 주면 그림을 유형 이름 위에 두고 한 카드로 묶는다(대표 유형에만 쓴다. 한 화면에 한 번만 그린다).
+    inside를 주면 같은 카드 안, 설명 문장 바로 아래에 그 함수가 그리는 것을 넣는다('내 특징 자세히 보기').
     """
     box = (
         f'<div class="type-box" data-area="{escape(type_info.get("area", ""), quote=True)}">'
@@ -257,12 +276,15 @@ def type_header(label: str, type_info: dict, image: Path | None = None, alt: str
         f'<h2 class="type-name">{escape(type_info["name"])}</h2>'
         f'<p class="type-statement">{escape(type_info["statement"])}</p></div>'
     )
-    if image is None:
+    if image is None and inside is None:
         html(box)
         return
     with st.container(key="type_hero"):
-        st.image(str(image), width=CHARACTER_WIDTH, alt=alt)
+        if image is not None:
+            st.image(str(image), width=CHARACTER_WIDTH, alt=alt)
         html(box)
+        if inside is not None:
+            inside()
 
 
 def link_button(label: str, url: str, fill: bool = False) -> None:
@@ -309,9 +331,10 @@ def _kind_chip(program: dict, text: dict) -> str:
     return f'<p class="p-kind">{escape(label)}</p>' if label else ""
 
 
-def _card_top(program: dict, text: dict) -> None:
-    html(f'<h3 class="p-name">{escape(program["프로그램명"])}</h3>'
-         f'<p class="p-org">{escape(program["기관명"])}</p>{_kind_chip(program, text)}')
+def _card_top(program: dict, text: dict, show_name: bool = True) -> None:
+    """카드 맨 위: 이름, 기관, 종류 딱지, 한 줄 설명. show_name=False면 이름 줄만 뺀다(화면 제목에 이미 있을 때)."""
+    name = f'<h3 class="p-name">{escape(program["프로그램명"])}</h3>' if show_name else ""
+    html(f'{name}<p class="p-org">{escape(program["기관명"])}</p>{_kind_chip(program, text)}')
     body(program["한줄설명"])
 
 
@@ -356,7 +379,7 @@ def _checked_note(program: dict, text: dict) -> None:
 
 
 def program_card(program: dict, text: dict, type_info: dict | None = None, guides: list[dict] | None = None,
-                 asked: list[str] | None = None, key: str = "") -> None:
+                 asked: list[str] | None = None, key: str = "", show_name: bool = True) -> None:
     """문의할 수 있는 곳 한 곳. 카드를 펴지 않아도 무엇을 어디서 하는지 읽고 공식 안내·전화로 갈 수 있다.
 
     순서: 이름·기관·한 줄 설명 → 공식 안내·신청 단추 → 이렇게 물어보세요 → 전화 단추
@@ -366,9 +389,10 @@ def program_card(program: dict, text: dict, type_info: dict | None = None, guide
             없으면 기관에 물어볼 문장을 보여준다. 확인되지 않은 것을 지어내지 않는다.
     asked: 세부 질문에서 고른 문장. 그대로 물어볼 문장에 넣는다.
     물어볼 문장과 전화 단추는 접지 않고 항상 보여준다.
+    show_name=False: 센터 정보 화면처럼 곳 이름이 화면 제목에 이미 있을 때 이름 줄만 뺀다. 나머지는 그대로다.
     """
     with st.container(border=True):
-        _card_top(program, text)
+        _card_top(program, text, show_name)
 
         place = program["장소"] or program["진행방식"]
         no_visit = _no_visit(place)
@@ -428,19 +452,6 @@ def ai_reason(label: str, reason: str) -> None:
     html(f'<div class="reason"><b>{escape(label)}</b><br>{escape(reason)}</div>')
 
 
-def picked_card(program: dict, text: dict, reason: str, type_name: str) -> None:
-    """직접 적기 구간에 나오는 곳인데 같은 화면의 다른 구역에 이미 카드가 있는 경우. 이유, 물어볼 문장, 전화 단추만 다시 보여준다."""
-    with st.container(border=True):
-        html(f'<h3 class="p-name">{escape(program["프로그램명"])}</h3><p class="p-org">{escape(program["기관명"])}</p>')
-        if reason:
-            ai_reason(text["ai_reason"], reason)
-        if program["첫연락문장"]:
-            html(f'<div class="say"><b>{escape(text["say_prefix"])}</b><br>“{escape(program["첫연락문장"])}”</div>')
-        _call_buttons(program["공식연락처"], text)
-        body(text["ai_seen_note"].format(type=type_name))
-        _checked_note(program, text)
-
-
 def seen_card(program: dict, text: dict, type_name: str) -> None:
     """위쪽 유형 구역에 이미 나온 곳. 같은 카드를 되풀이하지 않고 한 줄로 알려 준다."""
     with st.container(border=True):
@@ -448,10 +459,10 @@ def seen_card(program: dict, text: dict, type_name: str) -> None:
         body(text["seen_note"].format(type=type_name))
 
 
-def list_card(program: dict, text: dict) -> None:
+def list_card(program: dict, text: dict, show_name: bool = True) -> None:
     """목록(강좌 목록 등). 무엇을 신청할 수 있는지는 사용자가 목록에서 직접 확인한다."""
     with st.container(border=True):
-        _card_top(program, text)
+        _card_top(program, text, show_name)
         body(text["list_note"])
         list_url = program["신청URL"] or program["상세페이지URL"] or program["홈페이지URL"]
         if list_url:

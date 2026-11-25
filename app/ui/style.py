@@ -7,6 +7,8 @@
 """
 import streamlit as st
 
+from . import pins
+
 
 CSS = """
 <style>
@@ -25,6 +27,8 @@ CSS = """
   --focus: #125864;
   --font-ui: "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", "Noto Sans KR", system-ui, sans-serif;
   --card-radius: 1.125rem;
+  /* 첫걸음 지도의 색: 풀밭, 짙은 풀밭, 나무 점. 길과 물의 색은 그림(ui/pins.py의 map_art) 안에 있다 */
+  --map-grass: #DDEBCA; --map-grass-deep: #CFE4BC; --map-dot: #79A48E; --map-rule: #C2D4B0;
 }
 .stApp { background: var(--canvas); color: var(--body); font-family: var(--font-ui); }
 [data-testid="stHeader"] { background: transparent; }
@@ -294,67 +298,6 @@ CSS = """
 .stApp .type-box[data-area] .type-label, .stApp .area[data-area] { color: var(--area-ink); }
 .stApp .area[data-area]::after { background: var(--area-rule); }
 
-/* 따라다니는 목차(대표 유형이 있는 결과 화면). 휴대폰: 유형 상자 아래에 있다가 스크롤하면 화면 위에 붙는 얇은 띠.
-   sticky는 띠가 아니라 Streamlit이 씌운 바깥 껍데기에 준다. 띠에 주면 껍데기 높이 안에서만 붙어서 따라오지 않는다 */
-.stApp [data-testid="stElementContainer"]:has(nav.toc) { position: sticky; top: 0; z-index: 5; }
-.stApp .toc { --toc-h: 3rem; background: var(--canvas); border-bottom: 1px solid var(--rule); }
-.stApp .toc-head, .stApp .toc-title, .stApp .toc-long { display: none; }
-.stApp .toc-row {
-  display: flex; align-items: stretch; margin: 0; padding: 0; list-style: none;
-  overflow-x: auto; scrollbar-width: none;
-}
-.stApp .toc-row::-webkit-scrollbar { display: none; }
-.stApp .toc-row li { flex: 1 0 auto; display: flex; margin: 0; padding: 0; }
-.stApp .toc a {
-  flex: 1; min-height: var(--toc-h); display: flex; align-items: center; justify-content: center; gap: .3em;
-  padding: 0 .2rem; white-space: nowrap; text-decoration: none; color: var(--ink);
-  font-size: clamp(1rem, 4.4vw, 1.125rem); font-weight: 650;
-}
-.stApp .toc-num { color: var(--teal); font-weight: 750; }
-.stApp .toc a.toc-act > span {
-  display: flex; align-items: center; min-height: 2.25rem; padding: 0 .6rem;
-  border: 1.5px solid var(--line); border-radius: 999px; background: var(--surface);
-}
-.stApp .toc li.toc-wide-only { display: none; }
-/* 목차를 눌러 내려갔을 때 띠가 구역 제목을 가리지 않게, 제목 위에 띠 높이만큼 자리를 둔다 */
-.stApp [id^="sec-"] { scroll-margin-top: 4.25rem; }
-[data-testid="stMain"] { scroll-behavior: smooth; }
-@media (prefers-reduced-motion: reduce) { [data-testid="stMain"] { scroll-behavior: auto; } }
-/* 넓은 화면: 본문(42rem) 오른쪽에 뜨는 상자 */
-@media (min-width: 1180px) {
-  .stApp [data-testid="stElementContainer"]:has(nav.toc) { position: static; }
-  .stApp .toc {
-    position: fixed; top: 5.5rem; left: calc(50% + 21rem + 1.25rem); width: 14rem; z-index: 5;
-    padding: 1rem; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--card-radius);
-  }
-  .stApp .toc-head { display: block; padding-bottom: .85rem; border-bottom: 1px solid var(--rule); }
-  .stApp .toc-head .toc-label { margin: 0; font-size: 1rem; color: var(--muted); line-height: 1.4; }
-  .stApp .toc-head .toc-name { margin: 0; font-size: 1.25rem; font-weight: 750; color: var(--ink); line-height: 1.4; }
-  .stApp .toc-title { display: block; margin: .85rem 0 .25rem; font-size: 1rem; font-weight: 700; color: var(--muted); }
-  .stApp .toc-row { flex-direction: column; padding: 0; overflow: visible; }
-  .stApp .toc-short { display: none; }
-  .stApp .toc-long { display: inline; }
-  .stApp .toc a { justify-content: flex-start; white-space: normal; padding: 0 .6rem; font-size: 1.125rem; }
-  .stApp .toc li.toc-wide-only { display: flex; }
-  .stApp .toc li.toc-first-act { margin-top: .75rem; }
-  .stApp .toc a.toc-act { padding: .3rem 0; }
-  .stApp .toc a.toc-act > span { flex: 1; justify-content: center; min-height: 3rem; border-radius: .85rem; }
-  .stApp [id^="sec-"] { scroll-margin-top: 1.5rem; }
-}
-@media (hover: hover) {
-  .stApp .toc a:hover { background: #F0F5EB; }
-  .stApp .toc a.toc-act:hover { background: none; }
-  .stApp .toc a.toc-act:hover > span { border-color: var(--teal); background: #F0F5EB; }
-}
-
-/* 대표 유형 아래의 구역 제목: 번호 동그라미 + 제목. 구역은 선이 아니라 위 여백으로 나눈다 */
-.stApp .sec-head { display: flex; align-items: center; gap: .65rem; margin: 1.1rem 0 0; }
-.stApp .sec-num {
-  flex: none; width: 2.1rem; height: 2.1rem; border-radius: 50%; background: var(--aqua); color: var(--teal);
-  display: flex; align-items: center; justify-content: center; font-size: 1.25rem; font-weight: 750;
-}
-.stApp .save-head { margin-top: 1.1rem; }
-
 /* 내 결과 저장하기: 사진 미리보기, 저장 단추(주요 단추와 같은 모양), 보내기 단추 */
 .stApp .st-key-save_card img { border: 1px solid var(--rule); border-radius: .85rem; }
 .stApp .st-key-save_card [data-testid="stElementToolbar"] { display: none; }   /* 그림 크게 보기 단추는 쓰지 않는다 */
@@ -367,6 +310,127 @@ CSS = """
   .stApp .stDownloadButton > button:enabled:hover { background: #F4DA02; border-color: #857810; }
 }
 .stApp .send .send-status:empty { display: none; }
+
+/* ── 조금 더 맞춰 보기 화면 ── */
+.stApp .tune-badge {
+  display: inline-block; margin: 0; padding: .25rem .8rem; border-radius: 999px; background: var(--map-grass); color: var(--ink);
+  font-size: 1.125rem; font-weight: 700;
+}
+.stApp .st-key-tune_skip button { justify-content: flex-start; padding-inline: 0; }
+.stApp .st-key-tune_skip button > div { justify-content: flex-start; }
+.stApp .fine.tight { margin-top: 0; }
+
+/* ── 결과 화면(11/25): 유형 카드의 딱지와 '내 특징 자세히 보기' ── */
+.stApp .st-key-type_hero .type-box[data-area] .type-label {
+  display: inline-block; padding: .15rem .8rem; border-radius: 999px; background: var(--area-ink, var(--teal)); color: #fff;
+}
+/* 특징 단추: 설명(19px)보다 조금 작은 18px. 알약 모양 테두리와 화살표로 누르는 곳임을 알린다. 높이 48px */
+.stApp .st-key-type_hero .st-key-feature_toggle { width: auto; }
+.stApp .st-key-type_hero .st-key-feature_toggle button {
+  width: auto; min-height: 3rem; margin-top: .35rem; padding: 0 1.1rem;
+  border: 1.5px solid var(--area-ink, var(--teal)); border-radius: 999px; background: var(--surface);
+}
+.stApp .st-key-type_hero .st-key-feature_toggle button :is(p, [data-testid="stIconMaterial"]) {
+  color: var(--area-ink, var(--teal)); font-size: 1.125rem; font-weight: 700;
+}
+.stApp .st-key-type_hero .feature { margin-top: .25rem; text-align: left; font-size: 1.1875rem; line-height: 1.6; }
+
+/* ── 첫걸음 지도(ui.place_map) ──
+   상자(st-key-place_map) 안에는 단추만 있다. 풀밭·길·물·나무는 상자의 바탕 여러 겹이고, 감싸는 요소를 따로 만들지 않는다.
+   핀 그림은 단추의 ::before, 이름표는 단추의 글(p), 이름표 끝 '›'는 글의 ::after, 손가락은 단추의 ::after 다.
+   어느 핀 그림을 쓸지는 단추를 감싼 상자의 이름(pinbox_번호_k_그림이름)이 정한다(규칙은 ui/pins.py의 css가 만든다) */
+.stApp .st-key-place_map {
+  position: relative; overflow: hidden; gap: 1rem; padding: 1.2rem .6rem 1.3rem;
+  border: 1px solid var(--map-rule); border-radius: var(--card-radius); background-color: var(--map-grass);
+  background-image:
+    radial-gradient(circle closest-side, var(--map-dot) 94%, transparent),
+    radial-gradient(circle closest-side, var(--map-dot) 94%, transparent),
+    radial-gradient(circle closest-side, var(--map-dot) 94%, transparent),
+    radial-gradient(circle closest-side, var(--map-dot) 94%, transparent),
+    radial-gradient(ellipse closest-side, var(--map-grass-deep) 96%, transparent),
+    radial-gradient(ellipse closest-side, var(--map-grass-deep) 96%, transparent),
+    var(--map-art);
+  background-repeat: no-repeat;
+  background-position: 93% 44%, 86% 50%, 5% 66%, 12% 97%, 8% 40%, 90% 86%, 0 0;
+  background-size: .8rem .8rem, .6rem .6rem, .75rem .75rem, .65rem .65rem, 38% 22%, 44% 20%, 100% 100%;
+}
+/* 핀은 좌우로 어긋나게 놓는다: 1번 왼쪽, 2번 오른쪽, 3번 조금 안쪽, '다른 곳'은 오른쪽 */
+.stApp .st-key-place_map [class*="st-key-pinbox_"] { position: relative; z-index: 1; width: fit-content; max-width: 94%; }
+.stApp .st-key-place_map :is([class*="st-key-pinbox_2_"], [class*="st-key-pinbox_more_"]) { margin-left: auto; }
+.stApp .st-key-place_map [class*="st-key-pinbox_3_"] { margin-left: 7%; }
+.stApp .st-key-place_map .stButton > button {
+  position: relative; width: auto; min-height: 3.875rem; padding: 0; gap: .25rem;
+  border: 0; border-radius: .9rem; background: none; justify-content: flex-start; text-align: left;
+}
+.stApp .st-key-place_map .stButton > button > div { justify-content: flex-start; min-width: 0; }
+.stApp .st-key-place_map .stButton > button::before {     /* 핀 그림. AI가 고른 곳은 같은 자리에 별을 한 겹 더 얹는다 */
+  content: ""; flex: none; width: 3rem; height: 3.75rem;
+  background: var(--badge, none) right -.05rem top -.05rem / 1.35rem 1.35rem no-repeat,
+              var(--pin, var(--pin-place)) center / contain no-repeat;
+  filter: drop-shadow(0 2px 1.5px rgba(20, 63, 60, .35));
+}
+.stApp .st-key-place_map [class*="st-key-pinbox_"][class*="_ai"] { --badge: var(--pin-star); }
+.stApp .st-key-place_map .stButton > button p {           /* 이름표: 흰 바탕 + 테두리 + 바닥 그림자(단추다운 모양) */
+  display: flex; align-items: center; gap: .55rem; min-height: 3.25rem; margin: 0; padding: .4rem .75rem .4rem .8rem;
+  background: var(--surface); border: 1.5px solid var(--line); border-radius: .9rem; box-shadow: 0 4px 0 #A3B3A6;
+  color: var(--ink); font-size: 1.1875rem; font-weight: 750; line-height: 1.35; text-align: left;
+}
+.stApp .st-key-place_map .stButton > button p::after {    /* 이름표 끝의 '›' */
+  content: ""; flex: none; width: .6rem; height: .6rem; border: solid var(--teal); border-width: 0 2.5px 2.5px 0; transform: rotate(-45deg);
+}
+/* 누르는 순간과, 보고 온 곳: 물빛 */
+.stApp .st-key-place_map .stButton > button:active p { background: var(--aqua); box-shadow: none; transform: translateY(4px); }
+.stApp .st-key-place_map [class*="_seen"] .stButton > button p { background: var(--aqua); border: 2px solid var(--teal); }
+@media (hover: hover) {
+  .stApp .st-key-place_map .stButton > button:enabled:hover { background: none; }
+  .stApp .st-key-place_map .stButton > button:enabled:hover p { border-color: var(--teal); }
+}
+/* 첫 핀의 손가락 그림. 세 번만 살짝 움직이고 멈춘다. 한 곳이라도 보고 오면 붙지 않는다(_hint 가 빠진다) */
+.stApp .st-key-place_map [class*="_hint"] .stButton > button::after {
+  content: ""; position: absolute; right: -.5rem; bottom: -1.05rem; width: 2.3rem; height: 2.3rem; pointer-events: none;
+  background: var(--pin-hand) center / contain no-repeat; filter: drop-shadow(0 1px 1px rgba(20, 63, 60, .3));
+  animation: pin-tap 1.3s ease-in-out 3;
+}
+@keyframes pin-tap { 0%, 100% { transform: none; } 50% { transform: translate(-3px, -5px); } }
+@media (prefers-reduced-motion: reduce) {
+  .stApp .st-key-place_map [class*="_hint"] .stButton > button::after { animation: none; }
+}
+/* 별의 뜻을 알리는 작은 글. 첫 핀의 이름표 윗선에 살짝 걸친다 */
+.stApp .st-key-place_map .ai-note {
+  position: relative; z-index: 2; display: inline-block; margin: -.35rem 0 -1.6rem 3.1rem; padding: .05rem .65rem;
+  border: 1px solid #DDC4AD; border-radius: 999px; background: #F6E9D8; color: #6F432F;
+  font-size: 1rem; font-weight: 700; line-height: 1.45;
+}
+
+/* ── 저장·공유: 단추 두 개를 한 줄로. 노란색은 쓰지 않는다 ── */
+.stApp .st-key-save_share { display: grid; grid-template-columns: 1fr 1fr; align-items: start; gap: .6rem; margin-top: .6rem; }
+.stApp .st-key-save_share > div { width: auto; min-width: 0; }
+.stApp .st-key-save_share .share { margin: 0; padding: 0; border: 0; background: none; }
+.stApp .st-key-save_share :is(.stButton > button, a.share-btn) { margin: 0; padding-inline: .5rem; background: var(--surface); border-color: var(--line); }
+
+/* ── 센터 정보·다른 곳 목록 화면 맨 위의 한 줄(ui.title_row): '←' 단추 + 제목 ── */
+.stApp .st-key-title_row { flex-direction: row; flex-wrap: nowrap; align-items: flex-start; gap: .7rem; }
+.stApp .st-key-title_row > div { width: auto; min-width: 0; flex: 0 1 auto; }
+.stApp .st-key-title_row > div:has(.stButton) { flex: none; }
+.stApp .st-key-title_row .st-key-back_top button {
+  width: 3.25rem; min-height: 3.25rem; padding: 0; border: 1.5px solid var(--teal); border-radius: .85rem;
+}
+.stApp .st-key-title_row .st-key-back_top button [data-testid="stIconMaterial"] { color: var(--teal); font-size: 1.7rem; }
+/* 단추의 글('뒤로')은 화면 읽기 도구만 읽게 눈에는 숨긴다 */
+.stApp .st-key-title_row .st-key-back_top button p {
+  position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+.stApp .st-key-title_row .q-title { padding-top: .35rem; text-wrap: balance; }
+/* 맨 아래 '← 결과로 돌아가기', 목록 화면의 곳 이름 줄: 왼쪽부터 쓰고 청록 테두리 */
+.stApp :is(.st-key-back_bottom, [class*="st-key-open_"]) button { justify-content: flex-start; text-align: left; }
+.stApp :is(.st-key-back_bottom, [class*="st-key-open_"]) button > div { justify-content: flex-start; }
+.stApp .st-key-back_bottom button { border-color: var(--teal); }
+.stApp .st-key-back_bottom button p { color: var(--teal); font-weight: 750; }
+.stApp [class*="st-key-open_"] button p { text-align: left; }
+.stApp [class*="st-key-open_"] button::after {
+  content: ""; width: .55rem; height: .55rem; flex: none; margin-left: auto;
+  border: solid var(--teal); border-width: 0 2.5px 2.5px 0; transform: rotate(-45deg);
+}
 
 /* 되묻는 창(st.dialog, main.restart_dialog). 창은 .stApp 밖에 그려져서 위의 규칙이 닿지 않는다.
    그래서 본문 글씨와 단추 모양(높이 62px, 노란 주요 단추)을 여기에 한 번 더 적는다 */
@@ -408,6 +472,8 @@ CSS = """
 }
 </style>
 """
+# 지도의 핀·별·손가락·바탕 그림(SVG)과, 상자 이름으로 핀을 고르는 규칙을 끝에 덧붙인다(ui/pins.py가 만든다)
+CSS = CSS.replace("</style>", pins.css() + "</style>")
 
 
 def apply() -> None:
