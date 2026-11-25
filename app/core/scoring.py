@@ -4,13 +4,14 @@
 - 같은 유형의 문항 점수를 더한다(문항 2개면 2~10점). 유형끼리 점수를 빼거나 비교해 깎지 않는다.
 - 모든 척도 문항은 답해야 한다(화면에서 건너뛸 수 없다). 답이 빠져 있으면 0점이나 3점으로 채우지 않고 오류로 멈춘다.
 - 성별·나이·일 여부는 받지 않는다. 점수에 넣지 않는다.
-- high(8점)·confirm(7점) 기준은 운영 규칙이다. 검증된 검사 기준이 아니다.
+- 점수가 낮아도 가장 높은 유형을 대표로 보여 준다(11/25 결정. 그전에는 7점 미만이면 대표를 만들지 않았다).
+  그래서 전부 '아니에요'라고 답한 사람도 유형을 받는다. 검증된 검사가 아니라는 한계와 함께 적는다.
+- 가장 높은 유형이 여럿이면 코드가 대신 정하지 않고 본인이 고른다.
+- high(8점)는 '함께 살펴볼 유형'을 붙이는 기준으로만 쓴다. 운영 규칙이며 검증된 검사 기준이 아니다.
 
 상태(state):
 - result            대표 유형이 정해짐(단독 1위이거나, 본인이 후보 중 하나를 고름)
-- choose_priority   high 이상에서 동점. 본인이 하나를 고른다.
-- confirm_interest  최고점이 confirm 이상 high 미만. 본인이 확인해야 대표가 된다.
-- explore           모든 유형이 confirm 미만. 대표를 억지로 만들지 않는다.
+- choose_priority   가장 높은 점수의 유형이 여럿. 본인이 하나를 고른다.
 """
 from __future__ import annotations
 
@@ -18,8 +19,6 @@ from dataclasses import dataclass, field
 
 RESULT = "result"
 CHOOSE = "choose_priority"
-CONFIRM = "confirm_interest"
-EXPLORE = "explore"
 
 SCALE_MIN, SCALE_MAX = 1, 5
 
@@ -29,12 +28,12 @@ class Score:
     state: str
     primary: str | None = None            # 대표 유형
     secondary: str | None = None          # 함께 살펴볼 유형(단독 다음 순위일 때만)
-    candidates: list[str] = field(default_factory=list)            # 최고점 유형들(confirm 이상일 때)
+    candidates: list[str] = field(default_factory=list)            # 최고점 유형들
     secondary_candidates: list[str] = field(default_factory=list)  # 대표 외 high 이상 중 가장 높은 유형들
     scores: dict[str, int] = field(default_factory=dict)           # 유형별 점수
 
 
-def score(answers: dict, type_questions: dict[str, list[str]], high: int, confirm: int,
+def score(answers: dict, type_questions: dict[str, list[str]], high: int,
           priority: str | None = None) -> Score:
     """answers는 {문항 id: 1~5}. type_questions는 {유형 id: [문항 id, ...]}.
 
@@ -55,9 +54,6 @@ def score(answers: dict, type_questions: dict[str, list[str]], high: int, confir
         scores[type_id] = sum(values)
 
     top = max(scores.values())
-    if top < confirm:
-        return Score(EXPLORE, scores=scores)
-
     candidates = [tid for tid, value in scores.items() if value == top]
     if priority not in candidates:
         priority = None
@@ -65,8 +61,6 @@ def score(answers: dict, type_questions: dict[str, list[str]], high: int, confir
     primary = None
     if priority is not None:
         state, primary = RESULT, priority
-    elif top < high:
-        state = CONFIRM
     elif len(candidates) > 1:
         state = CHOOSE
     else:

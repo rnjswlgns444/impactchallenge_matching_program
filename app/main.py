@@ -265,14 +265,14 @@ def screen_survey(data, text) -> None:
 # ── 결과 화면 ──
 
 def priority_question(data, text, type_ids: list[str], today) -> None:
-    """점수가 가장 높은 유형이 여럿이거나 확인이 필요한 점수일 때, 무엇부터 볼지 본인이 고른다.
+    """점수가 가장 높은 유형이 여럿일 때, 무엇부터 볼지 본인이 고른다.
 
-    자동으로 하나를 정하지 않는다. '아직 고르지 않을게요'를 누르면 대표 유형 없이 둘러본다.
+    자동으로 하나를 정하지 않는다. 하나를 골라야 결과로 넘어간다(11/25: '아직 고르지 않을게요'를 없앴다).
     고르기 쉽게, 선택지 아래에 그 유형에서 지금 안내할 수 있는 곳 하나를 예로 보여준다.
     """
     state = st.session_state
     question = sel.question(data.questions, sel.PRIORITY_Q)
-    lead = text["confirm_one"] if len(type_ids) == 1 else text["tie_two"] if len(type_ids) == 2 else text["tie_many"]
+    lead = text["tie_two"] if len(type_ids) == 2 else text["tie_many"]
 
     def choose(option_id: str) -> None:
         state.answers[sel.PRIORITY_Q] = option_id
@@ -286,7 +286,7 @@ def priority_question(data, text, type_ids: list[str], today) -> None:
     examples = {r.type_id: (r.contacts or r.lists)[0] for r in previews if r.contacts or r.lists}
     for option in sel.options_of(question, data.types, type_ids):
         st.button(width="stretch", label=option["label"], key=f"priority_{option['id']}",
-                  type="tertiary" if option["id"] == sel.DEFER else "secondary", on_click=choose, args=(option["id"],))
+                  on_click=choose, args=(option["id"],))
         example = examples.get(option["id"])
         if example:
             line = text["priority_example"].format(org=example["기관명"], program=example["프로그램명"])
@@ -795,11 +795,10 @@ def screen_result(data, text) -> None:
     setting = data.settings["scoring"]
     priority = state.answers.get(sel.PRIORITY_Q)
     judged = scoring.score(state.answers, sel.type_questions(data.questions, data.types),
-                           setting["high"], setting["confirm"], priority)
-    deferred = priority == sel.DEFER
+                           setting["high"], priority)
     primary = judged.primary
     opened = [tid for tid in data.types if tid in state.opened and tid != primary]
-    shown_types = ([primary] if primary else []) + opened
+    shown_types = ([primary] if primary else []) + opened   # 동점이라 아직 고르기 전이면 대표가 없다
 
     # 기본 결과는 저장해 두지 않고 화면을 그릴 때마다 정보표에서 다시 만든다
     results = candidates.build_result(data.programs, data.types, shown_types, state.details, today, state.answers)
@@ -808,8 +807,8 @@ def screen_result(data, text) -> None:
     shown_ids = [p["id"] for r in results for p in visible_contacts(r, top_n) + r.lists]
     log_once(data, judged, shown_ids or [p["id"] for p in consults])
 
-    if judged.state in (scoring.CHOOSE, scoring.CONFIRM) and not deferred:
-        # 동점이거나 확인이 필요한 점수: 먼저 볼 유형을 본인이 고른 뒤에 결과를 보여준다
+    if judged.state == scoring.CHOOSE:
+        # 가장 높은 유형이 여럿: 먼저 볼 유형을 본인이 고른 뒤에 결과를 보여준다
         priority_question(data, text, judged.candidates, today)
         result_footer(data, text, judged)
         return
@@ -821,65 +820,39 @@ def screen_result(data, text) -> None:
     def draw_section(type_id: str) -> None:
         type_section(data, text, by_type[type_id], text["type_label_other"], guides, top_n, seen, consults)
 
-    def wish_area():
-        """직접 적기 구간. 글 상자와 단추를 그리고, AI가 고른 곳이 들어갈 자리를 돌려준다.
-
-        AI가 고른 곳은 자리만 먼저 잡고, 아래 구역을 모두 그린 뒤에 채운다.
-        그래야 '이미 카드로 나온 곳'(seen)을 알고 그릴 수 있다.
-        """
-        with st.container():
-            free_wish_form(data, text)
-        return st.container()
-
     gender = state.answers.get(sel.GENDER_Q)                  # 캐릭터 그림을 고르는 데만 쓴다. 저장하지 않는다
-    if primary:
-        # 대표 유형 하나를 크게 보여준다: 유형 상자 → 특징 → 맞춰 보기(직접 적기 포함) → 곳 (11/23 순서)
-        picks = primary_section(data, text, by_type[primary], guides, top_n, seen, consults, gender)
-        if judged.secondary:
-            ui.html(f'<p class="sec">{escape(text["secondary_heading"])}</p>')
-            type_buttons(data, [judged.secondary], opened, draw_section)
+    # 대표 유형 하나를 크게 보여준다: 유형 상자 → 특징 → 맞춰 보기(직접 적기 포함) → 곳 (11/23 순서)
+    picks = primary_section(data, text, by_type[primary], guides, top_n, seen, consults, gender)
+    if judged.secondary:
+        ui.html(f'<p class="sec">{escape(text["secondary_heading"])}</p>')
+        type_buttons(data, [judged.secondary], opened, draw_section)
 
-        # 다른 유형은 첫 화면에 늘어놓지 않고, 원하는 사람만 펼쳐 본다
-        others = [tid for tid in data.types if tid not in (primary, judged.secondary)]
+    # 다른 유형은 첫 화면에 늘어놓지 않고, 원하는 사람만 펼쳐 본다
+    others = [tid for tid in data.types if tid not in (primary, judged.secondary)]
 
-        def show_all() -> None:
-            state.show_all = True
+    def show_all() -> None:
+        state.show_all = True
 
-        # 한 번 펼치면 단추는 사라지고 목록만 남는다. 다시 접는 단추는 두지 않는다(연 유형이 숨어 버리지 않게)
-        showing = state.show_all or any(tid in opened for tid in others)
-        if not showing:
-            st.button(width="stretch", label=text["more_types_button"], key="more_types", on_click=show_all)
-        else:
-            tied = [] if judged.secondary else judged.secondary_candidates
-            browse_types(data, text, others, tied, opened, draw_section)
-
-        # 함께 찾아 주는 창구는 맨 아래에 접어 둔다. 유형에 맞는 곳을 이미 받았기 때문이다
-        rest = [p for p in consults if p["id"] not in seen]           # 위에 이미 나온 창구는 다시 내지 않는다
-        if rest:
-            consult_section(data, text, rest, guides, folded=True)
-            seen.update({p["id"]: text["consult_heading"] for p in rest})
-        elif not shown_ids:
-            ui.notice(text["no_program_at_all"], "fail")
-            ui.fallback_card(data.settings["fallback_card"], text)
+    # 한 번 펼치면 단추는 사라지고 목록만 남는다. 다시 접는 단추는 두지 않는다(연 유형이 숨어 버리지 않게)
+    showing = state.show_all or any(tid in opened for tid in others)
+    if not showing:
+        st.button(width="stretch", label=text["more_types_button"], key="more_types", on_click=show_all)
     else:
-        # 대표 유형이 없는 사람: 일반 창구를 먼저, 그 아래에서 유형을 둘러본다
-        ui.heading(text["result_heading"])
-        if deferred:
-            ui.notice(text["unknown_intro"], "info")
-        else:
-            ui.notice(text["low_interest"], "info")
-            ui.html(f'<p class="small-note">{escape(text["edit_hint"])}</p>')
-        if consults:
-            consult_section(data, text, consults, guides)
-            seen.update({p["id"]: text["consult_heading"] for p in consults})
-        else:
-            ui.fallback_card(data.settings["fallback_card"], text)
-        picks = wish_area()
-        browse_types(data, text, list(data.types), judged.candidates if deferred else [], opened, draw_section)
+        tied = [] if judged.secondary else judged.secondary_candidates
+        browse_types(data, text, others, tied, opened, draw_section)
+
+    # 함께 찾아 주는 창구는 맨 아래에 접어 둔다. 유형에 맞는 곳을 이미 받았기 때문이다
+    rest = [p for p in consults if p["id"] not in seen]           # 위에 이미 나온 창구는 다시 내지 않는다
+    if rest:
+        consult_section(data, text, rest, guides, folded=True)
+        seen.update({p["id"]: text["consult_heading"] for p in rest})
+    elif not shown_ids:
+        ui.notice(text["no_program_at_all"], "fail")
+        ui.fallback_card(data.settings["fallback_card"], text)
 
     with picks:
         free_wish_result(data, text, shown_types, pool, guides, seen, consults)
-    save_result(data, text, by_type.get(primary) if primary else None, consults, gender, today)
+    save_result(data, text, by_type[primary], consults, gender, today)
     ui.share_box(text, data.settings["app_title"], str(text.get("share_url") or ""))
     result_footer(data, text, judged)
 

@@ -36,7 +36,7 @@ QUESTION_IDS = [BARRIER_Q, PRIORITY_Q, FREE_Q, GENDER_Q, AGE_Q, WORK_Q]   # 코�
 SELECTIONS = {"single", "multi", "number", "scale", "text"}
 OPTION_SOURCES = {CANDIDATE_TYPES}
 SCALE_VALUES = list(range(SCALE_MIN, SCALE_MAX + 1))   # 척도 값. 범위는 scoring.py가 정한다
-ITEMS_PER_TYPE = 2                                # 유형마다 척도 문항 수. 점수 기준(8점·7점)이 이 수를 전제한다
+ITEMS_PER_TYPE = 2                                # 유형마다 척도 문항 수. 점수 기준(high 8점)이 이 수를 전제한다
 RULE_KEYS = ("exclude", "first", "last")          # 세부 질문에 붙는 후보 규칙
 
 # programs.csv의 칸에 적는 값. 다른 파일은 글자를 다시 적지 않고 이 이름을 가져다 쓴다
@@ -60,9 +60,8 @@ TEXT_KEYS = """
     start_browse_button browse_intro browse_to_survey browse_to_start type_label_browse
     scale_help number_placeholder number_next number_required multi_help next_button back_button
     type_label type_label_other result_intro secondary_heading more_types_button also_heading
-    tie_two tie_many confirm_one repick_button result_heading low_interest edit_hint
-    edit_heading edit_select edit_notice edit_cancel
-    detail_label detail_first widened_note contacts_heading lists_heading no_program no_program_at_all unknown_intro
+    tie_two tie_many repick_button edit_heading edit_select edit_notice edit_cancel
+    detail_label detail_first widened_note contacts_heading lists_heading no_program no_program_at_all
     browse_heading browse_help consult_heading
     free_privacy free_button free_empty free_unclear free_wait ai_heading ai_reason ai_stale ai_none ai_fail
     kind_always kind_period kind_list nationwide card_ask target_label first_visit_label
@@ -218,14 +217,13 @@ def validate_scale(scale: list[dict]) -> list[str]:
 
 
 def validate_scoring(settings: dict) -> list[str]:
-    """대표 유형 기준. 유형 점수 범위(문항 수 × 1~5) 안에서 confirm < high 여야 한다."""
-    scoring = settings.get("scoring") or {}
-    high, confirm = scoring.get("high"), scoring.get("confirm")
+    """'함께 살펴볼 유형' 기준. 유형 점수 범위(문항 수 × 1~5) 안이어야 한다."""
+    high = (settings.get("scoring") or {}).get("high")
     low, top = ITEMS_PER_TYPE * SCALE_VALUES[0], ITEMS_PER_TYPE * SCALE_VALUES[-1]
-    if not _is_int(high) or not _is_int(confirm):
-        return ["settings.yaml: scoring에 high와 confirm을 숫자로 적어야 합니다. 예) high: 8, confirm: 7"]
-    if not low <= confirm < high <= top:
-        return [f"settings.yaml: scoring은 {low} 이상 {top} 이하이고 confirm이 high보다 작아야 합니다. (지금: high {high}, confirm {confirm})"]
+    if not _is_int(high):
+        return ["settings.yaml: scoring에 high를 숫자로 적어야 합니다. 예) high: 8"]
+    if not low <= high <= top:
+        return [f"settings.yaml: scoring의 high는 {low} 이상 {top} 이하여야 합니다. (지금: {high})"]
     return []
 
 

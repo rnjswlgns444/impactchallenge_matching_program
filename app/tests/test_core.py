@@ -16,8 +16,8 @@ import pytest
 from app.core import clock, loader, logger, privacy
 from app.core.candidates import ai_pool, build_result, eligible, first_consult, for_type, unconfirmed_columns
 from app.core.llm_matcher import NO_KEY, NO_TYPE, REASON_LIMIT, build_prompt, has_wish, parse_answer, recommend
-from app.core.scoring import CHOOSE, EXPLORE, RESULT, score
-from app.core.selection import (DEFER, barrier_guides, chosen_detail_options, detail_of, next_question, options_of,
+from app.core.scoring import CHOOSE, RESULT, score
+from app.core.selection import (barrier_guides, chosen_detail_options, detail_of, next_question, options_of,
                                 question, scale_questions, toggle, type_questions)
 
 TODAY = date(2026, 11, 17)
@@ -56,7 +56,7 @@ def high(data, *type_ids, base=1):
 
 def judge(data, answers, priority=None):
     scoring = data.settings["scoring"]
-    return score(answers, type_questions(data.questions, data.types), scoring["high"], scoring["confirm"], priority)
+    return score(answers, type_questions(data.questions, data.types), scoring["high"], priority)
 
 
 def test_every_type_has_two_scale_questions(data):
@@ -87,7 +87,7 @@ def test_survey_asks_profile_then_scale_then_barrier(data):
 def test_real_questions_lead_to_one_type(data):
     result = judge(data, high(data, "T06"))
     assert (result.state, result.primary, result.secondary) == (RESULT, "T06", None)
-    assert judge(data, high(data, base=3)).state == EXPLORE
+    assert judge(data, high(data, base=3)).state == CHOOSE       # 전부 같은 답이면 본인이 고른다
 
 
 def test_profile_and_barrier_do_not_change_type(data):   # 검증 사례 4
@@ -103,11 +103,11 @@ def test_tie_is_settled_by_the_user(data):
     tied = judge(data, answers)
     assert tied.state == CHOOSE and tied.candidates == ["T05", "T07"]
     options = options_of(question(data.questions, "Q_PRIORITY"), data.types, tied.candidates)
-    assert [o["id"] for o in options] == ["T05", "T07", DEFER]
+    assert [o["id"] for o in options] == ["T05", "T07"]      # 11/25: 고르지 않고 넘어가는 선택지는 없다
     assert options[0]["label"] == data.types["T05"]["statement"]   # 유형 이름이 아니라 쉬운 설명 문장으로 묻는다
     chosen = judge(data, answers, "T07")
     assert (chosen.primary, chosen.secondary) == ("T07", "T05")
-    assert judge(data, answers, DEFER).state == CHOOSE           # '아직 고르지 않을게요'는 대표를 만들지 않는다
+    assert judge(data, answers, "T01").state == CHOOSE          # 후보가 아닌 유형은 고른 것으로 치지 않는다
 
 
 def test_exclusive_option_cannot_mix(data):
@@ -532,9 +532,7 @@ def test_bad_scale_setup_gives_korean_messages(data):
     assert "label" in loader.validate_scale([{"value": v} for v in (5, 4, 3, 2, 1)])[0]
 
     assert loader.validate_scoring(data.settings) == []
-    for bad in ({}, {"scoring": {"high": 8}}, {"scoring": {"high": 7, "confirm": 7}},
-                {"scoring": {"high": 11, "confirm": 7}}, {"scoring": {"high": 8, "confirm": 1}},
-                {"scoring": {"high": "8", "confirm": 7}}):
+    for bad in ({}, {"scoring": {}}, {"scoring": {"high": 11}}, {"scoring": {"high": 1}}, {"scoring": {"high": "8"}}):
         assert loader.validate_scoring(bad), bad
 
 

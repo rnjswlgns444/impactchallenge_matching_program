@@ -6,7 +6,7 @@
 """
 import pytest
 
-from app.core.scoring import CHOOSE, CONFIRM, EXPLORE, RESULT, score
+from app.core.scoring import CHOOSE, RESULT, score
 
 # 유형 12개, 유형마다 문항 2개 (T01: Q01·Q02, T02: Q03·Q04, ...)
 PAIRS = {f"T{n:02d}": [f"Q{2 * n - 1:02d}", f"Q{2 * n:02d}"] for n in range(1, 13)}
@@ -22,12 +22,13 @@ def answers(default=1, **by_type):
 
 
 def run(given, priority=None):
-    return score(given, PAIRS, high=8, confirm=7, priority=priority)
+    return score(given, PAIRS, high=8, priority=priority)
 
 
-def test_all_neutral_gives_no_type():
+def test_all_neutral_asks_the_user_to_choose():
+    """전부 '보통'이면 모든 유형이 동점이다. 코드가 정하지 않고 본인이 12개 중에서 고른다."""
     result = run(answers(3))
-    assert result.state == EXPLORE and result.primary is None
+    assert result.state == CHOOSE and result.primary is None and len(result.candidates) == 12
 
 
 def test_no_answers_is_an_error():
@@ -53,11 +54,11 @@ def test_chosen_priority_becomes_primary_and_other_is_secondary():
     assert (result.state, result.primary, result.secondary) == (RESULT, "T07", "T06")
 
 
-def test_seven_points_needs_confirmation():
-    given = answers(T01=(4, 3))
-    assert run(given).state == CONFIRM and run(given).primary is None
-    confirmed = run(given, priority="T01")
-    assert (confirmed.state, confirmed.primary) == (RESULT, "T01")
+def test_low_single_top_still_becomes_primary():
+    """11/25: 점수가 낮아도 가장 높은 유형이 하나면 확인 없이 대표가 된다(유형이 없는 결과를 만들지 않는다)."""
+    for pair in ((4, 3), (3, 3), (2, 1)):
+        result = run(answers(T01=pair))
+        assert (result.state, result.primary, result.secondary) == (RESULT, "T01", None), pair
 
 
 def test_one_missing_answer_is_an_error_not_filled_in():
@@ -87,9 +88,16 @@ def test_other_questions_do_not_affect_scores():
     assert run(given).scores == run(answers(T06=(5, 5))).scores
 
 
-def test_low_scores_cannot_be_forced_into_a_type():
+def test_all_lowest_lets_the_user_choose_any_type():
+    """전부 '전혀 아니에요'여도 동점이므로 본인이 고른 유형이 대표가 된다. 함께 볼 유형은 붙지 않는다(8점 미만)."""
     result = run(answers(1), priority="T12")
-    assert result.state == EXPLORE and result.primary is None
+    assert (result.state, result.primary, result.secondary) == (RESULT, "T12", None)
+    assert result.secondary_candidates == []
+
+
+def test_priority_outside_the_top_is_ignored():
+    result = run(answers(T06=(3, 3)), priority="T12")
+    assert (result.state, result.primary) == (RESULT, "T06")
 
 
 def test_stale_priority_is_ignored():

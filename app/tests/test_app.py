@@ -162,7 +162,7 @@ def test_second_place_is_offered_as_one_button(app):
 
 
 def test_tie_lets_the_user_choose(app, tmp_path):
-    """최고점이 같으면 자동으로 정하지 않고 묻는다. 고른 뒤에 바꾸거나, 고르지 않고 둘러볼 수 있다."""
+    """최고점이 같으면 자동으로 정하지 않고 묻는다. 고른 뒤에 바꿀 수 있다. 고르지 않고 넘어가는 길은 없다."""
     data = loader.load_all()
     text = data.settings["text"]
     take_survey(app, T05=(5, 5), T07=(5, 5))
@@ -170,6 +170,7 @@ def test_tie_lets_the_user_choose(app, tmp_path):
     page = page_text(app)
     assert text["tie_two"] in page and text["type_label"] not in page
     assert [b.label for b in app.button][:2] == [data.types["T05"]["statement"], data.types["T07"]["statement"]]
+    assert [b.key for b in app.button if b.key.startswith("priority_")] == ["priority_T05", "priority_T07"]
     # 선택지 아래의 예시는 그 유형에서 지금 안내할 수 있는 곳(걸러진 후보의 첫 번째)이다
     first = candidates.for_type(data.programs, data.types["T05"], None, clock.now())
     example = (first.contacts or first.lists)[0]
@@ -185,43 +186,44 @@ def test_tie_lets_the_user_choose(app, tmp_path):
 
     click(app, "repick")
     assert text["tie_two"] in page_text(app)
-    click(app, f"priority_{sel.DEFER}")
-    page = page_text(app)
-    assert text["unknown_intro"] in page and text["also_heading"] in page and text["type_label"] not in page
+    click(app, "priority_T05")
+    assert data.types["T05"]["name"] in page_text(app)
 
     assert len(rows(tmp_path, "responses.csv")) == 1           # 고르는 것은 답을 바꾼 것이 아니다
     events = rows(tmp_path, "events.csv")
-    assert [e["target"] for e in events if e["event"] == "priority"] == ["T07", sel.DEFER]
+    assert [e["target"] for e in events if e["event"] == "priority"] == ["T07", "T05"]
     assert not [e for e in events if e["event"] == "answers_changed"]
 
 
-def test_seven_points_is_confirmed_by_the_user(app):
+@pytest.mark.parametrize("pair", [(4, 3), (2, 1)])
+def test_low_single_top_is_shown_without_asking(app, pair):
+    """11/25: 점수가 낮아도 가장 높은 유형이 하나면 묻지 않고 바로 그 유형을 보여 준다."""
     data = loader.load_all()
     text = data.settings["text"]
-    take_survey(app, T01=(4, 3))
-    page = page_text(app)
-    assert text["confirm_one"] in page and text["type_label"] not in page
-    click(app, "priority_T01")
+    take_survey(app, T01=pair)
     page = page_text(app)
     assert text["type_label"] in page and data.types["T01"]["name"] in page
+    assert not [b.key for b in app.button if b.key.startswith("priority_")]
 
 
-def test_low_scores_browse_all_types(app, tmp_path):
-    """모두 '보통': 유형을 붙이지 않고 일반 창구와 둘러보기를 보여준다. 누른 유형만 연다."""
+def test_all_same_answers_let_the_user_choose(app, tmp_path):
+    """모두 '보통': 유형이 없다고 하지 않는다. 12개가 동점이므로 본인이 하나를 고르고, 고르면 그 유형을 보여 준다."""
     data = loader.load_all()
     text = data.settings["text"]
     take_survey(app, base=3)
 
     page = page_text(app)
-    assert text["low_interest"] in page and text["consult_heading"] in page
-    assert text["type_label"] not in page                      # 대표 유형이 없다
+    assert text["tie_many"] in page and text["type_label"] not in page
+    assert [b.key for b in app.button if b.key.startswith("priority_")] == [f"priority_{tid}" for tid in data.types]
     row = rows(tmp_path, "responses.csv")[0]
-    assert (row["state"], row["primary"], row["candidates"]) == ("explore", "", "")
+    assert (row["state"], row["primary"]) == ("choose_priority", "") and row["candidates"].count("|") == 11
 
-    click(app, "browse_T07")                                   # 문의할 곳이 없고 목록만 있는 유형은 목록을 보여준다
+    click(app, "priority_T07")                                 # 문의할 곳이 없고 목록만 있는 유형은 목록을 보여준다
     page = page_text(app)
+    assert text["type_label"] in page and data.types["T07"]["name"] in page
     assert text["lists_heading"] in page and text["no_program"] not in page
     assert text["contacts_heading"] not in page                # 11/22: 동네친구형은 둘러볼 목록(L15·L16)만 있다
+    click(app, "more_types")
     click(app, "browse_T09")
     assert data.types["T09"]["statement"] in page_text(app)
     click(app, "browse_T09")                                   # 다시 누르면 닫힌다
@@ -469,17 +471,16 @@ def test_ai_failure_keeps_basic_result(app, fake_ai, tmp_path):
 
 
 def test_nothing_matched_leads_to_general_window(app, fake_ai):
-    """맞는 곳이 없으면 못 찾았다고 말하고 함께 찾아 주는 창구로 잇는다. 대표 유형이 없는 사람도 쓸 수 있다."""
+    """맞는 곳이 없으면 못 찾았다고 말하고 함께 찾아 주는 창구로 잇는다."""
     data = loader.load_all()
     fake_ai["reply"] = {"matches": [], "unmatched": ["해외여행"]}
-    take_survey(app, base=3)
+    take_survey(app, T01=(5, 5))
     write_wish(app, "해외여행을 가고 싶어요")
     text = page_text(app)
     assert data.settings["text"]["ai_none"] in text
     assert data.settings["text"]["ai_heading"] not in text     # 찾은 곳이 없으면 제목을 내지 않는다
-    everything = candidates.ai_pool(data.programs, data.types, [], {}, clock.now())
-    assert fake_ai["prompts"][0].count("- id: ") == len(everything)
-    assert llm_matcher.NO_TYPE in fake_ai["prompts"][0]
+    pool = candidates.ai_pool(data.programs, data.types, ["T01"], {}, clock.now(), app.session_state.answers)
+    assert fake_ai["prompts"][0].count("- id: ") == len(pool)
 
 
 def test_picked_place_already_shown_keeps_call_button(app, fake_ai):
@@ -634,14 +635,14 @@ def test_one_answer_can_be_fixed_from_the_result(app):
     assert app.session_state.screen == "result" and app.session_state.answers[first] == 5
     assert text["type_label"] in page_text(app)
 
-    # 5점을 1점으로 고치면 그 문항만 묻고 바로 결과로 돌아온다. 일터찾기형은 6점이 되어 대표 유형이 사라진다
+    # 5점을 1점으로 고치면 그 문항만 묻고 바로 결과로 돌아온다. 일터찾기형은 6점이 되지만 여전히 가장 높아 대표로 남는다
     click(app, f"edit_{first}")
     click(app, f"opt_{first}_1")
     assert app.session_state.screen == "result" and "edit_q" not in app.session_state
     assert app.session_state.answers[first] == 1 and app.session_state.answers[second] == 5
     assert len([q for q in sel.survey_questions(data.questions) if q["id"] in app.session_state.answers]) == 28
     page = page_text(app)
-    assert text["type_label"] not in page and text["low_interest"] in page
+    assert text["type_label"] in page and data.types["T01"]["name"] in page
 
 
 def test_result_order_and_folded_consult(app):
@@ -654,17 +655,6 @@ def test_result_order_and_folded_consult(app):
     assert page.index(data.types["T01"]["name"]) < page.index(wish) < page.index(text["share_heading"])
     assert "more_types" in [b.key for b in app.button]             # 다른 유형은 그 아래에서 연다
     assert [e.label for e in app.expander if e.label == text["consult_heading"]]
-
-
-def test_consult_stays_open_without_a_primary_type(app):
-    """대표 유형이 없으면 함께 찾아 주는 창구가 결과의 중심이므로 펼쳐서 보여주고, 직접 적기는 그 아래에 둔다."""
-    data = loader.load_all()
-    text = data.settings["text"]
-    wish = sel.question(data.questions, sel.FREE_Q)["text"]
-    take_survey(app, base=3)
-    page = page_text(app)
-    assert not [e.label for e in app.expander if e.label == text["consult_heading"]]
-    assert page.index(text["consult_heading"]) < page.index(wish) < page.index(text["browse_heading"])
 
 
 def test_care_type_asks_who_first(app):
@@ -808,7 +798,7 @@ def test_primary_result_follows_the_new_order(app):
 
 
 def test_nav_and_save_box_follow_the_state(app, cards):
-    """동점 화면에는 목차도 저장도 없다. 대표 유형이 없으면 목차 없이 저장만 있고, 사진에는 일반 창구 이름이 들어간다."""
+    """동점 화면에는 목차도 저장도 없다. 하나를 고르면 둘 다 나온다."""
     data = loader.load_all()
     text = data.settings["text"]
     take_survey(app, T05=(5, 5), T07=(5, 5))
@@ -817,14 +807,9 @@ def test_nav_and_save_box_follow_the_state(app, cards):
     assert text["tie_two"] in page and 'class="toc"' not in page and saving not in page
     assert not cards and not app.get("download_button")
 
-    click(app, f"priority_{sel.DEFER}")                        # 고르지 않고 둘러보기: 대표 유형이 없다
+    click(app, "priority_T05")
     page = page_text(app)
-    assert 'class="toc"' not in page and text["feature_heading"] + "</h2>" not in page and saving in page
-    title, team, footer, heading, places, type_name, statement, feature, area, character, plain = cards[-1]
-    assert (type_name, statement, feature, character) == ("", "", "", None) and plain == text["card_plain_title"]
-    consults = candidates.first_consult(data.programs, clock.now(), app.session_state.answers)
-    assert heading == text["consult_heading"]
-    assert places == [(p["프로그램명"], p["기관명"]) for p in consults[:3]] and places
+    assert 'class="toc"' in page and saving in page and cards
 
 
 def test_card_has_type_and_place_names_only(app, cards):

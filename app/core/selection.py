@@ -21,7 +21,6 @@ PROFILE_CHOICES = (
 AGE_MIN_COLUMN, AGE_MAX_COLUMN = "최소나이", "최대나이"     # 만 나이. 빈칸은 '제한 없음'이다
 SCALE = "scale"
 CANDIDATE_TYPES = "candidate_types"   # options_from에 적는 값. 넘겨받은 유형들이 선택지가 된다
-DEFER = "none"      # Q_PRIORITY의 '아직 고르지 않을게요' 선택지 id. 유형 id가 아니므로 대표 유형을 만들지 않는다
 
 
 def question(questions: list[dict], question_id: str) -> dict:

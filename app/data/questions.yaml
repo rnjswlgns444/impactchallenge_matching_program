@@ -14,7 +14,7 @@
 #   P_GENDER, P_AGE, P_WORK : 기본정보. 유형 점수에 넣지 않습니다. 기록을 켰을 때만 익명으로 남습니다.
 #   Q01 ~ Q24  : 척도 문항. 같은 유형의 두 문항 점수를 더해(2~10점) 먼저 살펴볼 유형을 정합니다.
 #   Q_BARRIER  : 유형을 바꾸지 않습니다. 결과 카드에서 먼저 보여줄 안내를 정합니다.
-#   Q_PRIORITY : 점수가 같은 유형이 여럿이거나 7점일 때만 묻습니다. 본인이 먼저 볼 유형을 고릅니다.
+#   Q_PRIORITY : 가장 높은 점수의 유형이 여럿일 때만 묻습니다. 본인이 먼저 볼 유형을 고릅니다.
 #   Q_FREE     : 적은 사람에게만 AI 추가 추천을 합니다. 비워 두면 AI를 부르지 않습니다.
 #
 # 바꾸면 안 되는 것
@@ -126,8 +126,6 @@ questions:
     text: "오늘은 무엇부터 살펴볼까요?"
     selection: single
     options_from: candidate_types  # 선택지는 점수가 가장 높은 유형들의 statement(types.yaml)로 자동으로 만들어집니다.
-    options:
-      - {id: none, label: "아직 고르지 않을게요"}
 
   - id: Q_FREE
     where: result
