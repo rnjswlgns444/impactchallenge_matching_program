@@ -196,19 +196,12 @@ def test_one_type_to_the_end(app, tmp_path):
     assert text["say_prefix"] in page and text["call_button"] in page     # 물어볼 문장과 전화 단추는 접지 않고 보인다
     click(app, "back_top")
 
-    click(app, "more_toggle")                                  # 다른 유형은 '더 보기' 안에서 본인이 눌러야 열린다
-    click(app, "more_types")
-    click(app, "browse_T04")
-    page = page_text(app)
-    assert data.types["T04"]["name"] in page and text["type_label_other"] in page
-    assert len(app.get("image")) == 1                           # 본인이 연 유형에는 그림을 더하지 않는다
-    if "more_T04" in keys(app):                                # 유형마다 한 곳만 먼저 보이므로(top_n 1) 모두 펼친다
-        click(app, "more_T04")
-    # 지도에 이미 놓인 곳은 카드를 되풀이하지 않고 한 줄로 알린다
-    assert escape(text["seen_note"].format(type=text["map_heading"])) in page_text(app)
+    click(app, "more_toggle")                                  # 결과 화면에는 다른 유형을 여는 단추가 없다(11/26)
+    assert not [key for key in keys(app) if key.startswith("browse_") or key == "more_types"]
+    assert data.types["T04"]["name"] not in page_text(app) and len(app.get("image")) == 1
 
     logged = rows(tmp_path, "responses.csv")
-    assert len(logged) == 1                                    # 유형을 더 열어도 행은 늘지 않는다
+    assert len(logged) == 1                                    # 화면을 오가도 행은 늘지 않는다
     row = logged[0]
     assert (row["state"], row["primary"], row["secondary"], row["barriers"]) == ("result", "T01", "", "alone")
     assert "T01=10" in row["scores"] and "Q01=5" in row["answers"] and "Q02=1" in row["answers"]
@@ -217,22 +210,23 @@ def test_one_type_to_the_end(app, tmp_path):
     assert not {"gender", "age", "age_band", "work"} & set(row)
     assert "female" not in row.values() and "not_working" not in row.values()
     events = rows(tmp_path, "events.csv")
-    assert [e["target"] for e in events if e["event"] == "browse"] == ["T04"]
+    assert not [e for e in events if e["event"] == "browse"]
     assert [e["target"] for e in events if e["event"] == "place"] == [places[0]["id"]]     # 어느 곳의 안내를 열었는지
 
 
-def test_second_place_is_offered_as_one_button(app):
-    """대표 외에 8점 이상이 하나 더 있으면 '더 보기' 안에서 단추 하나로 권하고, 누르면 그 아래에 안내가 나온다."""
+def test_result_shows_only_the_primary_type(app, tmp_path):
+    """11/26: 대표 외에 8점 이상인 유형이 있어도 결과 화면에 늘어놓지 않는다. 가장 높은 유형이 하나면 다시 고를 것도 없다.
+
+    두 번째 유형은 기록(secondary)에만 남는다. 다른 유형은 시작 화면의 '질문 없이 먼저 둘러보기'에서 본다.
+    """
     data = loader.load_all()
-    text = data.settings["text"]
     take_survey(app, T09=(5, 5), T10=(4, 4))
-    page = page_text(app)
-    assert data.types["T09"]["name"] in page and text["secondary_heading"] not in page
     click(app, "more_toggle")
     page = page_text(app)
-    assert text["secondary_heading"] in page and data.types["T10"]["statement"] not in page
-    click(app, "browse_T10")
-    assert data.types["T10"]["statement"] in page_text(app)
+    assert data.types["T09"]["name"] in page
+    assert data.types["T10"]["name"] not in page and data.types["T10"]["statement"] not in page
+    assert not [key for key in keys(app) if key.startswith("browse_") or key in ("more_types", "repick")]
+    assert rows(tmp_path, "responses.csv")[0]["secondary"] == "T10"
 
 
 def test_tie_lets_the_user_choose(app, tmp_path):
@@ -260,11 +254,12 @@ def test_tie_lets_the_user_choose(app, tmp_path):
     page = page_text(app)
     assert text["type_label"] in page and data.types["T07"]["name"] in page
     click(app, "more_toggle")
-    assert text["secondary_heading"] in page_text(app)         # 고르지 않은 쪽은 '함께 살펴보세요'로 남는다
-    assert app.button(key="browse_T05")
+    assert data.types["T05"]["name"] not in page_text(app)     # 고르지 않은 쪽을 따로 늘어놓지 않는다(11/26)
+    assert "repick" in keys(app) and "browse_T05" not in keys(app)
 
-    click(app, "repick")
+    click(app, "repick")                                       # 다시 고르기: 가장 높은 점수가 같은 유형들만 다시 나온다
     assert text["tie_two"] in page_text(app)
+    assert [key for key in keys(app) if key.startswith("priority_")] == ["priority_T05", "priority_T07"]
     click(app, "priority_T05")
     assert app.session_state.screen == "result"                # 맞춰 보기는 한 번만 거친다
     assert data.types["T05"]["name"] in page_text(app)
@@ -306,11 +301,8 @@ def test_all_same_answers_let_the_user_choose(app, tmp_path):
     assert text["no_program"] not in page
     assert text["contacts_heading"] not in page                # 11/22: 동네친구형은 둘러볼 목록(L15·L16)만 있다
     click(app, "more_toggle")
-    click(app, "more_types")
-    click(app, "browse_T09")
-    assert data.types["T09"]["statement"] in page_text(app)
-    click(app, "browse_T09")                                   # 다시 누르면 닫힌다
-    assert data.types["T09"]["statement"] not in page_text(app)
+    click(app, "repick")                                       # 다시 고르면 12개가 다시 나온다(모두 동점이었다)
+    assert [key for key in keys(app) if key.startswith("priority_")] == [f"priority_{tid}" for tid in data.types]
     assert len(rows(tmp_path, "responses.csv")) == 1
 
 
@@ -598,21 +590,19 @@ def test_free_text_adds_ai_picks_with_reasons(app, fake_ai, tmp_path):
     assert len(fake_ai["prompts"]) == 1 and pin_labels(app)[0] == picked["프로그램명"]
 
 
-def test_opened_type_joins_the_ai_candidates(app, fake_ai):
-    """본인이 연 유형의 프로그램도 AI 후보에 들어간다. 열지 않은 유형은 들어가지 않는다."""
+def test_ai_candidates_come_from_the_primary_type_only(app, fake_ai):
+    """AI 후보는 대표 유형의 곳뿐이다(11/26: 결과 화면에서 다른 유형을 여는 길을 뺐다). 다시 적어도 같다."""
     data = loader.load_all()
     fake_ai["reply"] = {"matches": [], "unmatched": []}
-    take_survey(app, T01=(5, 5))
+    take_survey(app, T01=(5, 5), T09=(4, 4))
     click(app, "more_toggle")
-    click(app, "more_types")
-    click(app, "browse_T09")
     click(app, "tune_again")                                        # '바라는 점 다시 적기'로 맞춰 보기 화면에 다시 온다
     assert app.session_state.screen == "tune"
     write_wish(app, "연금도 궁금해요")
-    pool = candidates.ai_pool(data.programs, data.types, ["T01", "T09"], {}, clock.now())
+    pool = candidates.ai_pool(data.programs, data.types, ["T01"], {}, clock.now(), app.session_state.answers)
     prompt = fake_ai["prompts"][0]
     assert prompt.count("- id: ") == len(pool)
-    assert data.types["T01"]["name"] in prompt and data.types["T09"]["name"] in prompt
+    assert data.types["T01"]["name"] in prompt and data.types["T09"]["name"] not in prompt
 
 
 def test_empty_free_text_does_not_call_ai(app, fake_ai):
@@ -897,13 +887,23 @@ def test_result_screen_order_and_what_is_left_out(app):
     click(app, "feature_toggle")
     assert escape(info["feature"]) not in page_text(app)
 
-    click(app, "more_toggle")                                  # 더 보기: 다른 분야, 함께 찾아 주는 곳, 답변 확인·수정, 다시 적기
+    # 지도의 설명 글은 제목 바로 아래, 핀보다 앞에 있다(11/26: 휴대폰에서 지도에 밀려 안 보이지 않게)
+    page = page_text(app)
+    assert page.index(text["map_heading"] + "</h2>") < page.index(f'<p class="map-note">{escape(text["map_hint"])}</p>')
+    order = [e.key if e.type == "button" else "notes" for e in app.main
+             if (e.type == "button" and e.key == "pin_1") or (e.type == "markdown" and 'class="map-notes"' in e.value)]
+    assert order == ["notes", "pin_1"]
+
+    click(app, "more_toggle")                                  # 더 보기: 답변 확인·수정 → 바라는 점 다시 적기 → 함께 찾아 주는 곳
     assert app.button(key="more_toggle").label == text["more_toggle_close"]
     opened = keys(app)
-    assert "more_types" in opened and "tune_again" in opened and "edit_Q01" in opened and "repick" not in opened
-    assert [e.label for e in app.expander] == [text["consult_heading"], text["edit_heading"]]
+    assert "tune_again" in opened and "edit_Q01" in opened and "repick" not in opened and "more_types" not in opened
+    assert [e.label for e in app.expander] == [text["edit_heading"], text["consult_heading"]]
+    inside = [e.key if e.type == "button" else e.label for e in app.main
+              if (e.type == "button" and e.key == "tune_again") or e.type == "expander"]
+    assert inside == [text["edit_heading"], "tune_again", text["consult_heading"]]
     click(app, "more_toggle")
-    assert "more_types" not in keys(app)
+    assert "tune_again" not in keys(app)
 
 
 def test_care_type_asks_who_first(app):

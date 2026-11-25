@@ -254,6 +254,23 @@ CSS = """
   background: var(--surface); border: 1px solid var(--rule); border-radius: .85rem;
 }
 .stApp [data-testid="stExpander"] summary { min-height: 3.25rem; }
+/* 결과 화면 '더 보기' 안의 줄: 접힌 칸(답변 확인·수정, 함께 찾아 주는 곳)과 단추(바라는 점 다시 적기, 다시 고르기)를
+   같은 테두리·높이·글자로 맞춘다. 단추는 다른 화면으로 가므로 오른쪽 끝에 '›'를 둔다 */
+.stApp .st-key-more_rows .stButton > button {
+  min-height: 3.4375rem; padding: 0 1rem; justify-content: space-between; text-align: left;   /* 접힌 칸의 실제 높이(55px)와 같게 */
+  background: var(--surface); border: 1px solid var(--rule); border-radius: .85rem; box-shadow: none;
+}
+.stApp .st-key-more_rows .stButton > button > div { justify-content: flex-start; }
+.stApp .st-key-more_rows .stButton > button p { color: var(--ink); font-size: 1.1875rem; font-weight: 650; }
+.stApp .st-key-more_rows .stButton > button::after {
+  content: ""; flex: none; width: .55rem; height: .55rem; margin-right: .2rem;
+  border: solid var(--ink); border-width: 0 2px 2px 0; transform: rotate(-45deg);
+}
+/* 접힌 칸 안의 단추(문항 목록 등)는 예전 모양 그대로 둔다 */
+.stApp .st-key-more_rows [data-testid="stExpander"] .stButton > button {
+  min-height: 3.875rem; padding: .25rem .75rem; justify-content: center; border: 1.5px solid var(--line); border-radius: .9rem;
+}
+.stApp .st-key-more_rows [data-testid="stExpander"] .stButton > button::after { content: none; }
 .stApp [data-testid="stExpander"] summary p {
   color: var(--ink); font-size: 1.1875rem; font-weight: 650;
 }
@@ -396,8 +413,8 @@ CSS = """
   content: ""; flex: none; display: inline-block; width: 1.25rem; height: 1.25rem; margin-right: .1rem;
   background: var(--pin-star) center / contain no-repeat; vertical-align: -.2rem;
 }
-/* 지도 아래의 작은 글: 누르면 자세히 볼 수 있다는 안내와 별의 뜻 */
-.stApp .map-notes { margin: .15rem .2rem 0; }
+/* 지도 제목 아래의 작은 글: 누르면 자세히 볼 수 있다는 안내와 별의 뜻 */
+.stApp .map-notes { margin: -.35rem .1rem .1rem; }      /* 제목 바로 아래, 지도 위에 놓인다 */
 .stApp .map-note { margin: 0; color: var(--muted); font-size: 1.0625rem; line-height: 1.5; }
 .stApp .map-note.star { display: flex; align-items: center; gap: .35rem; color: var(--body); font-weight: 650; }
 .stApp .map-note.star::before {

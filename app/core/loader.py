@@ -65,7 +65,7 @@ TEXT_KEYS = """
     start_intro start_notes_title start_privacy start_ai_note start_refresh start_privacy_saving start_button
     start_browse_button browse_intro browse_to_survey browse_to_start type_label_browse
     scale_help cheer_half cheer_last number_placeholder number_next number_required multi_help next_button back_button
-    type_label type_label_other secondary_heading more_types_button also_heading
+    type_label
     tie_two tie_many repick_button edit_heading edit_select edit_notice edit_cancel
     detail_label detail_first widened_note contacts_heading lists_heading no_program no_program_at_all
     browse_heading browse_help consult_heading

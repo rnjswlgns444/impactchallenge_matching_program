@@ -69,8 +69,7 @@ def init_state() -> None:
         "draft": {},          # '다음'을 누르기 전까지 고른 것(아직 답이 아니다), '이전으로' 돌아왔을 때 앞서 한 답
         "details": {},        # {유형 id: 세부 질문의 답}
         "more": [],           # '더 보기'를 누른 유형
-        "opened": [],         # 결과 화면에서 본인이 눌러서 연 유형(대표 유형 외)
-        "show_all": False,    # 대표 유형이 있을 때 '다른 분야도 보기'를 눌렀는지
+        "opened": [],         # 둘러보기 화면에서 본인이 눌러서 연 유형
         "logged": None,       # 기록한 응답의 모양. 한 번 진행에 responses.csv 한 행만 남기려고 둔다
         "ai": None,           # AI 추가 추천 결과(llm_matcher.AiResult). 맞춰 보기에서 '결과 보기'를 누를 때만 바뀐다
         "ai_pending": False,  # AI에게 물어야 하는지. 결과 화면이 지도 자리에서 한 번 부르고 끈다
@@ -497,16 +496,12 @@ def type_buttons(data, type_ids: list[str], opened: list[str], draw_section) -> 
             draw_section(tid)
 
 
-def browse_types(data, text, type_ids: list[str], first: list[str], opened: list[str], draw_section) -> None:
-    """유형을 영역별로 둘러본다. first는 점수가 높았던 유형으로, 맨 위에 따로 묶어 보여준다."""
+def browse_types(data, text, type_ids: list[str], opened: list[str], draw_section) -> None:
+    """유형을 영역별로 둘러본다(질문 없이 둘러보기 화면). 결과 화면에서는 다른 유형을 늘어놓지 않는다(11/26)."""
     ui.heading(text["browse_heading"])
     ui.html(f'<p class="q-help">{escape(text["browse_help"])}</p>')
-    first = [tid for tid in type_ids if tid in first]
-    if first:
-        ui.html(f'<p class="area">{escape(text["also_heading"])}</p>')
-        type_buttons(data, first, opened, draw_section)
     for area in data.areas:
-        in_area = [tid for tid in type_ids if data.types[tid].get("area") == area["id"] and tid not in first]
+        in_area = [tid for tid in type_ids if data.types[tid].get("area") == area["id"]]
         if in_area:
             ui.html(f'<p class="area" data-area="{escape(area["id"], quote=True)}">{escape(area["label"])}</p>')
             type_buttons(data, in_area, opened, draw_section)
@@ -570,8 +565,8 @@ def result_context(data, today) -> SimpleNamespace:
     state = st.session_state
     judged = judge(data)
     primary = judged.primary
-    opened = [tid for tid in data.types if tid in state.opened and tid != primary]
-    shown_types = ([primary] if primary else []) + opened        # 동점이라 아직 고르기 전이면 대표가 없다
+    # 결과 화면은 대표 유형만 다룬다(11/26: 다른 유형을 여는 길을 뺐다). 동점이라 아직 고르기 전이면 대표가 없다
+    shown_types = [primary] if primary else []
     results = candidates.build_result(data.programs, data.types, shown_types, state.details, today, state.answers)
     by_type = {r.type_id: r for r in results}
     consults = candidates.first_consult(data.programs, today, state.answers)
@@ -587,7 +582,7 @@ def result_context(data, today) -> SimpleNamespace:
             if match["id"] in by_id:
                 reasons.setdefault(match["id"], match["reason"])
         places = [by_id[pid] for pid in reasons] + [p for p in base if p["id"] not in reasons]
-    return SimpleNamespace(judged=judged, primary=primary, opened=opened, shown_types=shown_types, by_type=by_type,
+    return SimpleNamespace(judged=judged, primary=primary, shown_types=shown_types, by_type=by_type,
                            consults=consults, guides=sel.barrier_guides(state.answers, data.questions),
                            pool=pool, places=places, reasons=reasons)
 
@@ -805,10 +800,11 @@ def place_area(data, text, context: SimpleNamespace) -> None:
     if result.widened:
         ui.notice(text["widened_note"], "info")
     rest = len(context.places) - MAP_PINS
+    # 제목 바로 아래의 작은 글: 누르면 자세히 볼 수 있다는 것과, 별이 붙은 곳이 있으면 별의 뜻.
+    # 지도 아래에 두면 휴대폰에서 지도에 밀려 먼저 보이지 않는다(11/26)
+    ui.map_notes(text["map_hint"], text["map_star_note"] if context.reasons else "")
     ui.place_map(context.places[:MAP_PINS], set(context.reasons), set(state.seen_places), open_place,
                  text["pin_more"].format(count=rest) if rest > 0 else "", go_more_places)
-    # 지도 아래 작은 글: 누르면 자세히 볼 수 있다는 것과, 별이 붙은 곳이 있으면 별의 뜻
-    ui.map_notes(text["map_hint"], text["map_star_note"] if context.reasons else "")
 
 
 def go_more_places() -> None:
@@ -817,43 +813,23 @@ def go_more_places() -> None:
 
 
 def more_area(data, text, context: SimpleNamespace, today) -> None:
-    """'더 보기'를 펼쳤을 때: 함께 볼 유형, 다른 분야, 함께 찾아 주는 곳, 답변 확인·수정, 바라는 점 다시 적기.
+    """'더 보기'를 펼쳤을 때. 순서(11/26): 답변 확인·수정 → 바라는 점 다시 적기 → 함께 찾아 주는 곳 → 먼저 볼 분야 다시 고르기.
 
-    본인이 연 다른 유형과 창구는 예전 모양(카드) 그대로 이 안에 그린다. 지도에 이미 놓인 곳은 카드를 되풀이하지 않는다.
+    다른 유형을 늘어놓지 않는다(11/26에 '함께 볼 유형'과 '다른 분야도 보기'를 뺐다. 다른 유형은 시작 화면의
+    '질문 없이 먼저 둘러보기'에서 본다). '먼저 볼 분야 다시 고르기'는 가장 높은 점수의 유형이 여럿이어서 본인이
+    골랐을 때만 나오고, 누르면 그 동점 유형들 가운데서 다시 고른다.
+    네 항목은 같은 모양의 줄이다(style.py의 .st-key-more_rows). 지도에 이미 놓인 창구는 되풀이하지 않는다.
     """
     state = st.session_state
-    judged, primary, opened = context.judged, context.primary, context.opened
-    top_n = int(data.settings.get("top_n", 1))
-    seen = {p["id"]: text["map_heading"] for p in context.places}
-
-    def draw_section(type_id: str) -> None:
-        type_section(data, text, context.by_type[type_id], text["type_label_other"], context.guides, top_n, seen,
-                     context.consults)
-
-    if judged.secondary:
-        ui.html(f'<p class="sec">{escape(text["secondary_heading"])}</p>')
-        type_buttons(data, [judged.secondary], opened, draw_section)
-
-    # 다른 유형은 늘어놓지 않고, 원하는 사람만 펼쳐 본다
-    others = [tid for tid in data.types if tid not in (primary, judged.secondary)]
-
-    def show_all() -> None:
-        state.show_all = True
-
-    # 한 번 펼치면 단추는 사라지고 목록만 남는다. 다시 접는 단추는 두지 않는다(연 유형이 숨어 버리지 않게)
-    if not (state.show_all or any(tid in opened for tid in others)):
-        st.button(width="stretch", label=text["more_types_button"], key="more_types", on_click=show_all)
-    else:
-        tied = [] if judged.secondary else judged.secondary_candidates
-        browse_types(data, text, others, tied, opened, draw_section)
-
-    rest = [p for p in context.consults if p["id"] not in seen]     # 지도나 위 구역에 이미 나온 창구는 다시 내지 않는다
-    if rest:
-        consult_section(data, text, rest, context.guides, folded=True)
-    edit_answers(data, text)
-    st.button(width="stretch", label=text["tune_again"], key="tune_again", on_click=go, args=("tune",))
-    if sel.PRIORITY_Q in state.answers:
-        st.button(width="stretch", label=text["repick_button"], key="repick", on_click=repick)
+    on_map = {p["id"] for p in context.places}
+    with st.container(key="more_rows"):
+        edit_answers(data, text)
+        st.button(width="stretch", label=text["tune_again"], key="tune_again", on_click=go, args=("tune",))
+        rest = [p for p in context.consults if p["id"] not in on_map]
+        if rest:
+            consult_section(data, text, rest, context.guides, folded=True)
+        if sel.PRIORITY_Q in state.answers:
+            st.button(width="stretch", label=text["repick_button"], key="repick", on_click=repick)
 
 
 def repick() -> None:
@@ -888,7 +864,7 @@ def screen_browse(data, text) -> None:
         type_section(data, text, result, text["type_label_browse"], [], top_n, seen, consults)
 
     ui.notice(text["browse_intro"], "info")
-    browse_types(data, text, list(data.types), [], opened, draw_section)
+    browse_types(data, text, list(data.types), opened, draw_section)
     rest = [p for p in consults if p["id"] not in seen]
     if rest:
         consult_section(data, text, rest, [], folded=True)
@@ -1017,6 +993,8 @@ def screen_more_places(data, text) -> None:
 
     ui.title_row(text["more_places_heading"].format(type=data.types[context.primary]["name"]), text["back_label"],
                  go, ("result",))
+    if any(program["id"] in context.reasons for program in rest):
+        ui.map_notes("", text["map_star_note"])
     for program in rest:
         # AI가 고른 곳은 상자 이름(more_ai_…)으로 표시해 이름 앞에 별을 붙인다(style.py). 지도에 못 놓인 곳일 수 있다
         picked = program["id"] in context.reasons
@@ -1024,8 +1002,6 @@ def screen_more_places(data, text) -> None:
             st.button(width="stretch", label=program["프로그램명"], key=f"open_{program['id']}",
                       on_click=open_place, args=(program["id"],))
         ui.html(f'<p class="small-note example-note">{escape(program["한줄설명"])}</p>')
-    if any(program["id"] in context.reasons for program in rest):
-        ui.map_notes("", text["map_star_note"])
     st.button(width="stretch", label=text["back_to_result"], key="back_bottom", on_click=go, args=("result",))
     ui.back_guard("back_bottom")
 

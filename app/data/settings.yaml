@@ -113,7 +113,6 @@ text:
   # 유형 카드 맨 위에는 캐릭터 그림이 나옵니다(app/ui/assets/type-characters, 답한 성별의 그림).
   type_label: "나의 유형"                         # 유형 이름 위의 작은 딱지
   type_image_alt: "{name} 캐릭터 그림"            # 그림을 볼 수 없는 분께 읽어 주는 설명. {name}은 유형 이름
-  type_label_other: "함께 살펴보는 분야"          # 본인이 눌러서 연 다른 유형의 상자
   feature_open: "내 특징 자세히 보기"             # 유형 설명 아래의 단추. 누르면 그 자리에 특징 글(types.yaml의 feature)이 펼쳐집니다
   feature_close: "특징 접기"
   # 첫걸음 지도: 대표 유형의 곳을 핀으로 최대 3곳 놓습니다. 핀을 누르면 그 곳의 안내 화면으로 갑니다.
@@ -128,9 +127,6 @@ text:
   map_checked_note: "곳의 정보는 {date}에 확인했어요. 신청 전에 기관에 꼭 확인해 주세요."   # 결과 화면 맨 아래 작은 글. 지도에 놓인 곳 가운데 가장 오래된 확인 날짜
   more_toggle: "더 보기"                          # 접힌 칸을 여는 단추: 다른 분야, 함께 찾아 주는 곳, 답변 확인·수정, 바라는 점 다시 적기
   more_toggle_close: "더 보기 접기"
-  secondary_heading: "이 분야도 함께 살펴보세요."   # 대표 유형 다음으로 점수가 높은 유형이 하나일 때
-  more_types_button: "다른 분야도 보기"
-  also_heading: "관심이 높다고 답하신 분야"
   # 가장 높은 점수의 유형이 여럿일 때(동점): 아래 문장 + questions.yaml의 Q_PRIORITY 질문이 나옵니다.
   # 전부 낮게 답한 사람에게도 나오므로 '관심이 있으시네요'라고 단정하지 않습니다.
   tie_two: "두 분야를 비슷하게 답하셨어요."
