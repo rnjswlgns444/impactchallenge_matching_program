@@ -342,20 +342,11 @@ CSS = """
 .stApp .st-key-tune_skip button > div { justify-content: flex-start; }
 .stApp .fine.tight { margin-top: 0; }
 
-/* ── 결과 화면(11/25): 유형 카드의 딱지와 '내 특징 자세히 보기' ── */
+/* ── 결과 화면: 유형 카드의 딱지. 특징 글은 카드 아래의 접힌 칸(feature_box)에 있다 ── */
 .stApp .st-key-type_hero .type-box[data-area] .type-label {
   display: inline-block; padding: .15rem .8rem; border-radius: 999px; background: var(--area-ink, var(--teal)); color: #fff;
 }
-/* 특징 단추: 설명(19px)보다 조금 작은 18px. 알약 모양 테두리와 화살표로 누르는 곳임을 알린다. 높이 48px */
-.stApp .st-key-type_hero .st-key-feature_toggle { width: auto; }
-.stApp .st-key-type_hero .st-key-feature_toggle button {
-  width: auto; min-height: 3rem; margin-top: .35rem; padding: 0 1.1rem;
-  border: 1.5px solid var(--area-ink, var(--teal)); border-radius: 999px; background: var(--surface);
-}
-.stApp .st-key-type_hero .st-key-feature_toggle button :is(p, [data-testid="stIconMaterial"]) {
-  color: var(--area-ink, var(--teal)); font-size: 1.125rem; font-weight: 700;
-}
-.stApp .st-key-type_hero .feature { margin-top: .25rem; text-align: left; font-size: 1.1875rem; line-height: 1.6; }
+.stApp .st-key-feature_box .feature { margin: 0; font-size: 1.1875rem; line-height: 1.6; }
 
 /* ── 첫걸음 지도(ui.place_map) ──
    상자(st-key-place_map) 안에는 단추만 있다. 풀밭·길·물·나무는 상자의 바탕 여러 겹이고, 감싸는 요소를 따로 만들지 않는다.

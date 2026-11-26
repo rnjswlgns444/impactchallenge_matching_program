@@ -598,7 +598,7 @@ def test_free_text_adds_ai_picks_with_reasons(app, fake_ai, tmp_path):
     saved = "".join(path.read_text(encoding="utf-8-sig") for path in tmp_path.iterdir())
     assert "사무 일" not in saved and "010-1234-5678" not in saved
 
-    click(app, "feature_toggle")                                    # 다른 단추를 눌러도, 화면을 오가도 AI를 다시 부르지 않는다
+    click(app, "save_toggle")                                       # 다른 단추를 눌러도, 화면을 오가도 AI를 다시 부르지 않는다
     assert len(fake_ai["prompts"]) == 1 and pin_labels(app)[0] == picked["프로그램명"]
 
 
@@ -867,7 +867,7 @@ def test_one_answer_can_be_fixed_from_the_result(app):
 
 
 def test_result_screen_order_and_what_is_left_out(app):
-    """결과 화면: 유형 카드 → 내 특징 자세히 보기 → 첫걸음 지도 → 저장·공유 → 더 보기 → 처음부터 다시 하기 → 작은 글.
+    """결과 화면: 유형 카드 → 이 유형의 특징(접힌 칸) → 첫걸음 지도 → 저장·공유 → 더 보기 → 처음부터 다시 하기 → 작은 글.
 
     따라다니는 목차, 주관식 칸, 세부 질문, 기관 카드는 이 화면에 없다. 나머지는 '더 보기'를 눌러야 나온다.
     """
@@ -881,23 +881,21 @@ def test_result_screen_order_and_what_is_left_out(app):
     places = [page.index(part) for part in order]
     assert places == sorted(places)
     buttons = [key for key in keys(app) if key != "to_start"]
-    assert buttons == ["feature_toggle", "pin_1", "pin_2", "pin_3", "pin_more", "save_toggle", "more_toggle", "restart"]
+    assert buttons == ["pin_1", "pin_2", "pin_3", "pin_more", "save_toggle", "more_toggle", "restart"]
 
     # 처음에는 접혀 있는 것, 이 화면에 없는 것
-    assert escape(info["feature"]) not in page
-    assert 'class="toc"' not in page and not app.text_area and not app.expander
+    assert 'class="toc"' not in page and not app.text_area
     assert not [key for key in keys(app) if key.startswith(("detail_", "edit_", "browse_"))]
     assert text["call_button"] not in page and text["say_prefix"] not in page and text["detail_button"] not in page
     assert not app.get("download_button") and len(app.get("image")) == 1
     checked = min(p["확인날짜"] for p in type_places(data, "T01", app)[:3])
     assert f"{int(checked[5:7])}월 {int(checked[8:])}일" in page          # 작은 글에 정보 확인 날짜
 
-    click(app, "feature_toggle")                               # 특징은 설명 바로 아래에서 펼치고 접는다
-    page = page_text(app)
+    # 특징 글은 카드 아래의 접힌 칸 하나에만 있다. 처음에는 접혀 있고, 알고 싶은 사람만 펼친다
+    [box] = app.expander
+    assert box.label == text["feature_heading"] and not box.proto.expanded
+    assert escape(info["feature"]) in " ".join(m.value for m in box.markdown)
     assert page.index(info["statement"]) < page.index(escape(info["feature"])) < page.index(text["map_heading"] + "</h2>")
-    assert app.button(key="feature_toggle").label == text["feature_close"]
-    click(app, "feature_toggle")
-    assert escape(info["feature"]) not in page_text(app)
 
     # 지도의 설명 글은 제목 바로 아래, 핀보다 앞에 있다(11/26: 휴대폰에서 지도에 밀려 안 보이지 않게)
     page = page_text(app)
@@ -910,10 +908,10 @@ def test_result_screen_order_and_what_is_left_out(app):
     assert app.button(key="more_toggle").label == text["more_toggle_close"]
     opened = keys(app)
     assert "tune_again" in opened and "edit_Q01" in opened and "repick" not in opened and "more_types" not in opened
-    assert [e.label for e in app.expander] == [text["edit_heading"], text["consult_heading"]]
+    assert [e.label for e in app.expander] == [text["feature_heading"], text["edit_heading"], text["consult_heading"]]
     inside = [e.key if e.type == "button" else e.label for e in app.main
               if (e.type == "button" and e.key == "tune_again") or e.type == "expander"]
-    assert inside == [text["edit_heading"], "tune_again", text["consult_heading"]]
+    assert inside == [text["feature_heading"], text["edit_heading"], "tune_again", text["consult_heading"]]
     click(app, "more_toggle")
     assert "tune_again" not in keys(app)
 
@@ -1228,7 +1226,6 @@ def test_place_screen_goes_back_to_the_same_result(app, tmp_path):
     take_survey(app, barrier="cost", T12=(5, 5))
     answers, pins = dict(app.session_state.answers), pin_labels(app)
     places = type_places(data, "T12", app)
-    click(app, "feature_toggle")
 
     for number, back in ((1, "back_top"), (2, "back_bottom")):
         click(app, f"pin_{number}")

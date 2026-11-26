@@ -71,7 +71,7 @@ TEXT_KEYS = """
     browse_heading browse_help consult_heading
     tune_badge tune_heading tune_help tune_skip tune_done tune_again
     free_privacy free_placeholder free_unclear free_wait map_hint map_star_note ai_reason ai_none ai_fail
-    feature_open feature_close map_heading back_label back_to_result more_toggle more_toggle_close
+    feature_heading map_heading back_label back_to_result more_toggle more_toggle_close
     kind_always kind_period kind_list nationwide card_ask target_label first_visit_label
     check_heading age_unconfirmed worry_heading say_prefix call_button apply_button detail_button home_button
     list_note list_button

@@ -75,7 +75,6 @@ def init_state() -> None:
         "ai_pending": False,  # AI에게 물어야 하는지. 결과 화면이 지도 자리에서 한 번 부르고 끈다
         "ai_wish": None,      # AI에게 보낼(보낸) 글. 화면에만 두고 기록하지 않는다
         "tuned": False,       # '조금 더 맞춰 보기' 화면을 지나왔는지. 한 번만 거친다
-        "feature_open": False,  # 결과 화면에서 '내 특징 자세히 보기'를 펼쳤는지
         "save_open": False,   # '내 결과 저장하기'를 눌러 사진을 펼쳤는지
         "more_open": False,   # 결과 화면의 '더 보기'를 펼쳤는지
         "place": None,        # 센터 정보 화면에서 보여 줄 곳의 id. 그릴 때마다 지금 후보에 있는지 다시 확인한다
@@ -741,7 +740,7 @@ def save_result(data, text, result: candidates.TypeResult, consults: list[dict],
 
 
 def flip(key: str) -> None:
-    """펼침 표시(feature_open, save_open, more_open)를 뒤집는다."""
+    """펼침 표시(save_open, more_open)를 뒤집는다."""
     st.session_state[key] = not st.session_state.get(key)
 
 
@@ -908,16 +907,10 @@ def screen_result(data, text) -> None:
     type_info = data.types[primary]
     gender = state.answers.get(sel.GENDER_Q)                  # 캐릭터 그림을 고르는 데만 쓴다. 저장하지 않는다
 
-    def feature_area() -> None:
-        # 설명 바로 아래의 단추. 누르면 그 자리에 특징 글이 펼쳐지고, 다시 누르면 접힌다
-        opened = state.feature_open
-        st.button(text["feature_close"] if opened else text["feature_open"], key="feature_toggle", icon_position="right",
-                  icon=":material/expand_less:" if opened else ":material/expand_more:", on_click=flip, args=("feature_open",))
-        if opened:
-            ui.feature_text(type_info["feature"])
-
     ui.type_header(text["type_label"], type_info, ui.character_image(primary, gender),
-                   text["type_image_alt"].format(name=type_info["name"]), inside=feature_area)
+                   text["type_image_alt"].format(name=type_info["name"]))
+    with st.expander(text["feature_heading"], key="feature_box"):     # 특징 글은 카드 밖, 알고 싶은 사람만 펼쳐 본다
+        ui.feature_text(type_info["feature"])
 
     ui.heading(text["map_heading"])
     place_area(data, text, context)
