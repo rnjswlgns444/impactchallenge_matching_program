@@ -20,6 +20,7 @@ app/logs/
 .mcp.json
 /.claude/
 /CLAUDE.md
+/shrimp-rules.md
 
 # 화면 확인용 스크린샷
 .playwright-mcp/
