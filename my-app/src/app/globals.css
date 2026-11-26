@@ -2,13 +2,24 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/*
+  화면 기준 (원문: app/ui/style.py)
+  - 1rem = 20px. html 글씨를 125%로 올려 shadcn 부품 전체를 1.25배로 키운다.
+    style.py의 rem 값을 옮길 때는 1.25로 나눈다. 예: 3.875rem(62px) -> 3.1rem
+  - 본문 20px, 줄 간격 1.62, 주 단추 높이 62px, 단추 모서리 13.6px, 카드 모서리 18px
+  - 다크 모드는 만들지 않는다. 아래 .dark는 shadcn이 넣은 그대로이고 켜지지 않는다.
+*/
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
+  /* 글꼴 이름을 직접 적는다. Pretendard가 없으면 기기 글꼴로 보인다 */
+  --font-sans:
+    "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo",
+    "Noto Sans KR", "Malgun Gothic", "맑은 고딕", system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -42,37 +53,55 @@
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-xl: 0.9rem; /* 카드 18px */
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* 작은 글 18px. shadcn의 카드·안내 상자·창 설명이 모두 text-sm이다 */
+  --text-sm: 0.9rem;
+  --text-sm--line-height: 1.6;
+
+  /* 우리 색 이름 */
+  --color-cta: #fee500; /* 노란 주 단추 */
+  --color-cta-hover: #f4da02;
+  --color-cta-foreground: #202e27;
+  --color-cta-border: #857810;
+  --color-ink: #143f3c; /* 제목 글 */
+  --color-teal: #12675f;
+  --color-aqua: #ddf4ec;
+  --color-clay: #984a32;
+  --color-line: #77897c; /* 단추 테두리 */
+  --color-off: #ebebe2; /* 꺼진 단추 바탕 */
+  --color-off-foreground: #58645d;
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --background: #f8fbf7;
+  --foreground: #263c37;
+  --card: #ffffff;
+  --card-foreground: #263c37;
+  --popover: #ffffff;
+  --popover-foreground: #263c37;
+  /* primary는 청록이다. shadcn이 진행 막대·고른 선택지·글 링크에도 쓰므로 노랑으로 바꾸지 않는다 */
+  --primary: #12675f;
+  --primary-foreground: #ffffff;
+  --secondary: #ddf4ec;
+  --secondary-foreground: #143f3c;
+  --muted: #f0f5eb;
+  --muted-foreground: #4b615a;
+  --accent: #ddf4ec;
+  --accent-foreground: #143f3c;
+  --destructive: #a33c2e;
+  --border: #d3e1d8;
+  --input: #77897c;
+  --ring: #125864;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 0.68rem; /* 단추 13.6px */
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -121,10 +150,29 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
     @apply font-sans;
+    font-size: 125%; /* 1rem = 20px */
+    color-scheme: light;
   }
+  body {
+    @apply bg-background text-foreground;
+    line-height: 1.62;
+    /* 한글은 낱말 단위로 줄을 바꾼다 */
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    /* 아이폰 사파리에서 Base UI의 창 덮개가 화면 끝까지 닿게 한다 */
+    position: relative;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply text-ink;
+  }
+}
+
+/* 키보드 초점 테두리. 레이어 밖에 두어 부품의 outline-none보다 앞선다 */
+:is(a, button, summary, input, textarea, select, [role="radio"], [tabindex]):focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 3px;
 }
