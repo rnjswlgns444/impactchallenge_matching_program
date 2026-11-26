@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 
 import { SessionDemo } from "./session-demo";
+import { SurveyDemo } from "./survey-demo";
 
 export const metadata: Metadata = { title: "부품 모아 보기", robots: { index: false } };
 
@@ -91,6 +92,10 @@ export default function DevUiPage() {
             <AlertTitle>실패</AlertTitle>
             <AlertDescription>잠시 뒤에 다시 눌러 주세요.</AlertDescription>
           </Alert>
+        </Group>
+
+        <Group title="설문 시험판 (3문항)">
+          <SurveyDemo />
         </Group>
 
         <Group title="답 저장소">
