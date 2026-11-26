@@ -6,24 +6,34 @@
 
 type Dict = Record<string, unknown>;
 
-// ── 코드가 이름으로 찾는 값 (파이썬: selection.py, scoring.py, loader.py) ──
-export const BARRIER_Q = "Q_BARRIER";
-export const PRIORITY_Q = "Q_PRIORITY";
-export const FREE_Q = "Q_FREE";
-export const GENDER_Q = "P_GENDER";
-export const AGE_Q = "P_AGE";
-export const WORK_Q = "P_WORK";
+import {
+  AGE_MAX_COLUMN,
+  AGE_MIN_COLUMN,
+  AGE_Q,
+  BARRIER_Q,
+  CANDIDATE_TYPES,
+  FREE_Q,
+  GENDER_Q,
+  KIND_ALWAYS,
+  KIND_LIST,
+  KIND_PERIOD,
+  NATIONWIDE,
+  PRIORITY_Q,
+  PROFILE_CHOICES,
+  SCALE_MAX,
+  SCALE_MIN,
+  UNCONFIRMED,
+  WORK_Q,
+  splitMulti,
+} from "../../src/core/table";
+
+// 이름과 칸의 값은 src/core/table.ts에 한 번만 적는다. 여기서는 가져다 쓰고, 쓰던 곳을 위해 다시 내보낸다.
+export { BARRIER_Q, splitMulti };
+
 export const QUESTION_IDS = [BARRIER_Q, PRIORITY_Q, FREE_Q, GENDER_Q, AGE_Q, WORK_Q];
 
-// 기본정보 답과 견주는 정보표 열: [문항 id, 열 이름, 그 열에 적을 수 있는 선택지 id]
-export const PROFILE_CHOICES: [string, string, string[]][] = [
-  [GENDER_Q, "대상성별", ["male", "female"]],
-  [WORK_Q, "대상재직상태", ["employed", "self_employed", "not_working"]],
-];
-export const AGE_MIN_COLUMN = "최소나이";
-export const AGE_MAX_COLUMN = "최대나이";
-
-export const SCALE_VALUES = [1, 2, 3, 4, 5];
+// 척도 값. 범위는 table.ts가 정한다
+export const SCALE_VALUES = Array.from({ length: SCALE_MAX - SCALE_MIN + 1 }, (_, i) => SCALE_MIN + i);
 export const ITEMS_PER_TYPE = 2; // 유형마다 척도 문항 수. 점수 기준(high)이 이 수를 전제한다
 export const FEATURE_MAX = 160;
 
@@ -41,11 +51,10 @@ export const PIN_WORDS = ["건강", "상담", "일", "가게", "배움", "문화
 export const PLACEHOLDERS = ["{type_name}", "{type_summary}", "{wish_examples}", "{wish_text}", "{candidates}", "{max_n}"];
 
 const SELECTIONS = ["single", "multi", "number", "scale", "text"];
-const OPTION_SOURCES = ["candidate_types"];
-const KINDS = ["상시서비스", "기간프로그램", "목록"];
-const UNCONFIRMED = "미확인";
+const OPTION_SOURCES = [CANDIDATE_TYPES];
+const KINDS = [KIND_ALWAYS, KIND_PERIOD, KIND_LIST];
 const AGE_VALUES = ["가능", "불가", UNCONFIRMED];
-const SCOPES = ["안산", "전국"];
+const SCOPES = ["안산", NATIONWIDE];
 const PAY_VALUES = ["해당없음", "유급", "활동비", "무보수", UNCONFIRMED];
 const TASTE_KINDS = ["", "영상", "공개강좌", "앱체험"];
 const FALLBACK_KEYS = ["name", "org", "description", "phone", "say"]; // url은 없어도 된다
@@ -76,14 +85,6 @@ const sameSet = (a: unknown[], b: unknown[]) => {
   const right = new Set(b);
   return left.size === right.size && [...left].every((value) => right.has(value));
 };
-
-// 'a|b|c' 꼴의 칸을 목록으로 바꾼다
-export function splitMulti(value: string | undefined): string[] {
-  return (value ?? "")
-    .split("|")
-    .map((part) => part.trim())
-    .filter(Boolean);
-}
 
 function checkOptions(where: string, options: Dict[], problems: string[]): void {
   const seen = new Set<unknown>();
