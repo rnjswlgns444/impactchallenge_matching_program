@@ -613,12 +613,12 @@ def test_missing_screen_text_is_reported_at_start(data):
     assert loader.validate_text(data.settings) == []
     settings = copy.deepcopy(data.settings)
     del settings["text"]["ai_none"]                       # 드물게 나오는 문구
-    settings["text"]["more_button"] = "더 보기 ({num}곳)"   # 코드가 채워 주지 않는 자리표시자
+    settings["text"]["pin_more"] = "다른 곳 ({num}곳)"   # 코드가 채워 주지 않는 자리표시자
     settings["text"]["ai_unmatched"] = "못 찾음 {items"   # 중괄호 짝이 안 맞음
     del settings["fallback_card"]["phone"]
     del settings["app_title"]
     text = "\n".join(loader.validate_text(settings))
-    for expected in ("'ai_none' 문구가 없습니다", "'more_button'에는 중괄호를 {count} 꼴로만", "'ai_unmatched'에는 중괄호를",
+    for expected in ("'ai_none' 문구가 없습니다", "'pin_more'에는 중괄호를 {count} 꼴로만", "'ai_unmatched'에는 중괄호를",
                      "fallback_card에 'phone'", "app_title"):
         assert expected in text, expected
     assert loader.validate_text({}) != []

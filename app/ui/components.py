@@ -1,8 +1,11 @@
 """화면 조각: 문항 머리말, 안내 상자, 유형 머리말, 프로그램 카드, 목록 카드."""
 from __future__ import annotations
 
+import base64
+import io
 import json
 import re
+from functools import lru_cache
 from html import escape
 from pathlib import Path
 
@@ -18,6 +21,7 @@ _NUMBER = re.compile(r"\d{2,4}-\d{3,4}-\d{4}|\d{4}-\d{4}|\d{3,4}")  # 031-481-29
 REMOTE_PLACES = {"전화 문의", "전화 상담", "전화·온라인 상담", "온라인 상담", "온라인", "비대면", "집으로 방문하는 서비스"}
 VISIT_GUIDES = {"alone", "first_visit"}     # 직접 찾아갈 때만 뜻이 있는 걸림돌(questions.yaml의 Q_BARRIER 선택지 id)
 CHARACTER_DIR = Path(__file__).resolve().parent / "assets" / "type-characters"   # 유형 캐릭터 그림(유형 12개 × 성별 2)
+TILE_WIDTH = 200                            # 둘러보기 칸에 까는 그림의 폭(px). 화면에는 100px 안팎으로 보인다(두 배)
 CHARACTER_WIDTH = 400                       # 보내는 그림의 폭(px). 화면에는 style.py가 200px로 보여 준다(휴대폰에서 선명하게 보이도록 두 배)
 # 시작 화면의 그림 상자에 왼쪽부터 세우는 캐릭터 (유형 id, 성별 선택지 id). 팀 포스터와 같은 세 명이다.
 # 일자리·여가·생활 분야에서 하나씩 골랐다. 바꾸려면 이 줄만 고친다. 셋이 아니면 home.css의 칸 수도 함께 고친다
@@ -309,6 +313,31 @@ def character_image(type_id: str, gender: str | None) -> Path | None:
         return None
     path = CHARACTER_DIR / f"{type_id.lower()}-{gender}.webp"
     return path if path.is_file() else None
+
+
+@lru_cache(maxsize=None)
+def _tile_uri(path: str) -> str:
+    """캐릭터 그림을 작게 줄여 CSS에 바로 넣을 수 있는 글자(data URI)로 만든다. 한 번 만들면 다시 만들지 않는다."""
+    from PIL import Image                   # 둘러보기 화면에서만 쓰므로 여기서 부른다
+
+    with Image.open(path) as picture:
+        small = picture.convert("RGBA")
+        small.thumbnail((TILE_WIDTH, TILE_WIDTH))
+        out = io.BytesIO()
+        small.save(out, "WEBP", quality=80)
+    return "data:image/webp;base64," + base64.b64encode(out.getvalue()).decode("ascii")
+
+
+def type_grid_art(images: dict[str, Path | None]) -> None:
+    """둘러보기 칸 목록의 그림. {유형 id: 그림 경로}를 받아 칸 단추(browse_type_유형id)의 바탕 그림으로 깐다.
+
+    Streamlit 단추에는 그림을 넣을 수 없어서 CSS 바탕 그림으로 넣는다. 그림은 꾸밈이고, 단추의 글(유형 이름)이
+    화면 읽기 도구에 읽힌다. 그림 파일이 없는 유형은 그림 없이 이름만 보인다.
+    """
+    rules = "".join(f'.stApp .st-key-browse_type_{type_id} button {{ background-image: url("{_tile_uri(str(path))}") !important; }}'
+                    for type_id, path in images.items() if path)
+    if rules:
+        html(f"<style>{rules}</style>")
 
 
 def home_art() -> None:

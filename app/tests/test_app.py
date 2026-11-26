@@ -305,7 +305,7 @@ def test_all_same_answers_let_the_user_choose(app, tmp_path):
     assert text["type_label"] in page and data.types["T07"]["name"] in page
     assert pin_labels(app) == [p["프로그램명"] for p in type_places(data, "T07", app)[:3]] and pin_labels(app)
     assert text["no_program"] not in page
-    assert text["contacts_heading"] not in page                # 11/22: 동네친구형은 둘러볼 목록(L15·L16)만 있다
+    assert "문의할 수 있는 곳" not in page                      # 11/22: 동네친구형은 둘러볼 목록(L15·L16)만 있다
     click(app, "more_toggle")
     click(app, "repick")                                       # 다시 고르면 12개가 다시 나온다(모두 동점이었다)
     assert [key for key in keys(app) if key.startswith("priority_")] == [f"priority_{tid}" for tid in data.types]
@@ -800,36 +800,62 @@ def test_mind_and_health_detail_answers_are_not_logged(app, tmp_path):
     assert "chronic" not in (tmp_path / "responses.csv").read_text(encoding="utf-8-sig")
 
 
-def test_browse_without_the_survey(app, tmp_path):
-    """첫 화면에서 설문 없이 분야별로 볼 수 있다. 답이 없으니 거르지 않고, 응답 기록도 남기지 않는다."""
+def test_browse_without_the_survey(app, tmp_path, fake_ai):
+    """첫 화면에서 설문 없이 둘러본다: 12개 유형의 칸 목록 → 누른 유형의 소개 화면(기본 결과 화면, 11/26).
+
+    답이 없으니 대상 조건으로 거르지 않고, 응답 기록을 남기지 않고, AI를 부르지 않는다.
+    """
     data = loader.load_all()
     text = data.settings["text"]
     click(app, "start_browse")
     assert app.session_state.screen == "browse" and not app.session_state.answers
-    page = page_text(app)
-    assert text["browse_intro"] in page and text["browse_heading"] in page
-    assert "tune_done" not in keys(app) and not app.text_area        # 직접 적기(AI)는 설문 뒤 '맞춰 보기' 화면에만 있다
-    assert not [key for key in keys(app) if key.startswith("pin_")]  # 둘러보기는 지도가 아니라 예전 모양(카드)이다
+    assert text["browse_heading"] in page_text(app)
+    tiles = [b for b in app.button if b.key.startswith("browse_type_")]
+    assert [b.key for b in tiles] == [f"browse_type_{tid}" for tid in data.types]       # 12칸, 유형 순서대로
+    assert [b.label for b in tiles] == [info["name"] for info in data.types.values()]   # 칸의 글은 유형 이름뿐이다
+    assert not [key for key in keys(app) if key.startswith("pin_")] and not app.text_area
 
-    click(app, "browse_T01")
+    click(app, "browse_type_T01")                                     # 칸을 누르면 그 유형의 소개 화면으로 간다
+    assert app.session_state.screen == "view" and app.session_state.view_type == "T01"
     page = page_text(app)
+    info = data.types["T01"]
+    order = [text["type_label_browse"], info["name"], info["statement"], escape(info["feature"]),
+             f'<h2 class="q-title">{text["map_heading"]}</h2>']
+    assert [page.index(part) for part in order] == sorted(page.index(part) for part in order)
+    assert text["type_label"] not in page and len(app.get("image")) == 1      # '나의 유형'이라고 하지 않는다. 그림은 한 장
+    assert [e.label for e in app.expander] == [text["feature_heading"]]
+    # 설문 결과에만 있는 것은 없다: 맞춰 보기, 저장·공유, 더 보기, 처음부터 다시 하기
+    buttons = [key for key in keys(app) if key != "to_start"]
+    assert buttons == ["pin_1", "pin_2", "pin_3", "pin_more", "view_back", "view_to_survey"]
+    assert text["share_button"] not in page and not app.text_area
+
     everyone = candidates.for_type(data.programs, data.types["T01"], None, clock.now())
-    assert data.types["T01"]["statement"] in page and everyone.contacts[0]["프로그램명"] in page
-    assert not app.get("image")                                        # 성별 답이 없으니 캐릭터 그림도 없다
-    women_only = [p for p in everyone.contacts if p["대상성별"]]
+    places = everyone.contacts + everyone.lists
+    women_only = [p for p in places if p["대상성별"]]
     assert women_only                                                 # 성별 조건이 있는 곳도 빼지 않고 후보에 둔다
-    click(app, "more_T01")
-    assert not [p for p in women_only if p["프로그램명"] not in page_text(app)]
+    assert pin_labels(app) == [p["프로그램명"] for p in places[:3]]
 
-    click(app, "browse_T11")                                          # 돌봄은 여기서도 먼저 골라야 나온다
-    assert escape(text["detail_first"]) in page_text(app)
-    assert not (tmp_path / "responses.csv").exists()
+    click(app, "pin_1")                                               # 핀 → 센터 정보 → 돌아가면 유형 소개 화면이다
+    assert app.session_state.screen == "place" and places[0]["프로그램명"] in page_text(app)
+    click(app, "back_bottom")
+    assert app.session_state.screen == "view" and app.session_state.view_type == "T01"
+    click(app, "pin_more")
+    assert app.session_state.screen == "more_places"
+    shown = [b.key for b in app.button if b.key.startswith("open_")]
+    assert shown == [f"open_{p['id']}" for p in places[3:]]
+    assert not [p for p in women_only if p in places[3:] and f"open_{p['id']}" not in shown]
+    click(app, "back_top")
+    assert app.session_state.screen == "view"
 
-    click(app, "browse_to_start")                                     # 나가면 열어 본 분야를 지운다
-    assert app.session_state.screen == "start" and app.session_state.opened == []
-    click(app, "start_browse")
-    click(app, "browse_to_survey")
+    click(app, "view_back")                                           # 다른 유형 보기 → 목록
+    assert app.session_state.screen == "browse"
+    click(app, "browse_type_T11")                                     # 돌봄은 여기서도 먼저 골라야 나온다
+    assert escape(text["detail_first"]) in page_text(app) and not [key for key in keys(app) if key.startswith("pin_")]
+    assert not (tmp_path / "responses.csv").exists() and not fake_ai["prompts"]
+
+    click(app, "view_to_survey")                                      # 설문으로 떠나면 둘러본 흔적을 지운다
     assert app.session_state.screen == "survey"
+    assert app.session_state.view_type is None and app.session_state.details == {} and app.session_state.seen_places == []
 
 
 def test_one_answer_can_be_fixed_from_the_result(app):
@@ -1047,6 +1073,12 @@ def test_phone_back_points_at_a_button_that_is_on_the_screen(app):
     assert back_key() is None                                  # 시작 화면
     click(app, "start_browse")
     assert back_key() == "browse_to_start" and "browse_to_start" in keys(app)
+    click(app, "browse_type_T01")                              # 유형 소개 화면에서는 유형 목록으로 돌아간다
+    assert back_key() == "view_back" and "view_back" in keys(app)
+    click(app, "pin_1")
+    assert back_key() == "back_bottom" and "back_bottom" in keys(app)
+    click(app, "back_bottom")
+    click(app, "view_back")
     click(app, "browse_to_start")
     click(app, "start")
     assert back_key() == "back_survey" and "back_survey" in keys(app)
@@ -1180,7 +1212,7 @@ def test_type_with_lists_only_never_says_contacts(app, cards):
     take_survey(app, T07=(5, 5))
     page = page_text(app)
     assert text["map_heading"] + "</h2>" in page and pin_labels(app)
-    assert text["contacts_heading"] not in page and text["card_places_heading"] not in page
+    assert "문의할 수 있는 곳" not in page and text["card_places_heading"] not in page
     click(app, "pin_1")                                        # 목록 행의 안내 화면은 목록 카드다(전화로 문의하라고 하지 않는다)
     page = page_text(app)
     assert text["list_note"] in page and text["list_button"] in page and text["say_prefix"] not in page

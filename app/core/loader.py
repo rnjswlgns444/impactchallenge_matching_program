@@ -63,11 +63,11 @@ TEXT_KEYS = """
     top_sub to_start_button restart_ask_title restart_ask_body restart_keep restart_go
     start_heading team_name
     start_intro start_notes_title start_privacy start_ai_note start_refresh start_privacy_saving start_button
-    start_browse_button browse_intro browse_to_survey browse_to_start type_label_browse
+    start_browse_button browse_to_survey browse_to_start type_label_browse view_back
     scale_help cheer_half cheer_last number_placeholder number_next number_required multi_help next_button back_button
     type_label
     tie_two tie_many repick_button edit_heading edit_select edit_notice edit_cancel
-    detail_label detail_first widened_note contacts_heading lists_heading no_program no_program_at_all
+    detail_label detail_first widened_note lists_heading no_program no_program_at_all
     browse_heading browse_help consult_heading
     tune_badge tune_heading tune_help tune_skip tune_done tune_again
     free_privacy free_placeholder free_unclear free_wait map_hint map_star_note ai_reason ai_none ai_fail
@@ -84,7 +84,7 @@ TEXT_KEYS = """
 TEXT_FIELDS = {
     "progress_scale": {"number", "total"}, "priority_example": {"org", "program"},
     "edit_option": {"number", "question", "answer"}, "type_image_alt": {"name"},
-    "more_button": {"count"}, "ai_unmatched": {"items"},
+    "ai_unmatched": {"items"},
     "seen_note": {"type"}, "unconfirmed": {"column"}, "checked_note": {"date"},
     "card_footer": {"date"}, "pin_more": {"count"}, "more_places_heading": {"type"}, "map_checked_note": {"date"},
 }

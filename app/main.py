@@ -68,8 +68,7 @@ def init_state() -> None:
         "answers": {},        # {문항 id: 답}. 설문에서 확정한 것만 들어간다
         "draft": {},          # '다음'을 누르기 전까지 고른 것(아직 답이 아니다), '이전으로' 돌아왔을 때 앞서 한 답
         "details": {},        # {유형 id: 세부 질문의 답}
-        "more": [],           # '더 보기'를 누른 유형
-        "opened": [],         # 둘러보기 화면에서 본인이 눌러서 연 유형
+        "view_type": None,    # 둘러보기에서 본인이 누른 유형. 유형 소개 화면(screen_view)과 거기서 연 센터 정보가 쓴다
         "logged": None,       # 기록한 응답의 모양. 한 번 진행에 responses.csv 한 행만 남기려고 둔다
         "ai": None,           # AI 추가 추천 결과(llm_matcher.AiResult). 맞춰 보기에서 '결과 보기'를 누를 때만 바뀐다
         "ai_pending": False,  # AI에게 물어야 하는지. 결과 화면이 지도 자리에서 한 번 부르고 끈다
@@ -84,7 +83,7 @@ def init_state() -> None:
         st.session_state.setdefault(key, value)
 
 
-HOME_SCREENS = ("tune", "result", "place", "more_places", "browse")   # 맨 위 띠의 앱 이름을 눌러 처음으로 갈 수 있는 화면(설문 중에는 안 된다)
+HOME_SCREENS = ("tune", "result", "place", "more_places", "browse", "view")   # 맨 위 띠의 앱 이름을 눌러 처음으로 갈 수 있는 화면(설문 중에는 안 된다)
 MAP_PINS = 3                              # 첫걸음 지도에 핀으로 놓는 곳의 수. 더 있으면 '다른 곳 n곳' 핀 하나로 묶는다
 
 
@@ -388,122 +387,9 @@ def detail_question(text, type_info: dict, detail: dict, plain: bool = False) ->
                       type="primary" if selected else "secondary", on_click=pick, args=(option["id"],))
 
 
-def visible_contacts(result: candidates.TypeResult, top_n: int) -> list[dict]:
-    if result.type_id in st.session_state.more:
-        return result.contacts
-    return result.contacts[:top_n]
-
-
 def no_place(result: candidates.TypeResult) -> bool:
     """이 유형에 안내할 곳이 하나도 없는가. (먼저 골라야 해서 아직 안 보여 주는 경우는 아니다)"""
     return not result.needs_choice and not result.contacts and not result.lists
-
-
-def consult_instead(data, text, result: candidates.TypeResult, guides, seen: dict[str, str], consults: list[dict]) -> None:
-    """안내할 곳이 없는 유형: 그 사실을 알리고, 함께 찾아 주는 창구를 바로 붙인다."""
-    tid = result.type_id
-    ui.notice(text["no_program"])
-    for program in consults[:1]:
-        if program["id"] in seen:
-            ui.seen_card(program, text, seen[program["id"]])
-        else:
-            seen[program["id"]] = data.types[tid]["name"]
-            ui.program_card(program, text, None, guides, None, key=f"{tid}_consult_{program['id']}")
-
-
-def type_section(data, text, result: candidates.TypeResult, label: str, guides, top_n: int,
-                 seen: dict[str, str], consults: list[dict]) -> None:
-    """본인이 연 유형 하나의 구역(결과 화면 '더 보기'의 다른 유형, 둘러보기 화면). 대표 유형은 screen_result가 그린다.
-
-    seen은 {이미 카드로 나온 프로그램 id: 그 유형 이름}이고, 여기서 나온 것을 더한다.
-    label은 유형 이름 위의 작은 글이다.
-    """
-    type_info = data.types[result.type_id]
-    ui.type_header(label, type_info)
-
-    if result.needs_choice:
-        # 먼저 골라야 하는 세부 질문(돌봄: 누구의 돌봄인지). 고르기 전에는 곳을 보여주지 않는다
-        detail_question(text, type_info, sel.detail_of(type_info))
-        ui.notice(text["detail_first"], "info")
-        return
-    if no_place(result):
-        consult_instead(data, text, result, guides, seen, consults)   # 세부 질문은 묻지 않는다
-        return
-    detail = sel.detail_of(type_info)
-    if detail:
-        detail_question(text, type_info, detail)
-    type_places(data, text, result, guides, top_n, seen)
-
-
-def type_places(data, text, result: candidates.TypeResult, guides, top_n: int, seen: dict[str, str],
-                heading: bool = True) -> None:
-    """유형의 곳 목록: 문의할 곳 카드, '더 보기', 목록에서 직접 찾아보기.
-
-    heading: '지금 문의할 수 있는 곳' 작은 제목을 붙일지. 대표 유형은 구역 제목이 이미 그 말이라 붙이지 않는다.
-    """
-    state = st.session_state
-    tid = result.type_id
-    type_info = data.types[tid]
-    asked = [opt["label"] for opt in sel.chosen_detail_options(type_info, state.details.get(tid))]
-    if result.widened:
-        ui.notice(text["widened_note"], "info")
-
-    if result.contacts:
-        if heading:
-            ui.html(f'<p class="sec">{escape(text["contacts_heading"])}</p>')
-        shown = visible_contacts(result, top_n)
-        for program in shown:
-            if program["id"] in seen:
-                ui.seen_card(program, text, seen[program["id"]])
-                continue
-            seen[program["id"]] = type_info["name"]
-            ui.program_card(program, text, type_info, guides, asked, key=f"{tid}_{program['id']}")
-        hidden = len(result.contacts) - len(shown)
-        if hidden:
-            def show_more() -> None:
-                state.more.append(tid)
-                logger.log_event(state.sid, "more", tid)
-            st.button(width="stretch", label=text["more_button"].format(count=hidden), key=f"more_{tid}",
-                      on_click=show_more)
-
-    if result.lists:
-        ui.html(f'<p class="sec">{escape(text["lists_heading"])}</p>')
-        for program in result.lists:
-            ui.list_card(program, text)
-
-
-def type_buttons(data, type_ids: list[str], opened: list[str], draw_section) -> None:
-    """유형을 여는 단추들. 본인이 누른 것만 연다(state.opened). 다시 누르면 닫힌다.
-
-    누른 유형의 안내는 그 단추 바로 아래에 그린다(draw_section). 화면 밖에 생기면 찾지 못한다.
-    """
-    state = st.session_state
-
-    def pick(type_id: str) -> None:
-        if type_id in state.opened:
-            state.opened = [tid for tid in state.opened if tid != type_id]
-        else:
-            state.opened = state.opened + [type_id]
-        logger.log_event(state.sid, "browse", type_id)
-
-    for tid in type_ids:
-        type_info = data.types[tid]
-        selected = tid in opened
-        st.button(width="stretch", label=check_label(f'{type_info["name"]}: {type_info["purpose"]}', selected),
-                  key=f"browse_{tid}", type="primary" if selected else "secondary", on_click=pick, args=(tid,))
-        if selected:
-            draw_section(tid)
-
-
-def browse_types(data, text, type_ids: list[str], opened: list[str], draw_section) -> None:
-    """유형을 영역별로 둘러본다(질문 없이 둘러보기 화면). 결과 화면에서는 다른 유형을 늘어놓지 않는다(11/26)."""
-    ui.heading(text["browse_heading"])
-    ui.html(f'<p class="q-help">{escape(text["browse_help"])}</p>')
-    for area in data.areas:
-        in_area = [tid for tid in type_ids if data.types[tid].get("area") == area["id"]]
-        if in_area:
-            ui.html(f'<p class="area" data-area="{escape(area["id"], quote=True)}">{escape(area["label"])}</p>')
-            type_buttons(data, in_area, opened, draw_section)
 
 
 def consult_section(data, text, consults: list[dict], guides, folded: bool = False) -> None:
@@ -553,8 +439,11 @@ def judge(data) -> scoring.Score:
                          data.settings["scoring"]["high"], state.answers.get(sel.PRIORITY_Q))
 
 
-def result_context(data, today) -> SimpleNamespace:
+def result_context(data, today, view: str | None = None) -> SimpleNamespace:
     """결과·센터 정보·다른 곳 목록 화면이 함께 쓰는 것. 저장해 두지 않고 화면을 그릴 때마다 답과 정보표에서 다시 만든다.
+
+    view(유형 id)를 주면 설문 없이 그 유형을 본다(둘러보기). 채점하지 않고, 기본정보 답이 없으니 대상 조건으로
+    거르지 않으며, AI 후보와 걸림돌 안내도 없다. 운영 중·종료일·유형 거르기는 똑같이 candidates가 한다.
 
     거르기는 모두 candidates가 한다(운영 중, 종료일·종료시각, 기본정보, 유형). 여기서는 걸러진 것의 순서만 정한다.
     places: 지도와 '다른 곳' 목록에 놓을 곳 전체. 대표 유형의 문의할 곳 → 목록 순서이고, 둘 다 없으면 일반 창구다.
@@ -562,27 +451,32 @@ def result_context(data, today) -> SimpleNamespace:
     reasons: {AI가 고른 곳의 id: 추천 이유}. 센터 정보 화면은 places에 있는 곳만 그린다.
     """
     state = st.session_state
-    judged = judge(data)
-    primary = judged.primary
+    if view:
+        judged, primary, profile, guides, ai = None, view, None, [], None
+    else:
+        judged = judge(data)
+        primary, profile, ai = judged.primary, state.answers, state.ai
+        guides = sel.barrier_guides(state.answers, data.questions)
     # 결과 화면은 대표 유형만 다룬다(11/26: 다른 유형을 여는 길을 뺐다). 동점이라 아직 고르기 전이면 대표가 없다
     shown_types = [primary] if primary else []
-    results = candidates.build_result(data.programs, data.types, shown_types, state.details, today, state.answers)
+    results = candidates.build_result(data.programs, data.types, shown_types, state.details, today, profile)
     by_type = {r.type_id: r for r in results}
-    consults = candidates.first_consult(data.programs, today, state.answers)
+    consults = candidates.first_consult(data.programs, today, profile)
     pool, places, reasons = [], [], {}
     if primary:
-        pool = candidates.ai_pool(data.programs, data.types, shown_types, state.details, today, state.answers)
+        if not view:
+            pool = candidates.ai_pool(data.programs, data.types, shown_types, state.details, today, profile)
         result = by_type[primary]
         base = result.contacts + result.lists
         if not base and not result.needs_choice:                   # 먼저 골라야 하는 유형(돌봄)은 고르기 전에 창구로 대신하지 않는다
             base = consults
         by_id = {p["id"]: p for p in pool}
-        for match in (state.ai.matches if state.ai is not None else []):
+        for match in (ai.matches if ai is not None else []):
             if match["id"] in by_id:
                 reasons.setdefault(match["id"], match["reason"])
         places = [by_id[pid] for pid in reasons] + [p for p in base if p["id"] not in reasons]
     return SimpleNamespace(judged=judged, primary=primary, shown_types=shown_types, by_type=by_type,
-                           consults=consults, guides=sel.barrier_guides(state.answers, data.questions),
+                           consults=consults, guides=guides,
                            pool=pool, places=places, reasons=reasons)
 
 
@@ -841,38 +735,78 @@ def repick() -> None:
     state.to_top = True
 
 
-def screen_browse(data, text) -> None:
-    """설문 없이 분야별로 보기. 유형 점수도 기본정보 답도 없이 12개 분야를 직접 열어 본다.
+def browse_gender(data, type_id: str) -> str:
+    """둘러보기에서 쓸 캐릭터 그림의 성별. 성별 답이 없으므로 유형 순서대로 여성·남성을 번갈아 쓴다."""
+    return "female" if list(data.types).index(type_id) % 2 == 0 else "male"
 
-    기본정보 답이 없으므로 성별·나이로 거르지 않는다(대상 조건은 카드의 '대상' 칸에 글로 나온다).
-    유형을 판정하지 않으므로 응답 기록(responses.csv)을 남기지 않고, 직접 적기(AI)도 두지 않는다.
+
+def leave_browse(screen: str) -> None:
+    """둘러보기(목록, 유형 소개)를 떠난다. 여기서 본 유형과 고른 주제가 나중의 설문 결과 화면에 섞이지 않게 지운다."""
+    state = st.session_state
+    state.view_type, state.details, state.place, state.seen_places = None, {}, None, []
+    go(screen)
+
+
+def open_type(type_id: str) -> None:
+    """둘러보기 목록의 칸을 눌렀을 때: 그 유형의 소개 화면으로 간다. 어느 유형을 열었는지만 기록한다."""
+    state = st.session_state
+    state.view_type, state.details, state.place = type_id, {}, None
+    logger.log_event(state.sid, "browse", type_id)
+    go("view")
+
+
+def screen_browse(data, text) -> None:
+    """설문 없이 둘러보기: 12개 유형을 3개씩 4줄의 칸(그림 + 유형 이름)으로 한눈에 보여 준다(11/26).
+
+    칸을 누르면 그 유형의 소개 화면(screen_view)으로 간다. 유형을 판정하지 않으므로 응답 기록(responses.csv)을
+    남기지 않고, 직접 적기(AI)도 두지 않는다. 그림은 칸 단추의 바탕으로 깐다(ui.type_grid_art).
+    """
+    ui.heading(text["browse_heading"])
+    ui.html(f'<p class="q-help">{escape(text["browse_help"])}</p>')
+    ui.type_grid_art({tid: ui.character_image(tid, browse_gender(data, tid)) for tid in data.types})
+    with st.container(key="type_grid"):
+        for tid, type_info in data.types.items():
+            # 칸의 바탕색은 분야에 따라 다르다(style.py가 상자 이름의 분야 id를 본다)
+            with st.container(key=f"tile_{type_info.get('area', '')}_{tid}"):
+                st.button(width="stretch", label=type_info["name"], key=f"browse_type_{tid}",
+                          on_click=open_type, args=(tid,))
+    st.button(width="stretch", label=text["browse_to_survey"], key="browse_to_survey", type="primary",
+              on_click=leave_browse, args=("survey",))
+    st.button(width="stretch", label=text["browse_to_start"], key="browse_to_start", type="tertiary",
+              on_click=leave_browse, args=("start",))
+    ui.back_guard("browse_to_start")                          # 휴대폰 '뒤로 가기'를 눌러도 시작 화면으로 간다
+
+
+def screen_view(data, text) -> None:
+    """유형 소개 화면: 둘러보기에서 고른 유형의 기본 결과 화면. 유형 카드 → 이 유형의 특징 → 지도 → 돌아가기.
+
+    설문 답이 없으므로 맞춰 보기, AI, 저장·공유, 더 보기, 답변 수정, 응답 기록이 없다.
+    기본정보 답이 없으니 성별·나이로 거르지 않는다(대상 조건은 센터 정보의 '대상' 칸에 글로 나온다).
     """
     state = st.session_state
-    today = clock.now()
-    top_n = int(data.settings.get("top_n", 1))
-    opened = [tid for tid in data.types if tid in state.opened]
-    consults = candidates.first_consult(data.programs, today)
-    seen: dict[str, str] = {}
+    type_id = state.get("view_type")
+    if type_id not in data.types:
+        go("browse")
+        st.rerun()
+    context = result_context(data, clock.now(), type_id)
+    type_info = data.types[type_id]
+    ui.type_header(text["type_label_browse"], type_info, ui.character_image(type_id, browse_gender(data, type_id)),
+                   text["type_image_alt"].format(name=type_info["name"]))
+    with st.expander(text["feature_heading"], key="feature_box"):
+        ui.feature_text(type_info["feature"])
 
-    def leave(screen: str) -> None:
-        # 여기서 열어 본 분야와 고른 주제가 나중의 설문 결과 화면에 섞이지 않게 지운다
-        state.opened, state.details, state.more = [], {}, []
-        go(screen)
+    ui.heading(text["map_heading"])
+    place_area(data, text, context)
 
-    def draw_section(type_id: str) -> None:
-        result = candidates.for_type(data.programs, data.types[type_id], state.details.get(type_id), today)
-        type_section(data, text, result, text["type_label_browse"], [], top_n, seen, consults)
-
-    ui.notice(text["browse_intro"], "info")
-    browse_types(data, text, list(data.types), opened, draw_section)
-    rest = [p for p in consults if p["id"] not in seen]
-    if rest:
-        consult_section(data, text, rest, [], folded=True)
-    st.button(width="stretch", label=text["browse_to_survey"], key="browse_to_survey", type="primary",
-              on_click=leave, args=("survey",))
-    st.button(width="stretch", label=text["browse_to_start"], key="browse_to_start", type="tertiary",
-              on_click=leave, args=("start",))
-    ui.back_guard("browse_to_start")                          # 휴대폰 '뒤로 가기'를 눌러도 시작 화면으로 간다
+    st.button(width="stretch", label=text["view_back"], key="view_back", on_click=go, args=("browse",))
+    st.button(width="stretch", label=text["browse_to_survey"], key="view_to_survey", type="primary",
+              on_click=leave_browse, args=("survey",))
+    notes = [text["disclaimer"]]
+    dates = [p["확인날짜"] for p in context.places[:MAP_PINS]]
+    if dates and not context.by_type[type_id].needs_choice:
+        notes.append(text["map_checked_note"].format(date=ui.korean_date(min(dates))))
+    ui.fine_print("", notes)
+    ui.back_guard("view_back")                                # 휴대폰 '뒤로 가기'를 눌러도 유형 목록으로 간다
 
 
 def screen_result(data, text) -> None:
@@ -885,6 +819,7 @@ def screen_result(data, text) -> None:
         # 결과를 보는 동안 문항 파일이 바뀌어 답이 빠진 문항이 생겼으면, 오류 화면 대신 그 문항을 다시 묻는다
         go("survey")
         st.rerun()
+    state.view_type = None                                    # 설문 결과에서는 둘러보기에서 본 유형을 쓰지 않는다
     today = clock.now()                                       # 시각까지 넘겨야 종료시각이 지난 회차가 빠진다
     context = result_context(data, today)
     judged, primary = context.judged, context.primary
@@ -948,16 +883,18 @@ def screen_place(data, text) -> None:
     화면 제목은 지도의 핀과 같은 기관 이름이다(11/26, ui.place_name). 카드에는 하는 일(프로그램명)과 온전한 기관 이름이 나온다.
     """
     state = st.session_state
-    if sel.next_question(state.answers, data.questions) is not None:
+    view = state.get("view_type")                             # 둘러보기에서 왔으면 설문·맞춰 보기를 확인하지 않는다
+    home = "view" if view else "result"
+    if not view and sel.next_question(state.answers, data.questions) is not None:
         go("survey")
         st.rerun()
-    context = result_context(data, clock.now())
+    context = result_context(data, clock.now(), view)
     program = next((p for p in context.places if p["id"] == state.get("place")), None)
-    if program is None or not state.tuned:
-        go("result")
+    if program is None or not (view or state.tuned):
+        go(home)
         st.rerun()
 
-    ui.title_row(ui.place_name(program), text["back_label"], go, ("result",))
+    ui.title_row(ui.place_name(program), text["back_label"], go, (home,))
     reason = context.reasons.get(program["id"])
     if reason:
         ui.ai_reason(text["ai_reason"], reason)
@@ -969,24 +906,26 @@ def screen_place(data, text) -> None:
         asked = [opt["label"] for opt in sel.chosen_detail_options(type_info, state.details.get(context.primary))]
         ui.program_card(program, text, type_info if own else None, context.guides, asked if own else None,
                         key=f"place_{program['id']}")
-    st.button(width="stretch", label=text["back_to_result"], key="back_bottom", on_click=go, args=("result",))
+    st.button(width="stretch", label=text["back_to_result"], key="back_bottom", on_click=go, args=(home,))
     ui.back_guard("back_bottom")                              # 휴대폰 '뒤로 가기'를 눌러도 결과로 돌아간다
 
 
 def screen_more_places(data, text) -> None:
     """'다른 곳 n곳' 핀을 눌러서 온 화면: 지도에 못 놓은 나머지 곳의 이름 줄. 줄을 누르면 그 곳의 안내 화면으로 간다."""
     state = st.session_state
-    if sel.next_question(state.answers, data.questions) is not None:
+    view = state.get("view_type")
+    home = "view" if view else "result"
+    if not view and sel.next_question(state.answers, data.questions) is not None:
         go("survey")
         st.rerun()
-    context = result_context(data, clock.now())
+    context = result_context(data, clock.now(), view)
     rest = context.places[MAP_PINS:]
-    if not rest or not state.tuned:
-        go("result")
+    if not rest or not (view or state.tuned):
+        go(home)
         st.rerun()
 
     ui.title_row(text["more_places_heading"].format(type=data.types[context.primary]["name"]), text["back_label"],
-                 go, ("result",))
+                 go, (home,))
     if any(program["id"] in context.reasons for program in rest):
         ui.map_notes("", text["map_star_note"])
     for program in rest:
@@ -996,7 +935,7 @@ def screen_more_places(data, text) -> None:
             st.button(width="stretch", label=ui.place_label(program), key=f"open_{program['id']}",
                       on_click=open_place, args=(program["id"],))
         ui.html(f'<p class="small-note example-note">{escape(program["한줄설명"])}</p>')
-    st.button(width="stretch", label=text["back_to_result"], key="back_bottom", on_click=go, args=("result",))
+    st.button(width="stretch", label=text["back_to_result"], key="back_bottom", on_click=go, args=(home,))
     ui.back_guard("back_bottom")
 
 
@@ -1018,7 +957,7 @@ def main() -> None:
     ui.topbar(text.get("top_title") or data.settings["app_title"], text["top_sub"],
               text["to_start_button"] if home else "", ask_restart)
     screens = {"start": screen_start, "survey": screen_survey, "tune": screen_tune, "result": screen_result,
-               "place": screen_place, "more_places": screen_more_places, "browse": screen_browse}
+               "place": screen_place, "more_places": screen_more_places, "browse": screen_browse, "view": screen_view}
     screens[st.session_state.screen](data, text)
     if st.session_state.get("confirm_restart"):
         restart_dialog(text)

@@ -147,10 +147,10 @@ CSS = """
 .stApp :is(a,button,summary,input,textarea,[role="combobox"]):focus-visible {
   outline: 3px solid var(--focus); outline-offset: 3px;
 }
-.stApp :is([class*="st-key-opt_"],[class*="st-key-detail_"],[class*="st-key-browse_T"]) button {
+.stApp :is([class*="st-key-opt_"],[class*="st-key-detail_"]) button {
   justify-content: flex-start; gap: .85rem; text-align: left;
 }
-.stApp :is([class*="st-key-opt_"],[class*="st-key-detail_"],[class*="st-key-browse_T"]) button p {
+.stApp :is([class*="st-key-opt_"],[class*="st-key-detail_"]) button p {
   text-align: left;
 }
 .stApp :is([class*="st-key-opt_"],[class*="st-key-detail_"]) button::before {
@@ -158,7 +158,7 @@ CSS = """
   border: 1.5px solid var(--line); border-radius: 50%; background: var(--surface);
 }
 .stApp [class*="st-key-opt_Q_BARRIER_"] button::before { border-radius: .25rem; }
-.stApp :is([class*="st-key-opt_"],[class*="st-key-detail_"],[class*="st-key-browse_T"]) button[kind="primary"] {
+.stApp :is([class*="st-key-opt_"],[class*="st-key-detail_"]) button[kind="primary"] {
   border: 2px solid var(--teal); background: var(--aqua);
 }
 /* 설문 선택지의 글은 왼쪽부터 쓴다. Streamlit이 단추 안에 한 겹 더 씌운 상자가 글을 가운데로 모으므로 그 상자에도 적는다 */
@@ -179,11 +179,31 @@ CSS = """
 .stApp :is([class*="st-key-opt_"],[class*="st-key-detail_"]) button[kind="primary"]::before {
   border: .39rem solid var(--teal);
 }
-.stApp [class*="st-key-browse_T"] button::after {
-  content: ""; width: .5rem; height: .5rem; flex: none; margin-left: auto;
-  border: solid var(--teal); border-width: 0 2px 2px 0; transform: rotate(45deg);
+
+/* ── 둘러보기: 12개 유형을 3개씩 4줄의 칸으로(11/26). 한 칸 = 캐릭터 그림 + 유형 이름, 칸 전체가 단추다 ──
+   그림은 단추의 바탕 그림이다(ui.type_grid_art가 유형마다 넣는다). 위쪽 안쪽 여백(%는 칸 폭 기준)이 그림 자리다.
+   폭이 좁아도 3칸을 지킨다. 이름(5글자)이 한 줄에 들어가게 글씨는 폭에 따라 15~17px로 한다 */
+.stApp .st-key-type_grid {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; margin-bottom: .6rem;
 }
-.stApp [class*="st-key-browse_T"] button[kind="primary"]::after { transform: rotate(225deg); }
+.stApp .st-key-type_grid > * { min-width: 0; width: 100%; }
+.stApp .st-key-type_grid .stButton > button {
+  display: block; width: 100%; min-height: 0; padding: 86% .1rem .5rem;
+  border: 1.5px solid var(--area-rule, var(--rule)); border-radius: var(--card-radius);
+  background-color: var(--area-wash, var(--surface));
+  /* 단추의 다른 상태(마우스 올림 등)가 바탕을 통째로 바꿔도 그림 자리는 그대로 둔다 */
+  background-repeat: no-repeat !important; background-position: 50% .35rem !important; background-size: 88% auto !important;
+}
+.stApp .st-key-type_grid .stButton > button p {
+  color: var(--ink); font-size: clamp(.9375rem, 4.4vw, 1.0625rem); font-weight: 750; line-height: 1.3;
+  text-align: center; white-space: nowrap;
+}
+@media (hover: hover) {
+  /* 마우스를 올려도 바탕 그림이 지워지지 않게 바탕색만 그대로 두고 테두리만 짙게 한다 */
+  .stApp .st-key-type_grid .stButton > button:enabled:hover {
+    background-color: var(--area-wash, var(--surface)); border-color: var(--area-ink, var(--teal));
+  }
+}
 
 /* 설문 */
 .stApp .q-progress {
@@ -290,13 +310,13 @@ CSS = """
 .stApp .center { text-align: center; }
 .stApp .nowrap { white-space: nowrap; }
 
-.stApp :is([data-area="work"], .st-key-type_hero:has([data-area="work"])) {
+.stApp :is([data-area="work"], .st-key-type_hero:has([data-area="work"]), [class*="st-key-tile_work_"]) {
   --area-ink: var(--teal); --area-wash: var(--aqua); --area-rule: #B8D0C2;
 }
-.stApp :is([data-area="leisure"], .st-key-type_hero:has([data-area="leisure"])) {
+.stApp :is([data-area="leisure"], .st-key-type_hero:has([data-area="leisure"]), [class*="st-key-tile_leisure_"]) {
   --area-ink: var(--clay); --area-wash: #FBEEDE; --area-rule: #DDC4AD;
 }
-.stApp :is([data-area="life"], .st-key-type_hero:has([data-area="life"])) {
+.stApp :is([data-area="life"], .st-key-type_hero:has([data-area="life"]), [class*="st-key-tile_life_"]) {
   --area-ink: #295B72; --area-wash: #E8F1F2; --area-rule: #B2CBD0;
 }
 .stApp .type-box[data-area] {
