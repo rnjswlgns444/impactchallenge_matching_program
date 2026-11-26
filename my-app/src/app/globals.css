@@ -176,3 +176,89 @@
   outline: 3px solid var(--ring);
   outline-offset: 3px;
 }
+
+/*
+  시작 화면의 그림 상자: 유형 캐릭터 세 명. 원문: app/ui/home.css (팀 포스터와 같은 모양)
+  꾸밈은 상자 하나와 ::before(바닥)·::after(해)에만 건다. 그림 세 장이 그대로 격자의 세 칸이 된다.
+  안쪽 여백이 모두 %(상자 폭 기준)라서 글씨를 키워도 상자 높이가 바뀌지 않는다.
+  이 색들은 그림 상자에만 쓴다. 반짝이는 SVG라 색 변수를 못 읽는다(%23 뒤 여섯 글자가 색이다).
+*/
+.home-art {
+  --poster-yellow: #f9e8a5;
+  --poster-sun: #ffdc70;
+  --poster-cloud: #fff2c7;
+  --poster-green: #ddebca;
+  --poster-green-deep: #cfe4bc;
+  --poster-dot-green: #79a48e;
+  --poster-dot-orange: #cc8a51;
+  --spark-orange: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath fill='%23D9864D' d='M5 0C5.4 3.2 6.8 4.6 10 5 6.8 5.4 5.4 6.8 5 10 4.6 6.8 3.2 5.4 0 5 3.2 4.6 4.6 3.2 5 0Z'/%3E%3C/svg%3E");
+  --spark-green: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath fill='%233C7764' d='M5 0C5.4 3.2 6.8 4.6 10 5 6.8 5.4 5.4 6.8 5 10 4.6 6.8 3.2 5.4 0 5 3.2 4.6 4.6 3.2 5 0Z'/%3E%3C/svg%3E");
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  padding: 5% 3% 3%;
+  border-radius: 0.92rem;
+  background-color: var(--poster-yellow);
+  /* 바탕 그림 순서: 반짝이 4개, 점 2개, 구름 */
+  background-image:
+    var(--spark-orange), var(--spark-orange), var(--spark-green), var(--spark-orange),
+    radial-gradient(circle closest-side, var(--poster-dot-green) 92%, transparent),
+    radial-gradient(circle closest-side, var(--poster-dot-orange) 92%, transparent),
+    radial-gradient(ellipse closest-side, var(--poster-cloud) 96%, transparent);
+  background-repeat: no-repeat;
+  background-position: 9% 12%, 35% 16%, 67% 8%, 97% 50%, 64% 26%, 6% 56%, 4% 46%;
+  background-size: 5.5% auto, 3.2% auto, 5% auto, 2.8% auto, 0.36rem 0.36rem, 0.32rem 0.32rem, 34% 30%;
+}
+/* 연초록 바닥과 발밑의 둥근 자리 세 개 */
+.home-art::before {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 31%;
+  border-radius: 1.92rem 1.92rem 0 0;
+  background:
+    radial-gradient(ellipse closest-side, var(--poster-green-deep) 97%, transparent) 3% 45% / 31% 62% no-repeat,
+    radial-gradient(ellipse closest-side, var(--poster-green-deep) 97%, transparent) 50% 45% / 31% 62% no-repeat,
+    radial-gradient(ellipse closest-side, var(--poster-green-deep) 97%, transparent) 97% 45% / 31% 62% no-repeat,
+    var(--poster-green);
+}
+/* 해. 오른쪽 캐릭터 머리 뒤 */
+.home-art::after {
+  content: "";
+  position: absolute;
+  right: 5%;
+  top: 7%;
+  width: 25%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--poster-sun);
+}
+/* 캐릭터 그림은 800×800이고 양옆이 비어 있다. 4:5로 가운데만 보이게 해서 같은 폭에 더 크게 넣는다 */
+.home-art > img {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+}
+
+/* 분야마다 다른 색(유형 카드, 둘러보기 칸). 원문: app/ui/style.py의 data-area */
+[data-area="work"] {
+  --area-ink: #12675f;
+  --area-wash: #ddf4ec;
+  --area-rule: #b8d0c2;
+}
+[data-area="leisure"] {
+  --area-ink: #984a32;
+  --area-wash: #fbeede;
+  --area-rule: #ddc4ad;
+}
+[data-area="life"] {
+  --area-ink: #295b72;
+  --area-wash: #e8f1f2;
+  --area-rule: #b2cbd0;
+}
