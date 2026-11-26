@@ -21,7 +21,7 @@ _NUMBER = re.compile(r"\d{2,4}-\d{3,4}-\d{4}|\d{4}-\d{4}|\d{3,4}")  # 031-481-29
 REMOTE_PLACES = {"전화 문의", "전화 상담", "전화·온라인 상담", "온라인 상담", "온라인", "비대면", "집으로 방문하는 서비스"}
 VISIT_GUIDES = {"alone", "first_visit"}     # 직접 찾아갈 때만 뜻이 있는 걸림돌(questions.yaml의 Q_BARRIER 선택지 id)
 CHARACTER_DIR = Path(__file__).resolve().parent / "assets" / "type-characters"   # 유형 캐릭터 그림(유형 12개 × 성별 2)
-TILE_WIDTH = 200                            # 둘러보기 칸에 까는 그림의 폭(px). 화면에는 100px 안팎으로 보인다(두 배)
+TILE_WIDTH = 330                            # 둘러보기 칸과 기관 세부 화면의 머리 상자에 넣는 그림의 폭(px). 화면에는 110px 아래로 보인다
 CHARACTER_WIDTH = 400                       # 보내는 그림의 폭(px). 화면에는 style.py가 200px로 보여 준다(휴대폰에서 선명하게 보이도록 두 배)
 # 시작 화면의 그림 상자에 왼쪽부터 세우는 캐릭터 (유형 id, 성별 선택지 id). 팀 포스터와 같은 세 명이다.
 # 일자리·여가·생활 분야에서 하나씩 골랐다. 바꾸려면 이 줄만 고친다. 셋이 아니면 home.css의 칸 수도 함께 고친다
@@ -219,8 +219,7 @@ def title_row(title: str, back_label: str, on_back, args: tuple = ()) -> None:
     """
     with st.container(key="title_row"):
         st.button(back_label, key="back_top", icon=":material/arrow_back:", on_click=on_back, args=args)
-        if title:                           # 기관 세부 화면은 제목 없이 화살표만 둔다(이름은 바로 아래 머리 상자에 있다)
-            html(f'<h1 class="q-title">{escape(title)}</h1>')
+        html(f'<h1 class="q-title">{escape(title)}</h1>')
 
 
 def pin_name(program: dict) -> str:
@@ -539,14 +538,21 @@ def program_card(program: dict, text: dict, type_info: dict | None = None, guide
         _checked_note(program, text)
 
 
-def place_head(title: str, label: str = "", image: Path | None = None) -> None:
-    """기관 세부 화면의 머리 상자: 작은 글(label, '○○형에 추천!') + 기관 이름 + 캐릭터 그림.
+def place_head(title: str, label: str, image: Path | None, back_label: str, on_back, args: tuple = ()) -> None:
+    """기관 세부 화면의 머리 상자(베이지): '←' 단추 → 작은 글(label, '○○형에 추천!') + 기관 이름 → 캐릭터 그림.
 
+    뒤로 가기 화살표는 작은 글의 왼쪽, 상자 안에 둔다(11/26). 눌러서 돌아가야 하므로 진짜 단추이고, 그래서
+    상자를 HTML 한 덩어리가 아니라 Streamlit 가로 상자로 짠다. 단추의 글(back_label)은 화면 읽기 도구만 읽는다.
     그림은 꾸밈이라 설명 글(alt)을 비운다. label이 없으면(대표 유형의 곳이 아닐 때) 작은 글을 빼고 이름만 둔다.
     """
-    tag = f'<p class="place-type">{escape(label)}</p>' if label else ""
-    picture = f'<img class="place-pic" src="{_tile_uri(str(image))}" alt="">' if image else ""
-    html(f'<div class="place-head"><div>{tag}<h1 class="place-title">{escape(title)}</h1></div>{picture}</div>')
+    with st.container(key="place_head"):
+        # 칸 배치(style.py): 첫 줄에 '←'와 작은 글, 둘째 줄에 기관 이름(왼쪽 끝부터)과 그 오른쪽의 그림.
+        # 이름을 화살표 옆이 아니라 아래 줄에 두어야 휴대폰 폭에서 이름이 여러 줄로 쪼개지지 않는다
+        st.button(back_label, key="back_top", icon=":material/arrow_back:", on_click=on_back, args=args)
+        html(f'<p class="place-type">{escape(label)}</p>')
+        html(f'<h1 class="place-title">{escape(title)}</h1>')
+        if image:
+            html(f'<img class="place-pic" src="{_tile_uri(str(image))}" alt="">')
 
 
 def place_actions(program: dict, text: dict, places: list[dict]) -> None:

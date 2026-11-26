@@ -908,7 +908,7 @@ def screen_result(data, text) -> None:
 def screen_place(data, text) -> None:
     """핀이나 목록의 줄을 눌러서 온 기관 세부 화면(11/26에 팀원 화면의 모양으로 다시 짰다).
 
-    순서: '←' → 머리 상자('○○형에 추천!' + 기관 이름 + 그림) → 하는 일 + 한 줄 설명 → 단추 줄(공식 안내·전화·길찾기)
+    순서: 머리 상자('←' + '○○형에 추천!' + 기관 이름 + 그림) → 하는 일 + 한 줄 설명 → 단추 줄(공식 안내·전화·길찾기)
           → 무엇이 걱정되세요?(눌러 보기) → 접힌 칸 '지원을 처음 경험할 때' → 확인 날짜 → '← 뒤로 돌아가기'
     그릴 때마다 지금의 후보를 다시 만든다. state.place가 그 안에 없으면(끝난 곳, 답을 고쳐 빠진 곳, 없는 id)
     아무것도 그리지 않고 돌려보낸다. 두 돌아가기 단추는 이 곳을 연 화면(결과, 다른 곳 목록, 유형 소개)으로 간다.
@@ -931,21 +931,21 @@ def screen_place(data, text) -> None:
     own = context.primary in loader.split_multi(program["유형태그"])     # 대표 유형의 곳인지(AI가 고른 다른 유형의 곳, 일반 창구는 아니다)
     gender = browse_gender(data, view) if view else state.answers.get(sel.GENDER_Q)
 
-    ui.title_row("", text["back_label"], go, (back,))
-    ui.place_head(ui.place_name(program), text["place_for_type"].format(name=type_info["name"]) if own else "",
-                  ui.character_image(context.primary, gender))
-    reason = context.reasons.get(program["id"])
-    if reason:
-        ui.ai_reason(text["ai_reason"], reason)
-    ui.html(f'<h2 class="place-work">{escape(program["프로그램명"])}</h2>')
-    ui.body(program["한줄설명"])
-    if program["종류"] == loader.KIND_LIST:
-        ui.body(text["list_note"])
-    ui.place_actions(program, text, venues.load().get(program["id"], []))
-    worry_area(data, text, program, type_info if own else None)
-    with st.expander(text["first_time_heading"], key="first_time_box"):
-        ui.place_facts(program, text)
-    ui.checked_note(program, text)
+    with st.container(key="place_card"):                      # 흰 카드 하나로 묶는다(팀원 화면의 모양)
+        ui.place_head(ui.place_name(program), text["place_for_type"].format(name=type_info["name"]) if own else "",
+                      ui.character_image(context.primary, gender), text["back_label"], go, (back,))
+        reason = context.reasons.get(program["id"])
+        if reason:
+            ui.ai_reason(text["ai_reason"], reason)
+        ui.html(f'<h2 class="place-work">{escape(program["프로그램명"])}</h2>')
+        ui.body(program["한줄설명"])
+        if program["종류"] == loader.KIND_LIST:
+            ui.body(text["list_note"])
+        ui.place_actions(program, text, venues.load().get(program["id"], []))
+        worry_area(data, text, program, type_info if own else None)
+        with st.expander(text["first_time_heading"], key="first_time_box"):
+            ui.place_facts(program, text)
+        ui.checked_note(program, text)
     st.button(width="stretch", label=text["back_to_result"], key="back_bottom", on_click=go, args=(back,))
     ui.back_guard("back_bottom")                              # 휴대폰 '뒤로 가기'를 눌러도 온 화면으로 돌아간다
 

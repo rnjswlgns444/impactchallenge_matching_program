@@ -1281,6 +1281,10 @@ def test_place_screen_goes_back_to_the_same_result(app, tmp_path):
         assert text["say_prefix"] not in page                              # '이렇게 물어보세요' 문장은 넣지 않는다
         assert app.button(key="back_top").label == text["back_label"]      # 화살표 단추를 읽어 주는 이름
         assert app.button(key="back_bottom").label == text["back_to_result"]
+        # 화살표 단추는 머리 상자 안, '○○형에 추천!' 글의 앞(왼쪽)에 있다(11/26)
+        seen = [e.key if e.type == "button" else "name" for e in app.main
+                if (e.type == "button" and e.key == "back_top") or (e.type == "markdown" and 'class="place-type"' in e.value)]
+        assert seen == ["back_top", "name"]
         assert [key for key in keys(app) if key != "to_start"] == ["back_top"] + worry_keys + ["back_bottom"]
         # 전화 단추는 접힌 칸 밖(단추 줄)에 있다. 접힌 칸에는 장소·대상·이용 방법·기관 문의만 있다
         [box] = app.expander

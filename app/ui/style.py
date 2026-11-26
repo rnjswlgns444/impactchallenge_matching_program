@@ -456,52 +456,83 @@ CSS = """
 .stApp .st-key-save_share .share { margin: 0; padding: 0; border: 0; background: none; }
 .stApp .st-key-save_share :is(.stButton > button, a.share-btn) { margin: 0; padding-inline: .5rem; background: var(--surface); border-color: var(--line); }
 
-/* ── 기관 세부 화면(11/26, 팀원 화면의 모양을 우리 색으로 옮김) ──
-   머리 상자: 베이지 바탕에 작은 글('○○형에 추천!') + 기관 이름, 오른쪽에 캐릭터 그림 */
-.stApp .place-head {
-  display: flex; align-items: center; justify-content: space-between; gap: .75rem;
-  padding: .7rem .8rem .7rem 1rem; border-radius: var(--card-radius);
-  background: #FBF0DE; border: 1px solid #EDDDC7;
+/* ── 기관 세부 화면(11/26): 팀원 화면(local_atlas/explorer.css의 .center-detail)의 생김새를 그대로 옮겼다 ──
+   색은 팀원 화면의 값이다. 글씨만 우리 기준(본문 18px 이상)에 맞췄다.
+   흰 카드 하나에 머리 상자 → 하는 일 → 단추 줄 → 걱정 단추 → 접힌 줄을 담는다 */
+.stApp .st-key-place_card {
+  box-sizing: border-box; padding: clamp(15px, 4vw, 32px); gap: .75rem;
+  border: 1px solid #D2DED5; border-radius: 18px; background: #fff; color: #1C3932;
 }
-.stApp .place-head > div { min-width: 0; }
-.stApp .place-type { margin: 0 0 .2rem; color: var(--teal); font-size: 1.125rem; font-weight: 700; }
+/* 머리 상자(베이지). 첫 줄: '←' 단추 + 작은 글('○○형에 추천!'), 둘째 줄: 기관 이름 + 오른쪽에 캐릭터 그림 */
+.stApp .st-key-place_head {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 6px 8px; box-sizing: border-box;
+  grid-template-areas: "back type type" "title title pic";
+  padding: 10px 12px; background: #FBF0DE; border: 1px solid #EDDDC7; border-radius: 16px 20px 16px 12px;
+}
+.stApp .st-key-place_head > div { width: auto; min-width: 0; }
+.stApp .st-key-place_head > div:has(.stButton) { grid-area: back; }
+.stApp .st-key-place_head > div:has(.place-type) { grid-area: type; }
+.stApp .st-key-place_head > div:has(.place-title) { grid-area: title; }
+.stApp .st-key-place_head > div:has(.place-pic) { grid-area: pic; }
+.stApp .st-key-place_head .st-key-back_top button {
+  width: 2.5rem; min-height: 2.5rem; padding: 0; border: 1px solid #A6BFB1; border-radius: 10px; background: #fff;
+}
+.stApp .st-key-place_head .st-key-back_top button [data-testid="stIconMaterial"] { color: #174E43; font-size: 1.5rem; }
+/* 단추의 글('뒤로')은 화면 읽기 도구만 읽게 눈에는 숨긴다 */
+.stApp .st-key-place_head .st-key-back_top button p {
+  position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+.stApp .place-type { margin: 0; color: #21695A; font-size: 1.125rem; font-weight: 720; line-height: 1.4; word-break: keep-all; }
 .stApp .place-title {
-  margin: 0; padding: 0; color: var(--ink); font-size: clamp(1.6rem, 6.4vw, 2.1rem); line-height: 1.28;
+  margin: 0; padding: 0; color: #173B32; font-size: clamp(1.55rem, 4.5vw, 2.2rem); font-weight: 700; line-height: 1.28;
   word-break: keep-all; overflow-wrap: anywhere;
 }
-.stApp .place-pic { flex: none; width: clamp(64px, 20vw, 92px); height: auto; }
-.stApp .place-work { margin: 0; padding: 0; color: var(--ink); font-size: 1.375rem; line-height: 1.4; word-break: keep-all; }
-/* 단추 줄(ui.place_actions): 나란히 놓고, 좁으면 다음 줄로 넘긴다. 높이 52px. 첫 단추만 짙은 바탕이다 */
-.stApp .place-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.stApp .place-pic {
+  display: block; width: clamp(52px, 12vw, 86px); height: clamp(52px, 12vw, 86px); object-fit: contain;
+}
+.stApp .st-key-place_card .place-work {
+  margin: 0; padding: 0; color: #1C3932; font-size: 1.3rem; font-weight: 700; line-height: 1.45; word-break: keep-all;
+}
+.stApp .st-key-place_card .body { color: #1C3932; }
+/* 단추 줄(ui.place_actions): 글 길이만큼의 단추를 왼쪽부터 나란히, 좁으면 다음 줄로. 높이 46px 이상 */
+.stApp .place-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: .25rem 0; }
 .stApp .place-actions a {
-  flex: 1 1 auto; min-height: 3.25rem; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;
-  padding: .55rem 1rem; border: 1.5px solid var(--line); border-radius: .85rem; background: var(--surface);
-  color: var(--ink); font-size: 1.1875rem; font-weight: 700; line-height: 1.35; text-align: center; text-decoration: none;
-  word-break: keep-all;
+  min-width: 0; min-height: 46px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;
+  padding: 10px 15px; border: 1px solid #A6BFB1; border-radius: 10px; background: #fff;
+  color: #174E43; font-size: 1.125rem; font-weight: 650; line-height: 1.4; text-decoration: none; word-break: keep-all;
 }
-.stApp .place-actions a:first-child { background: var(--teal); border-color: var(--teal); color: #fff; }
 @media (hover: hover) {
-  .stApp .place-actions a:hover { border-color: var(--teal); }
+  .stApp .place-actions a:hover { border-color: #165C50; background: #F4F8F5; }
 }
-/* 무엇이 걱정되세요?: 작은 단추들을 나란히. 누른 것은 물빛 바탕 + 굵은 청록 테두리. 높이 48px */
-.stApp .st-key-worry_row { flex-direction: row; flex-wrap: wrap; gap: .5rem; }
+/* 무엇이 걱정되세요?: 단추 줄과 같은 네모 단추. 누른 것은 짙은 초록 바탕에 흰 글(팀원 화면의 '고른 단추') */
+.stApp .st-key-place_card .sec { margin: .35rem 0 0; color: #1C3932; }
+.stApp .st-key-worry_row { flex-direction: row; flex-wrap: wrap; gap: 8px; }
 .stApp .st-key-worry_row > div { width: auto; flex: 0 1 auto; min-width: 0; }
 .stApp .st-key-worry_row .stButton > button {
-  width: auto; min-height: 3rem; padding: .4rem .95rem; border-radius: 999px;
+  width: auto; min-height: 46px; padding: 10px 15px; border: 1px solid #A6BFB1; border-radius: 10px; background: #fff;
 }
-.stApp .st-key-worry_row .stButton > button p { font-size: 1.125rem; font-weight: 650; }
-.stApp .st-key-worry_row .stButton > button[kind="primary"] { background: var(--aqua); border: 2px solid var(--teal); }
-.stApp .st-key-worry_row .stButton > button[kind="primary"] p { color: var(--ink); }
+.stApp .st-key-worry_row .stButton > button p { color: #174E43; font-size: 1.125rem; font-weight: 650; line-height: 1.4; }
+.stApp .st-key-worry_row .stButton > button[kind="primary"] { background: #165C50; border-color: #165C50; }
+.stApp .st-key-worry_row .stButton > button[kind="primary"] p { color: #fff; }
+@media (hover: hover) {
+  .stApp .st-key-worry_row .stButton > button:enabled:hover { border-color: #165C50; background: #F4F8F5; }
+  .stApp .st-key-worry_row .stButton > button[kind="primary"]:enabled:hover { background: #165C50; }
+}
 .stApp .worry-answer {
-  padding: .75rem 1rem; border-radius: var(--card-radius); background: var(--aqua); border: 1px solid #B8D0C2;
-  color: var(--body); font-size: 1.1875rem; line-height: 1.6; word-break: keep-all;
+  padding: 9px 12px; border-radius: 8px; background: #F4F8F5; border: 1px solid #DBE4DC;
+  color: #1C3932; font-size: 1.125rem; line-height: 1.6; word-break: keep-all;
 }
-.stApp .worry-answer b { color: var(--ink); }
-/* 접힌 칸 '지원을 처음 경험할 때' 안의 줄: 물음(굵게) 아래에 답 */
-.stApp .place-facts { margin: 0; }
-.stApp .place-facts dt { margin-top: .7rem; color: var(--ink); font-size: 1.1875rem; font-weight: 700; }
+/* 접힌 줄 '지원을 처음 경험할 때': 상자 없이 위쪽 가는 줄 + 굵은 한 줄. 펼치면 물음(굵게) 아래에 답 */
+.stApp .st-key-first_time_box [data-testid="stExpander"] details {
+  border: 0; border-top: 1px solid #DBE4DC; border-radius: 0; background: none;
+}
+.stApp .st-key-first_time_box [data-testid="stExpander"] summary { min-height: 46px; padding: 10px 0; background: none; }
+.stApp .st-key-first_time_box [data-testid="stExpander"] summary p { color: #1C3932; font-size: 1.1875rem; font-weight: 700; }
+.stApp .st-key-first_time_box [data-testid="stExpanderDetails"] { padding: 0 0 .4rem; }
+.stApp .place-facts { margin: 0 0 10px; }
+.stApp .place-facts dt { margin-top: 13px; color: #1C3932; font-size: 1.125rem; font-weight: 690; }
 .stApp .place-facts dt:first-child { margin-top: 0; }
-.stApp .place-facts dd { margin: .1rem 0 0; color: var(--body); font-size: 1.1875rem; line-height: 1.6; word-break: keep-all; }
+.stApp .place-facts dd { margin: 2px 0 12px; color: #1C3932; font-size: 1.125rem; line-height: 1.6; word-break: keep-all; }
 
 /* ── 센터 정보·다른 곳 목록 화면 맨 위의 한 줄(ui.title_row): '←' 단추 + 제목 ── */
 .stApp .st-key-title_row { flex-direction: row; flex-wrap: nowrap; align-items: flex-start; gap: .7rem; }
