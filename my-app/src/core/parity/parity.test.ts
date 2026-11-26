@@ -12,11 +12,13 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { fill, text } from "@/content/text";
 import { appData } from "@/data";
 import type { Option, Program } from "@/data/types";
 
 import { aiPool, eligible, firstConsult, forType, unconfirmedColumns, type Profile } from "../candidates";
 import type { Moment } from "../clock";
+import { phones, placeFacts, placeLinks, placeName, worryLines, type Fact, type Phone, type PlaceLink } from "../places";
 import { scrub } from "../privacy";
 import { score } from "../scoring";
 import {
@@ -69,6 +71,16 @@ type Cases = {
     chosenDetail: { type: string; answer: DetailAnswer; expect: string[] }[];
   };
   routes: { program: string; name: string; lat: number; lon: number; expect: string }[];
+  places: {
+    id: string;
+    name: string;
+    phones: Phone[];
+    facts: Fact[];
+    links: PlaceLink[];
+    worries: Record<string, Record<string, string[]>>; // { 걱정 id: { 유형 id("" = 유형 없이): 줄 } }
+  }[];
+  phones: { text: string; expect: Phone[] }[];
+  checkLabels: { ageUnconfirmed: string; unconfirmed: string };
 };
 
 const cases: Cases = JSON.parse(readFileSync(path.join(import.meta.dirname, "cases.json"), "utf8"));
@@ -220,5 +232,37 @@ describe("파이썬과 같은 답: 길찾기 주소", () => {
     // 정답에 쓴 곳과 새 앱이 읽은 곳이 같은지도 본다
     const mine = Object.entries(appData.venues).flatMap(([program, places]) => places.map((v) => `${program}:${v.name}`));
     expect(mine).toEqual(cases.routes.map((one) => `${one.program}:${one.name}`));
+  });
+});
+
+describe("파이썬과 같은 답: 기관 한 곳 다듬기", () => {
+  const labels = {
+    ageUnconfirmed: text.ageUnconfirmed,
+    unconfirmed: (column: string) => fill(text.unconfirmed, { column }),
+  };
+
+  it("'먼저 확인할 점'의 문장이 파이썬 앱의 문구와 같다", () => {
+    expect({ ageUnconfirmed: text.ageUnconfirmed, unconfirmed: text.unconfirmed }).toEqual(cases.checkLabels);
+  });
+
+  it("연락처 칸에서 뽑은 전화번호가 같다", () => {
+    for (const one of cases.phones) expect(phones(one.text), one.text).toEqual(one.expect);
+  });
+
+  it(`${cases.places.length}곳의 이름, 전화, 처음 이용할 때의 줄, 단추, 걱정 답이 같다`, () => {
+    expect(programs.map((p) => p.id)).toEqual(cases.places.map((one) => one.id));
+    for (const one of cases.places) {
+      const program = programs.find((p) => p.id === one.id)!;
+      expect(placeName(program), `${one.id} 이름`).toBe(one.name);
+      expect(phones(program["공식연락처"]), `${one.id} 전화`).toEqual(one.phones);
+      expect(placeFacts(program), `${one.id} 줄`).toEqual(one.facts);
+      expect(placeLinks(program, appData.venues[one.id] ?? []), `${one.id} 단추`).toEqual(one.links);
+      for (const worry of settings.worries) {
+        for (const [typeId, lines] of Object.entries(one.worries[worry.id])) {
+          const type = typeId ? typeOf(typeId) : null;
+          expect(worryLines(program, worry, labels, type), `${one.id} ${worry.id} ${typeId}`).toEqual(lines);
+        }
+      }
+    }
   });
 });

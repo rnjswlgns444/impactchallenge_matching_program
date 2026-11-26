@@ -216,6 +216,63 @@ def main() -> None:
     routes = [{"program": pid, "name": v["name"], "lat": v["lat"], "lon": v["lon"], "expect": venues.route_url(v)}
               for pid, places in venues.load().items() for v in places]
 
+    # ── 6. 기관 한 곳을 화면에 보일 모양으로 다듬기 (app/ui/components.py) ──
+    from app.ui import components as ui     # streamlit을 불러오지만 화면을 그리지는 않는다
+
+    text = data.settings["text"]
+    all_venues = venues.load()
+    kinds = {text["guide_button"]: "guide", text["list_button"]: "list", text["apply_button"]: "apply",
+             text["phone_button"]: "phone", text["route_button"]: "route"}
+    fact_kinds = {text["fact_where"]: "where", text["fact_where_remote"]: "whereRemote", text["fact_who"]: "who",
+                  text["fact_how"]: "how", text["fact_contact"]: "contact"}
+
+    def links(program) -> list:
+        """ui.place_actions가 만드는 단추와 같은 순서·주소. 그 함수는 화면에 바로 그리므로 같은 규칙으로 다시 센다."""
+        found = []
+        is_list = program["종류"] == loader.KIND_LIST
+        columns = ("신청URL", "상세페이지URL", "홈페이지URL") if is_list else ("상세페이지URL", "신청URL", "홈페이지URL")
+        first = next((program[column] for column in columns if program[column]), "")
+        if first:
+            found.append({"kind": "list" if is_list else "guide", "note": "", "url": first})
+        if not is_list and program["신청URL"] and program["신청URL"] != first:
+            found.append({"kind": "apply", "note": "", "url": program["신청URL"]})
+        numbers = ui.phones(program["공식연락처"])
+        for number, shown in numbers:
+            note = f' {shown.partition("(")[0].strip()}' if len(numbers) > 1 else ""
+            found.append({"kind": "phone", "note": note, "url": f"tel:{number}"})
+        spots = all_venues.get(program["id"], [])
+        for spot in spots:
+            note = f' ({spot["name"]})' if len(spots) > 1 else ""
+            found.append({"kind": "route", "note": note, "url": venues.route_url(spot)})
+        return found
+
+    def facts(program) -> list:
+        place = program["장소"] or program["진행방식"]
+        rows = [(text["fact_where_remote"] if ui._no_visit(place) else text["fact_where"], place),
+                (text["fact_who"], program["대상"]),
+                (text["fact_how"], program["첫방문안내"] or program["신청방법"]),
+                (text["fact_contact"], program["공식연락처"])]
+        return [{"kind": fact_kinds[label], "value": value} for label, value in rows
+                if value and value != loader.UNCONFIRMED]
+
+    place_cases = []
+    for program in programs:
+        tagged = [tid for tid in loader.split_multi(program["유형태그"]) if tid in data.types]
+        place_cases.append({
+            "id": program["id"],
+            "name": ui.place_name(program),
+            "phones": [{"number": number, "shown": shown} for number, shown in ui.phones(program["공식연락처"])],
+            "facts": facts(program),
+            "links": links(program),
+            # 걱정마다: 유형 없이(일반 창구로 나올 때), 그리고 이 곳이 속한 유형마다
+            "worries": {worry["id"]: {tid or "": ui.worry_lines(program, worry, text, data.types[tid] if tid else None)
+                                      for tid in [None, *tagged]}
+                        for worry in data.settings["worries"]},
+        })
+    phone_texts = ["", "번호 없음", "031-439-1619~21", "1666-1234", "129", "02-123-4567 / 031-111-2222 (야간)",
+                   "안산시 민원콜센터 1666-1234, 경기도 콜센터 031-120", "031-481-2761 ~ 4(본관)", "/", "010-1234-56789"]
+    phone_cases = [{"text": t, "expect": [{"number": n, "shown": s} for n, s in ui.phones(t)]} for t in phone_texts]
+
     result = {
         "about": "app/tests/make_parity_cases.py가 만든 파일입니다. 손으로 고치지 마세요.",
         "fingerprint": fingerprint,
@@ -227,13 +284,17 @@ def main() -> None:
         "privacy": privacy_cases,
         "selection": selection_cases,
         "routes": routes,
+        "places": place_cases,
+        "phones": phone_cases,
+        # 새 앱의 문구(src/content/text.ts)가 이 문장과 같아야 '먼저 확인할 점'이 같게 나온다
+        "checkLabels": {"ageUnconfirmed": text["age_unconfirmed"], "unconfirmed": text["unconfirmed"]},
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(result, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8", newline="\n")
     type_rows = sum(len(rows) for case in candidate_cases for rows in case["byType"].values())
     print(f"정답 파일을 만들었습니다: {OUT.relative_to(ROOT)}")
     print(f"  채점 {len(scoring_cases)}건, 거르기 {len(candidate_cases)}묶음(유형별 {type_rows}건), "
-          f"개인정보 {len(privacy_cases)}건, 길찾기 {len(routes)}건")
+          f"개인정보 {len(privacy_cases)}건, 길찾기 {len(routes)}건, 기관 {len(place_cases)}곳")
 
 
 if __name__ == "__main__":
