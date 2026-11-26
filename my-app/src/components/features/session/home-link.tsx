@@ -38,7 +38,7 @@ export function HomeLink() {
         open={open}
         onOpenChange={setOpen}
         title={text.restartAskTitle}
-        body={text.restartAskBody}
+        body={text.restartAskBodyPlain}
         stayLabel={text.restartKeep}
         goLabel={text.restartGo}
         onGo={() => {

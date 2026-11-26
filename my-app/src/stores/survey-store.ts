@@ -10,10 +10,16 @@ import { createJSONStorage, persist, type StateStorage } from "zustand/middlewar
 // - 누름 처리 안에서 읽거나 쓸 때: useSurveyStore.getState()
 
 export type Answer = string | number | string[];
+// 유형의 세부 질문에서 고른 것: 선택지 id 하나, 여러 개, 또는 고르지 않음
+export type DetailChoice = string | string[] | null;
 
 export type SurveyState = {
   answers: Record<string, Answer>; // { 문항 id: 답 }
+  details: Record<string, DetailChoice>; // { 유형 id: 세부 질문의 답 } 설문 결과에서 고른 것
+  browseDetails: Record<string, DetailChoice>; // 둘러보기에서 고른 것. 설문 결과와 섞이지 않게 따로 둔다
   setAnswer: (questionId: string, answer: Answer) => void;
+  removeAnswer: (questionId: string) => void;
+  setDetail: (typeId: string, choice: DetailChoice, browse?: boolean) => void;
   reset: () => void;
 };
 
@@ -46,15 +52,33 @@ export const useSurveyStore = create<SurveyState>()(
   persist(
     (set) => ({
       answers: {},
+      details: {},
+      browseDetails: {},
       setAnswer: (questionId, answer) =>
         set((state) => ({ answers: { ...state.answers, [questionId]: answer } })),
-      reset: () => set({ answers: {} }),
+      removeAnswer: (questionId) =>
+        set((state) => ({
+          answers: Object.fromEntries(Object.entries(state.answers).filter(([id]) => id !== questionId)),
+        })),
+      setDetail: (typeId, choice, browse = false) =>
+        set((state) =>
+          browse
+            ? { browseDetails: { ...state.browseDetails, [typeId]: choice } }
+            : { details: { ...state.details, [typeId]: choice } }
+        ),
+      reset: () => set({ answers: {}, details: {}, browseDetails: {} }),
     }),
     {
       name: "anti-survey",
-      version: 1,
+      version: 2,
       storage: createJSONStorage(() => safeStorage),
-      partialize: (state) => ({ answers: state.answers }),
+      partialize: (state) => ({
+        answers: state.answers,
+        details: state.details,
+        browseDetails: state.browseDetails,
+      }),
+      // 예전 모양으로 저장된 답은 버리고 새로 시작한다
+      migrate: () => ({ answers: {}, details: {}, browseDetails: {} }),
     }
   )
 );
