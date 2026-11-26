@@ -1,0 +1,269 @@
+{
+  "JOB01": [
+    {
+      "name": "안산시 일자리센터",
+      "address": "안산시 단원구 화랑로 387, 시청 제2별관 1층",
+      "lat": 37.321370927472,
+      "lon": 126.83090409677,
+      "addressSource": "https://www.ansan.go.kr/www/common/cntnts/selectContents.do?cntnts_id=C0001272",
+      "geoSource": "https://jusoga.com/b/4127310100105150000002163/%EA%B2%BD%EA%B8%B0%EB%8F%84-%EC%95%88%EC%82%B0%EC%8B%9C-%EB%8B%A8%EC%9B%90%EA%B5%AC-%ED%99%94%EB%9E%91%EB%A1%9C-387-%EA%B3%A0%EC%9E%94%EB%8F%99",
+      "note": "시청 제2별관 1층에서 상담해요. 지도에는 시청 단지의 대표 위치를 표시했어요."
+    }
+  ],
+  "JOB02": [
+    {
+      "name": "안산상공회의소 중장년내일센터",
+      "address": "안산시 단원구 적금로 120, 안산상공회의소",
+      "lat": 37.318943,
+      "lon": 126.826407,
+      "addressSource": "https://ansancci.korcham.net/front/contents/locationpageList.do?menuId=2920",
+      "geoSource": "https://amt.purpleo.kr/article/22348",
+      "note": "안산상공회의소 A동 3층으로 가세요."
+    }
+  ],
+  "JOB03": [],
+  "JOB07": [
+    {
+      "name": "안산시 인생이모작지원센터",
+      "address": "안산시 단원구 광덕2로 186, 호수동우체국 2층",
+      "lat": 37.309557501576,
+      "lon": 126.83131612507,
+      "addressSource": "https://www.ansan.go.kr/www/common/cntnts/selectContents.do?cntnts_id=www01617",
+      "geoSource": "https://jusoga.com/b/4127310100107730010017578/%EA%B2%BD%EA%B8%B0%EB%8F%84-%EC%95%88%EC%82%B0%EC%8B%9C-%EB%8B%A8%EC%9B%90%EA%B5%AC-%EA%B4%91%EB%8D%952%EB%A1%9C-186-%EA%B3%A0%EC%9E%94%EB%8F%99",
+      "note": "호수동우체국 건물 2층에 있어요."
+    }
+  ],
+  "JOB08": [
+    {
+      "name": "안산시자원봉사센터",
+      "address": "안산시 단원구 화랑로 260, 와스타디움 1층",
+      "lat": 37.31947754,
+      "lon": 126.8164903,
+      "addressSource": "https://www.ggvc.or.kr/main/mainPage.do",
+      "geoSource": "https://www.data.go.kr/data/15028208/standard.do",
+      "note": "센터 사무실은 와스타디움 1층에 있어요. 봉사 당일 모이는 곳은 모집 공고에서 확인해 주세요."
+    }
+  ],
+  "JOB11": [],
+  "JOB12": [
+    {
+      "name": "안산고용센터",
+      "address": "안산시 단원구 원고잔로 11",
+      "lat": 37.318511596645,
+      "lon": 126.82756902533,
+      "addressSource": "https://www.work.go.kr/ansan/ctrIntro/guideMap/guideMap.do",
+      "geoSource": "https://jusoga.com/b/4127310100105200001029237/%EA%B2%BD%EA%B8%B0%EB%8F%84-%EC%95%88%EC%82%B0%EC%8B%9C-%EB%8B%A8%EC%9B%90%EA%B5%AC-%EC%9B%90%EA%B3%A0%EC%9E%94%EB%A1%9C-11-%EA%B3%A0%EC%9E%94%EB%8F%99",
+      "note": "직업훈련 상담은 안산고용센터에서 받아요. 수업을 듣는 곳은 과정마다 달라요."
+    }
+  ],
+  "JOB13": [
+    {
+      "name": "안산여성인력개발센터",
+      "address": "안산시 단원구 광덕대로 271, 한국산업은행 안산지점 2~4층",
+      "lat": 37.32094886366,
+      "lon": 126.8300026622,
+      "addressSource": "https://www.work24.go.kr/hr/a/a/3200/selectTrainInstitution.do?crseTracseSe=C0061&tracseId=AIG20250000528999&tracseTme=2&trainstCstmrId=500020013526",
+      "geoSource": "https://jusoga.com/b/4127310100105230008038399/%EA%B2%BD%EA%B8%B0%EB%8F%84-%EC%95%88%EC%82%B0%EC%8B%9C-%EB%8B%A8%EC%9B%90%EA%B5%AC-%EA%B4%91%EB%8D%95%EB%8C%80%EB%A1%9C-271-%EA%B3%A0%EC%9E%94%EB%8F%99",
+      "note": "한국산업은행 안산지점 건물에 있어요. 신청한 수업의 층과 호실을 확인해 주세요."
+    }
+  ],
+  "L06_PIUM_DIRECTORY": [
+    {
+      "name": "안산시평생학습관·작은도서관",
+      "address": "상록구 차돌배기로 24-1",
+      "lat": 37.298684,
+      "lon": 126.846929,
+      "addressSource": "https://lll.ansan.go.kr/web/content.do?proFn=9571000",
+      "geoSource": "https://fpfl.purpleo.co.kr/view/7698",
+      "note": "평생학습관과 작은도서관이 같은 단지에 있어요. 강의실은 신청한 수업 안내에서 확인해 주세요."
+    }
+  ],
+  "L08_MIND_COUNSELING": [
+    {
+      "name": "안산시정신건강복지센터",
+      "address": "단원구 화랑로 387",
+      "lat": 37.3225569,
+      "lon": 126.8327135,
+      "addressSource": "https://wmind.org/sub.php?menukey=13",
+      "geoSource": "https://www.data.go.kr/en/data/15021137/standard.do",
+      "note": "방문 전 상담 일정을 예약해 주세요."
+    }
+  ],
+  "L08_FAMILY_COUNSELING": [
+    {
+      "name": "안산시건강가정지원센터",
+      "address": "단원구 광덕대로 197, 6층",
+      "lat": 37.314247690493,
+      "lon": 126.82938506424,
+      "addressSource": "https://ansan.familynet.or.kr/center/lay1/program/S295T315C321/center_info/view.do",
+      "geoSource": "https://acs.purpleo.kr/article/5070",
+      "note": "광덕대로 197 건물 6층에 있는 가족상담 창구예요."
+    }
+  ],
+  "L09": [
+    {
+      "name": "경기도미술관",
+      "address": "단원구 동산로 268",
+      "lat": 37.3259057,
+      "lon": 126.8138991,
+      "addressSource": "https://gmoma.ggcf.kr/pages/directions",
+      "geoSource": "https://findby.co.kr/details/15385-412733191020-st-652c0a5ff27008be2c5026f5",
+      "note": "화랑유원지 안의 미술관으로 오세요."
+    }
+  ],
+  "L10": [
+    {
+      "name": "상록수체육관",
+      "address": "안산시 상록구 용신로 422",
+      "lat": 37.301303,
+      "lon": 126.868246,
+      "addressSource": "https://www.ansan.go.kr/www/common/cntnts/selectContents.do?cntnts_id=C0001306",
+      "geoSource": "https://jusoga.com/b/4127110400111110000000001/경기도-안산시-상록구-용신로-422-본오동",
+      "note": "안산도시공사 강좌가 열리는 시설 중 한 곳이에요. 신청한 강좌의 시설명과 시간을 확인해 주세요."
+    },
+    {
+      "name": "각골체육관",
+      "address": "안산시 상록구 석호로 400",
+      "lat": 37.292583,
+      "lon": 126.875199,
+      "addressSource": "https://www.eshare.go.kr/UserPortal/Upv/UprResrcGym/index.do?rsrc_no=HK11J3134606",
+      "geoSource": "https://statnorth.kr/public-facilities/경기/안산시-상록구/각골체육관-73f4bb68681f",
+      "note": "안산도시공사 강좌가 열리는 시설 중 한 곳이에요. 신청한 강좌의 시설명과 시간을 확인해 주세요."
+    },
+    {
+      "name": "와동체육관",
+      "address": "안산시 단원구 화정천동로 396",
+      "lat": 37.340027,
+      "lon": 126.818937,
+      "addressSource": "https://gov.eshare.go.kr/UserPortal/Upv/UprResrcGym/index.do?rsrc_no=HK11J1849773",
+      "geoSource": "https://statnorth.kr/public-facilities/경기/안산시-단원구/와동체육관-2c5556d00154",
+      "note": "안산도시공사 강좌가 열리는 시설 중 한 곳이에요. 신청한 강좌의 시설명과 시간을 확인해 주세요."
+    },
+    {
+      "name": "선부다목적체육관",
+      "address": "안산시 단원구 선부로 96",
+      "lat": 37.341222929393,
+      "lon": 126.80579373921,
+      "addressSource": "https://www.ansan.go.kr/www/common/cntnts/selectContents.do?cntnts_id=C0001306",
+      "geoSource": "https://jusoga.com/b/4127310900110680000000001/경기도-안산시-단원구-선부로-96-선부동",
+      "note": "안산도시공사 강좌가 열리는 시설 중 한 곳이에요. 신청한 강좌의 시설명과 시간을 확인해 주세요."
+    }
+  ],
+  "L12": [
+    {
+      "name": "안산시평생학습관·작은도서관",
+      "address": "상록구 차돌배기로 24-1",
+      "lat": 37.298684,
+      "lon": 126.846929,
+      "addressSource": "https://lll.ansan.go.kr/web/content.do?proFn=9571000",
+      "geoSource": "https://fpfl.purpleo.co.kr/view/7698",
+      "note": "평생학습관과 작은도서관이 같은 단지에 있어요. 강의실은 신청한 수업 안내에서 확인해 주세요."
+    }
+  ],
+  "L13": [],
+  "L15": [
+    {
+      "name": "안산시평생학습관·작은도서관",
+      "address": "상록구 차돌배기로 24-1",
+      "lat": 37.298684,
+      "lon": 126.846929,
+      "addressSource": "https://lll.ansan.go.kr/web/content.do?proFn=9571000",
+      "geoSource": "https://fpfl.purpleo.co.kr/view/7698",
+      "note": "평생학습관과 작은도서관이 같은 단지에 있어요. 강의실은 신청한 수업 안내에서 확인해 주세요."
+    }
+  ],
+  "L16": [],
+  "F01": [
+    {
+      "name": "국민연금공단 안산지사",
+      "address": "단원구 광덕대로 259, 2층",
+      "lat": 37.319722789854,
+      "lon": 126.8300314307,
+      "addressSource": "https://www.nps.or.kr/pbcpgdnc/ognzprsn/getOHAG0013M0List.do?brofCd=4116&menuId=MN24001022",
+      "geoSource": "https://jusoga.com/b/4127310100105230003000001/%EA%B2%BD%EA%B8%B0%EB%8F%84-%EC%95%88%EC%82%B0%EC%8B%9C-%EB%8B%A8%EC%9B%90%EA%B5%AC-%EA%B4%91%EB%8D%95%EB%8C%80%EB%A1%9C-259-%EA%B3%A0%EC%9E%94%EB%8F%99",
+      "note": "국민연금공단 안산지사 2층에서 노후준비 상담을 받아요."
+    }
+  ],
+  "F20": [],
+  "H19": [],
+  "H10": [],
+  "H13": [
+    {
+      "name": "안산서부건강생활지원센터",
+      "address": "단원구 신길중앙로 15",
+      "lat": 37.337992,
+      "lon": 126.7621943,
+      "addressSource": "https://ansan.go.kr/health/common/cntnts/selectContents.do?cntnts_id=health06",
+      "geoSource": "https://findby.co.kr/details/15398-412733191097-st-652c0a2ff27008be2c4f9d1a",
+      "note": "원스톱건강상담실은 이 건물 2층에 있어요."
+    }
+  ],
+  "F02": [],
+  "F21": [],
+  "F22": [],
+  "H20_INFO": [],
+  "H21": [
+    {
+      "name": "국민건강보험공단 안산지사",
+      "address": "상록구 삼일로 646",
+      "lat": 37.3274143,
+      "lon": 126.8479589,
+      "addressSource": "https://www.g2b.go.kr/pn/pnp/pnpe/UntyAtchFile/downloadFile.do?bidPbancNo=R25BK00938539&bidPbancOrd=000&fileSeq=2&fileType=",
+      "geoSource": "https://qbh.purpleo.kr/article/163806",
+      "note": "안산지사에서 장기요양 인정 신청 절차를 안내받을 수 있어요."
+    }
+  ],
+  "H22": [
+    {
+      "name": "상록수보건소",
+      "address": "상록구 차돌배기로1길 5",
+      "lat": 37.300265,
+      "lon": 126.845063,
+      "addressSource": "https://ansan.go.kr/snshealth/common/cntnts/selectContents.do?cntnts_id=C0001755",
+      "geoSource": "https://fhc.purpleo.co.kr/view/94",
+      "note": "보건소 안에서 이용할 창구를 선택해 주세요. 치매안심센터는 3층에 있어요."
+    },
+    {
+      "name": "단원보건소",
+      "address": "단원구 화랑로 250",
+      "lat": 37.32106713,
+      "lon": 126.8152625,
+      "addressSource": "https://ansan.go.kr/health/common/cntnts/selectContents.do?cntnts_id=C0001644",
+      "geoSource": "https://www.data.go.kr/data/15021138/standard.do",
+      "note": "보건소 안에서 이용할 창구를 선택해 주세요. 치매안심센터는 3층에 있어요."
+    }
+  ],
+  "H23": [
+    {
+      "name": "상록수보건소",
+      "address": "상록구 차돌배기로1길 5",
+      "lat": 37.300265,
+      "lon": 126.845063,
+      "addressSource": "https://ansan.go.kr/snshealth/common/cntnts/selectContents.do?cntnts_id=C0001755",
+      "geoSource": "https://fhc.purpleo.co.kr/view/94",
+      "note": "보건소 안에서 이용할 창구를 선택해 주세요. 치매안심센터는 3층에 있어요."
+    }
+  ],
+  "H24": [
+    {
+      "name": "상록수보건소",
+      "address": "상록구 차돌배기로1길 5",
+      "lat": 37.300265,
+      "lon": 126.845063,
+      "addressSource": "https://ansan.go.kr/snshealth/common/cntnts/selectContents.do?cntnts_id=C0001755",
+      "geoSource": "https://fhc.purpleo.co.kr/view/94",
+      "note": "보건소 안에서 이용할 창구를 선택해 주세요. 치매안심센터는 3층에 있어요."
+    },
+    {
+      "name": "단원보건소",
+      "address": "단원구 화랑로 250",
+      "lat": 37.32106713,
+      "lon": 126.8152625,
+      "addressSource": "https://ansan.go.kr/health/common/cntnts/selectContents.do?cntnts_id=C0001644",
+      "geoSource": "https://www.data.go.kr/data/15021138/standard.do",
+      "note": "보건소 안에서 이용할 창구를 선택해 주세요. 치매안심센터는 3층에 있어요."
+    }
+  ],
+  "H25": [],
+  "G01": []
+}

@@ -75,6 +75,8 @@ TEXT_KEYS = """
     kind_always kind_period kind_list nationwide card_ask target_label first_visit_label
     check_heading age_unconfirmed worry_heading say_prefix call_button apply_button detail_button home_button
     list_note list_button
+    guide_button phone_button route_button worry_ask worry_unknown first_time_heading
+    fact_where fact_where_remote fact_who fact_how fact_contact
     restart_button disclaimer
     share_help share_button share_message share_copied share_failed
     save_heading save_help save_image_alt save_button save_send_button save_send_failed
@@ -84,7 +86,7 @@ TEXT_KEYS = """
 TEXT_FIELDS = {
     "progress_scale": {"number", "total"}, "priority_example": {"org", "program"},
     "edit_option": {"number", "question", "answer"}, "type_image_alt": {"name"},
-    "ai_unmatched": {"items"},
+    "ai_unmatched": {"items"}, "place_for_type": {"name"},
     "seen_note": {"type"}, "unconfirmed": {"column"}, "checked_note": {"date"},
     "card_footer": {"date"}, "pin_more": {"count"}, "more_places_heading": {"type"}, "map_checked_note": {"date"},
 }
@@ -262,6 +264,22 @@ def validate_text(settings: dict) -> list[str]:
         if not used <= allowed:
             can = ", ".join("{" + name + "}" for name in sorted(allowed))
             problems.append(f"settings.yaml: text의 '{key}'에는 중괄호를 {can} 꼴로만 쓸 수 있습니다.")
+    # 기관 세부 화면의 걱정 단추. 없어도 되지만(그러면 단추가 안 나온다) 있으면 모양이 맞아야 한다
+    worries = settings.get("worries") or []
+    if not isinstance(worries, list):
+        problems.append("settings.yaml: worries는 목록이어야 합니다.")
+        worries = []
+    seen_worries = set()
+    for worry in worries:
+        if not isinstance(worry, dict) or not isinstance(worry.get("id"), str) or not isinstance(worry.get("label"), str):
+            problems.append("settings.yaml: worries의 각 줄에는 id와 label이 있어야 합니다.")
+            continue
+        if worry["id"] in seen_worries:
+            problems.append(f"settings.yaml: worries에 id '{worry['id']}'가 두 번 나옵니다.")
+        seen_worries.add(worry["id"])
+        for column in worry.get("show") or []:
+            if column not in REQUIRED_COLUMNS:
+                problems.append(f"settings.yaml: worries '{worry['id']}'의 show에 정보표에 없는 칸 '{column}'이 있습니다.")
     card = settings.get("fallback_card")
     for key in FALLBACK_KEYS:
         if not isinstance(card, dict) or not isinstance(card.get(key), str) or not card[key]:

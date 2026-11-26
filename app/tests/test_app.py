@@ -16,7 +16,7 @@ import pytest
 import streamlit as st
 from streamlit.testing.v1 import AppTest
 
-from app.core import candidates, clock, llm_matcher, loader, logger
+from app.core import candidates, clock, llm_matcher, loader, logger, venues
 from app.core import selection as sel
 from app.ui import components as ui
 from app.ui import result_image
@@ -197,9 +197,9 @@ def test_one_type_to_the_end(app, tmp_path):
     click(app, "pin_1")                                        # 핀을 누르면 그 곳의 안내 화면으로 간다
     assert app.session_state.screen == "place" and app.session_state.place == places[0]["id"]
     page = page_text(app)
-    assert f'<h1 class="q-title">{escape(ui.place_name(places[0]))}</h1>' in page
-    assert "혼자 가도 괜찮을까요?" in page                      # 걸림돌이 물어볼 문장으로 이어진다
-    assert text["say_prefix"] in page and text["call_button"] in page     # 물어볼 문장과 전화 단추는 접지 않고 보인다
+    assert f'<h1 class="place-title">{escape(ui.place_name(places[0]))}</h1>' in page
+    assert text["say_prefix"] not in page and "혼자 가도 괜찮을까요?" not in page   # 물어볼 문장은 넣지 않는다(11/26)
+    assert text["phone_button"] in page and 'href="tel:' in page          # 전화 단추는 접지 않고 보인다
     click(app, "back_top")
 
     click(app, "more_toggle")                                  # 결과 화면에는 다른 유형을 여는 단추가 없다(11/26)
@@ -407,7 +407,8 @@ def test_type_without_places_leads_to_the_general_window(monkeypatch, tmp_path):
     assert pin_labels(at) == [p["프로그램명"] for p in consults[:3]] and pin_labels(at)
     assert "detail_T01_previous_work" not in keys(at)             # 안내할 곳이 없으면 세부 질문을 묻지 않는다
     click(at, "pin_1")
-    assert text["call_button"] in page_text(at)                   # 창구의 안내 화면에도 전화 단추가 있다
+    assert text["phone_button"] in page_text(at)                  # 창구의 안내 화면에도 전화 단추가 있다
+    assert text["place_for_type"].format(name=data.types["T01"]["name"]) not in page_text(at)   # 그 유형의 곳이 아니면 '추천!'이라고 하지 않는다
 
 
 def test_type_with_places_does_not_apologise(app):
@@ -581,7 +582,7 @@ def test_free_text_adds_ai_picks_with_reasons(app, fake_ai, tmp_path):
     click(app, "pin_1")                                             # 추천 이유는 그 곳의 안내 화면에 나온다
     text = page_text(app)
     assert settings["ai_reason"] in text and "오전에 사무 일을 찾으신다고 해서 골랐어요." in text
-    assert settings["call_button"] in text and "지어낸 곳이에요." not in text
+    assert settings["phone_button"] in text and "지어낸 곳이에요." not in text
     click(app, "back_bottom")
 
     # AI에게는 걸러진 후보만, 전화번호를 지운 글만 간다. 기본정보(성별·나이·일 여부)는 가지 않는다
@@ -709,7 +710,7 @@ def test_picked_place_moves_to_the_front_and_keeps_its_card(app, fake_ai):
     assert "해외여행" in text                                  # 일부만 찾았으면 못 찾은 부분을 알려 준다
     click(app, "pin_1")
     text = page_text(app)
-    assert "가까운 곳이라 골랐어요." in text and settings["call_button"] in text and settings["say_prefix"] in text
+    assert "가까운 곳이라 골랐어요." in text and settings["phone_button"] in text and settings["say_prefix"] not in text
     assert len(fake_ai["prompts"]) == 1
 
 
@@ -1213,7 +1214,7 @@ def test_type_with_lists_only_never_says_contacts(app, cards):
     page = page_text(app)
     assert text["map_heading"] + "</h2>" in page and pin_labels(app)
     assert "문의할 수 있는 곳" not in page and text["card_places_heading"] not in page
-    click(app, "pin_1")                                        # 목록 행의 안내 화면은 목록 카드다(전화로 문의하라고 하지 않는다)
+    click(app, "pin_1")                                        # 목록 행의 안내 화면: 목록에서 직접 찾아보라고 알리고 목록을 여는 단추를 둔다
     page = page_text(app)
     assert text["list_note"] in page and text["list_button"] in page and text["say_prefix"] not in page
     click(app, "back_top")
@@ -1246,36 +1247,98 @@ def test_more_pin_appears_only_past_three_places(app, type_id):
     assert [b.label for b in app.button if b.key.startswith("open_")] == [ui.place_label(p) for p in rest]
     assert all(escape(p["한줄설명"]) in page for p in rest)
     click(app, f"open_{rest[0]['id']}")                        # 줄을 누르면 그 곳의 안내 화면으로
-    assert app.session_state.screen == "place" and rest[0]["기관명"] in page_text(app)
-    click(app, "back_top")                                     # 목록에서 왔어도 '←'는 결과 화면으로 간다
+    assert app.session_state.screen == "place" and escape(ui.place_name(rest[0])) in page_text(app)
+    click(app, "back_top")                                     # 목록에서 연 곳은 목록으로 돌아간다(11/26)
+    assert app.session_state.screen == "more_places"
+    click(app, f"open_{rest[0]['id']}")
+    click(app, "back_bottom")
+    assert app.session_state.screen == "more_places"
+    click(app, "back_bottom")                                  # 목록의 돌아가기는 결과로 간다
     assert app.session_state.screen == "result"
 
 
 def test_place_screen_goes_back_to_the_same_result(app, tmp_path):
-    """센터 정보 화면의 두 돌아가기 단추는 모두 결과로 가고, 답과 펼쳐 둔 것은 그대로다. 보고 온 곳은 표시해 둔다."""
+    """기관 세부 화면(11/26 새 모양)의 두 돌아가기 단추는 온 화면(결과)으로 가고, 답은 그대로다. 보고 온 곳은 표시해 둔다."""
     data = loader.load_all()
     text = data.settings["text"]
-    take_survey(app, barrier="cost", T12=(5, 5))
+    take_survey(app, T12=(5, 5))
     answers, pins = dict(app.session_state.answers), pin_labels(app)
     places = type_places(data, "T12", app)
+    worry_keys = [f"worry_{w['id']}" for w in data.settings["worries"]]
 
     for number, back in ((1, "back_top"), (2, "back_bottom")):
         click(app, f"pin_{number}")
         program = places[number - 1]
         assert app.session_state.screen == "place"
         page = page_text(app)
-        assert f'<h1 class="q-title">{escape(ui.place_name(program))}</h1>' in page          # 제목은 기관 이름(11/26)
-        assert f'<h3 class="p-name">{escape(program["프로그램명"])}</h3>' in page             # 하는 일은 카드의 이름 줄에 나온다
-        assert program["기관명"] in page and escape(program["한줄설명"]) in page
-        assert text["say_prefix"] in page and text["call_button"] in page and text["detail_button"] in page
+        # 순서: 머리 상자('○○형에 추천!' + 기관 이름) → 하는 일 → 한 줄 설명 → 단추 줄 → 걱정 단추 → 접힌 칸 → 확인 날짜
+        order = [text["place_for_type"].format(name=data.types["T12"]["name"]),
+                 f'<h1 class="place-title">{escape(ui.place_name(program))}</h1>',
+                 f'<h2 class="place-work">{escape(program["프로그램명"])}</h2>', escape(program["한줄설명"]),
+                 '<div class="place-actions">', f'<p class="sec">{text["worry_ask"]}</p>', '<dl class="place-facts">',
+                 escape(text["checked_note"].format(date=ui.korean_date(program["확인날짜"])))]
+        assert [page.index(part) for part in order] == sorted(page.index(part) for part in order)
+        assert text["say_prefix"] not in page                              # '이렇게 물어보세요' 문장은 넣지 않는다
         assert app.button(key="back_top").label == text["back_label"]      # 화살표 단추를 읽어 주는 이름
-        assert [key for key in keys(app) if key != "to_start"] == ["back_top", "back_bottom"]
+        assert app.button(key="back_bottom").label == text["back_to_result"]
+        assert [key for key in keys(app) if key != "to_start"] == ["back_top"] + worry_keys + ["back_bottom"]
+        # 전화 단추는 접힌 칸 밖(단추 줄)에 있다. 접힌 칸에는 장소·대상·이용 방법·기관 문의만 있다
+        [box] = app.expander
+        inside = " ".join(m.value for m in box.markdown)
+        assert box.label == text["first_time_heading"] and 'href="tel:' not in inside
+        assert (ui.phones(program["공식연락처"]) != []) == ('href="tel:' in page)
         click(app, back)
         assert app.session_state.screen == "result"
         assert dict(app.session_state.answers) == answers and pin_labels(app) == pins
-        assert escape(data.types["T12"]["feature"]) in page_text(app)       # 펼쳐 둔 특징도 그대로다
     assert app.session_state.seen_places == [places[0]["id"], places[1]["id"]]
     assert len(rows(tmp_path, "responses.csv")) == 1
+
+
+def test_route_button_only_for_places_with_a_known_position(app):
+    """길찾기는 위치(좌표)를 아는 곳에만 나오고, 카카오맵의 길찾기 주소를 연다. 위치 파일의 id는 모두 정보표에 있다."""
+    data = loader.load_all()
+    text = data.settings["text"]
+    known = venues.load()
+    assert known and set(known) <= {p["id"] for p in data.programs}
+    take_survey(app, T01=(5, 5))
+    seen = set()
+    for number, program in enumerate(type_places(data, "T01", app)[:3], start=1):
+        click(app, f"pin_{number}")
+        page = page_text(app)
+        has_route = "https://map.kakao.com/link/to/" in page
+        assert has_route == (program["id"] in known) == (f'>{text["route_button"]}' in page)
+        seen.add(has_route)
+        click(app, "back_top")
+    assert True in seen                                        # 적어도 한 곳은 길찾기가 있어야 이 테스트가 뜻이 있다
+
+
+def test_worry_buttons_show_only_what_the_table_knows(app, tmp_path):
+    """'무엇이 걱정되세요?' 단추를 누르면 이 기관의 해당 칸이 나온다. 빈 칸이면 지어내지 않고 모른다고 알린다. 누른 것만 기록한다."""
+    data = loader.load_all()
+    text = data.settings["text"]
+    take_survey(app, T01=(5, 5))
+    program = type_places(data, "T01", app)[0]
+    click(app, "pin_1")
+    assert '<div class="worry-answer"' not in page_text(app)                # 누르기 전에는 답이 없다
+    for worry in data.settings["worries"]:
+        click(app, f"worry_{worry['id']}")
+        page = page_text(app)
+        answer = page[page.index('<div class="worry-answer"'):]
+        answer = answer[:answer.index("</div>")]
+        known = [program[c] for c in worry["show"] if program[c] and program[c] != "미확인"]
+        if known:
+            assert all(escape(value.replace("|", ", ")) in answer for value in known)
+        elif not worry.get("checks"):
+            assert escape(text["worry_unknown"]) in answer
+        assert page.count('<div class="worry-answer"') == 1    # 한 번에 하나만 펼친다
+    last = data.settings["worries"][-1]["id"]
+    click(app, f"worry_{last}")                                # 다시 누르면 접힌다
+    assert '<div class="worry-answer"' not in page_text(app)
+    events = [(e["target"], e["value"]) for e in rows(tmp_path, "events.csv") if e["event"] == "worry"]
+    assert events == [(program["id"], worry["id"]) for worry in data.settings["worries"]]
+    click(app, "back_top")                                     # 다른 곳을 열면 펼친 걱정은 지워진다
+    click(app, "pin_2")
+    assert '<div class="worry-answer"' not in page_text(app)
 
 
 @pytest.mark.parametrize("place", ["없는id", "closed", "other_type", None])
@@ -1291,5 +1354,5 @@ def test_place_screen_never_draws_a_place_outside_the_candidates(app, place):
     app.session_state.screen = "place"
     app.run()
     assert not app.exception and app.session_state.screen == "result"
-    assert data.settings["text"]["call_button"] not in page_text(app)
+    assert data.settings["text"]["phone_button"] not in page_text(app)
 

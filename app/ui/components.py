@@ -11,7 +11,7 @@ from pathlib import Path
 
 import streamlit as st
 
-from app.core import candidates
+from app.core import candidates, venues
 from app.core.loader import KIND_ALWAYS, KIND_LIST, KIND_PERIOD, NATIONWIDE, PIN_COLUMN, UNCONFIRMED, split_multi
 from app.ui import pins
 
@@ -219,7 +219,8 @@ def title_row(title: str, back_label: str, on_back, args: tuple = ()) -> None:
     """
     with st.container(key="title_row"):
         st.button(back_label, key="back_top", icon=":material/arrow_back:", on_click=on_back, args=args)
-        html(f'<h1 class="q-title">{escape(title)}</h1>')
+        if title:                           # 기관 세부 화면은 제목 없이 화살표만 둔다(이름은 바로 아래 머리 상자에 있다)
+            html(f'<h1 class="q-title">{escape(title)}</h1>')
 
 
 def pin_name(program: dict) -> str:
@@ -536,6 +537,84 @@ def program_card(program: dict, text: dict, type_info: dict | None = None, guide
                     html(f'<p class="sec">{escape(text["worry_heading"])}</p>')
                     _bullets(worries)
         _checked_note(program, text)
+
+
+def place_head(title: str, label: str = "", image: Path | None = None) -> None:
+    """기관 세부 화면의 머리 상자: 작은 글(label, '○○형에 추천!') + 기관 이름 + 캐릭터 그림.
+
+    그림은 꾸밈이라 설명 글(alt)을 비운다. label이 없으면(대표 유형의 곳이 아닐 때) 작은 글을 빼고 이름만 둔다.
+    """
+    tag = f'<p class="place-type">{escape(label)}</p>' if label else ""
+    picture = f'<img class="place-pic" src="{_tile_uri(str(image))}" alt="">' if image else ""
+    html(f'<div class="place-head"><div>{tag}<h1 class="place-title">{escape(title)}</h1></div>{picture}</div>')
+
+
+def place_actions(program: dict, text: dict, places: list[dict]) -> None:
+    """기관 세부 화면의 단추 줄: 기관 공식 안내 → (신청 페이지) → 전화 문의 → 길찾기. 접지 않고 늘 보인다.
+
+    공식 안내는 상세 안내 → 신청 페이지 → 기관 홈페이지 순서로 처음 있는 주소를 연다. 목록 행은 단추의 글이 다르다.
+    전화번호가 둘이면 단추도 둘이고, 어느 번호인지 단추에 적는다. 길찾기는 좌표가 있는 곳(places)에만 나온다.
+    """
+    links: list[tuple[str, str]] = []
+    is_list = program["종류"] == KIND_LIST
+    columns = ("신청URL", "상세페이지URL", "홈페이지URL") if is_list else ("상세페이지URL", "신청URL", "홈페이지URL")
+    first = next((program[column] for column in columns if program[column]), "")
+    if first:
+        links.append((text["list_button"] if is_list else text["guide_button"], first))
+    if not is_list and program["신청URL"] and program["신청URL"] != first:
+        links.append((text["apply_button"], program["신청URL"]))
+    numbers = phones(program["공식연락처"])
+    for number, shown in numbers:
+        note = f' {shown.partition("(")[0].strip()}' if len(numbers) > 1 else ""
+        links.append((text["phone_button"] + note, f"tel:{number}"))
+    for place in places:
+        note = f' ({place["name"]})' if len(places) > 1 else ""
+        links.append((text["route_button"] + note, venues.route_url(place)))
+    if not links:
+        return
+    marks = "".join(
+        f'<a href="{escape(url, quote=True)}"' + ("" if url.startswith("tel:") else ' target="_blank" rel="noopener"')
+        + f">{escape(label)}</a>" for label, url in links)
+    html(f'<div class="place-actions">{marks}</div>')
+
+
+def worry_lines(program: dict, worry: dict, text: dict, type_info: dict | None) -> list[str]:
+    """걱정 단추 하나를 눌렀을 때 보여 줄 이 기관의 내용. 정보표에 확인된 것만 낸다(비었거나 '미확인'이면 뺀다).
+
+    worry는 settings.yaml의 worries 한 줄이다. show는 보여 줄 정보표 칸이고, checks가 참이면 본인이 먼저 확인할 점도 붙인다.
+    """
+    lines = [program[column].replace("|", ", ") for column in worry.get("show") or []
+             if program.get(column) and program[column] != UNCONFIRMED]
+    if worry.get("checks"):
+        lines += _checks(program, text, type_info)
+    return list(dict.fromkeys(lines))
+
+
+def worry_answer(label: str, lines: list[str], unknown: str) -> None:
+    """누른 걱정의 답. 확인된 내용이 없으면 지어내지 않고 그 사실(unknown)을 알린다."""
+    body_text = "<br>".join(escape(line) for line in lines) if lines else escape(unknown)
+    html(f'<div class="worry-answer" aria-live="polite"><b>{escape(label)}</b><br>{body_text}</div>')
+
+
+def place_facts(program: dict, text: dict, extra: list[tuple[str, str]] | None = None) -> None:
+    """접힌 칸 '지원을 처음 경험할 때' 안의 줄: 어디로 가나요 / 누가 이용할 수 있나요 / 이용 방법 / 기관 문의.
+
+    비어 있거나 '미확인'인 줄은 내지 않는다. extra는 뒤에 붙일 줄이다(내 동네에서 등).
+    """
+    place = program["장소"] or program["진행방식"]
+    rows = [(text["fact_where_remote"] if _no_visit(place) else text["fact_where"], place),
+            (text["fact_who"], program["대상"]),
+            (text["fact_how"], program["첫방문안내"] or program["신청방법"]),
+            (text["fact_contact"], program["공식연락처"])] + list(extra or [])
+    marks = "".join(f"<dt>{escape(label)}</dt><dd>{escape(value)}</dd>" for label, value in rows
+                    if value and value != UNCONFIRMED)
+    if marks:
+        html(f'<dl class="place-facts">{marks}</dl>')
+
+
+def checked_note(program: dict, text: dict) -> None:
+    """이 곳의 정보를 확인한 날짜(작은 글)."""
+    _checked_note(program, text)
 
 
 def ai_reason(label: str, reason: str) -> None:

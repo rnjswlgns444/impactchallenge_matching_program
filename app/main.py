@@ -22,7 +22,7 @@ import streamlit as st
 # 'streamlit run app/main.py'로 실행해도 app 패키지를 찾을 수 있게 프로젝트 루트를 경로에 넣는다
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.core import candidates, clock, llm_matcher, loader, logger, scoring  # noqa: E402
+from app.core import candidates, clock, llm_matcher, loader, logger, scoring, venues  # noqa: E402
 from app.core import selection as sel  # noqa: E402
 from app.ui import components as ui  # noqa: E402
 from app.ui import result_image, style  # noqa: E402
@@ -77,6 +77,8 @@ def init_state() -> None:
         "save_open": False,   # '내 결과 저장하기'를 눌러 사진을 펼쳤는지
         "more_open": False,   # 결과 화면의 '더 보기'를 펼쳤는지
         "place": None,        # 센터 정보 화면에서 보여 줄 곳의 id. 그릴 때마다 지금 후보에 있는지 다시 확인한다
+        "place_from": None,   # 그 곳을 어느 화면에서 열었는지(result, more_places, view). '뒤로 돌아가기'가 그곳으로 간다
+        "worry": None,        # 센터 정보 화면에서 눌러 펼친 걱정의 id. 다른 곳을 열면 지운다
         "seen_places": [],    # 센터 정보를 열어 본 곳의 id. 지도에서 물빛으로 보여 준다
     }
     for key, value in defaults.items():
@@ -641,11 +643,39 @@ def flip(key: str) -> None:
 def open_place(program_id: str) -> None:
     """지도의 핀이나 목록의 줄을 눌렀을 때: 그 곳의 안내 화면으로 간다. 어느 곳을 열었는지만 기록한다."""
     state = st.session_state
-    state.place = program_id
+    state.place, state.place_from, state.worry = program_id, state.screen, None
     if program_id not in state.seen_places:
         state.seen_places = state.seen_places + [program_id]
     logger.log_event(state.sid, "place", program_id)
     go("place")
+
+
+def worry_area(data, text, program: dict, type_info: dict | None) -> None:
+    """'무엇이 걱정되세요?' 단추들(11/26: 설문의 걸림돌 문항을 대신한다). 누르면 그 아래에 이 기관의 해당 내용이 나온다.
+
+    한 번에 하나만 펼치고, 다시 누르면 접는다. 무엇을 눌렀는지만 기록한다(worry 사건: 기관 id, 걱정 id).
+    정보표에 확인된 내용이 없으면 지어내지 않고 그 사실을 알린다. 단추의 글과 칸은 settings.yaml의 worries다.
+    """
+    state = st.session_state
+    worries = data.settings.get("worries") or []
+    if not worries:
+        return
+
+    def pick(worry_id: str) -> None:
+        if state.get("worry") == worry_id:
+            state.worry = None
+            return
+        state.worry = worry_id
+        logger.log_event(state.sid, "worry", program["id"], worry_id)
+
+    ui.html(f'<p class="sec">{escape(text["worry_ask"])}</p>')
+    chosen = next((worry for worry in worries if worry["id"] == state.get("worry")), None)
+    with st.container(key="worry_row"):
+        for worry in worries:
+            st.button(worry["label"], key=f"worry_{worry['id']}", type="primary" if worry is chosen else "secondary",
+                      on_click=pick, args=(worry["id"],))
+    if chosen:
+        ui.worry_answer(chosen["label"], ui.worry_lines(program, chosen, text, type_info), text["worry_unknown"])
 
 
 def place_area(data, text, context: SimpleNamespace) -> None:
@@ -876,11 +906,13 @@ def screen_result(data, text) -> None:
 # ── 센터 정보 화면, 다른 곳 목록 화면 ──
 
 def screen_place(data, text) -> None:
-    """핀이나 목록의 줄을 눌러서 온 화면: '←' + 곳 이름 → 기관 카드 그대로 → '← 결과로 돌아가기'.
+    """핀이나 목록의 줄을 눌러서 온 기관 세부 화면(11/26에 팀원 화면의 모양으로 다시 짰다).
 
+    순서: '←' → 머리 상자('○○형에 추천!' + 기관 이름 + 그림) → 하는 일 + 한 줄 설명 → 단추 줄(공식 안내·전화·길찾기)
+          → 무엇이 걱정되세요?(눌러 보기) → 접힌 칸 '지원을 처음 경험할 때' → 확인 날짜 → '← 뒤로 돌아가기'
     그릴 때마다 지금의 후보를 다시 만든다. state.place가 그 안에 없으면(끝난 곳, 답을 고쳐 빠진 곳, 없는 id)
-    아무것도 그리지 않고 결과로 돌려보낸다. 두 돌아가기 단추는 늘 결과 화면으로 간다.
-    화면 제목은 지도의 핀과 같은 기관 이름이다(11/26, ui.place_name). 카드에는 하는 일(프로그램명)과 온전한 기관 이름이 나온다.
+    아무것도 그리지 않고 돌려보낸다. 두 돌아가기 단추는 이 곳을 연 화면(결과, 다른 곳 목록, 유형 소개)으로 간다.
+    '이렇게 물어보세요' 문장은 넣지 않는다(11/26 결정). 전화 단추는 접지 않는다.
     """
     state = st.session_state
     view = state.get("view_type")                             # 둘러보기에서 왔으면 설문·맞춰 보기를 확인하지 않는다
@@ -894,20 +926,28 @@ def screen_place(data, text) -> None:
         go(home)
         st.rerun()
 
-    ui.title_row(ui.place_name(program), text["back_label"], go, (home,))
+    back = state.get("place_from") if state.get("place_from") in (home, "more_places") else home
+    type_info = data.types[context.primary]
+    own = context.primary in loader.split_multi(program["유형태그"])     # 대표 유형의 곳인지(AI가 고른 다른 유형의 곳, 일반 창구는 아니다)
+    gender = browse_gender(data, view) if view else state.answers.get(sel.GENDER_Q)
+
+    ui.title_row("", text["back_label"], go, (back,))
+    ui.place_head(ui.place_name(program), text["place_for_type"].format(name=type_info["name"]) if own else "",
+                  ui.character_image(context.primary, gender))
     reason = context.reasons.get(program["id"])
     if reason:
         ui.ai_reason(text["ai_reason"], reason)
-    type_info = data.types[context.primary]
-    own = context.primary in loader.split_multi(program["유형태그"])     # 대표 유형의 곳인지(AI가 고른 다른 유형의 곳, 일반 창구는 아니다)
+    ui.html(f'<h2 class="place-work">{escape(program["프로그램명"])}</h2>')
+    ui.body(program["한줄설명"])
     if program["종류"] == loader.KIND_LIST:
-        ui.list_card(program, text)
-    else:
-        asked = [opt["label"] for opt in sel.chosen_detail_options(type_info, state.details.get(context.primary))]
-        ui.program_card(program, text, type_info if own else None, context.guides, asked if own else None,
-                        key=f"place_{program['id']}")
-    st.button(width="stretch", label=text["back_to_result"], key="back_bottom", on_click=go, args=(home,))
-    ui.back_guard("back_bottom")                              # 휴대폰 '뒤로 가기'를 눌러도 결과로 돌아간다
+        ui.body(text["list_note"])
+    ui.place_actions(program, text, venues.load().get(program["id"], []))
+    worry_area(data, text, program, type_info if own else None)
+    with st.expander(text["first_time_heading"], key="first_time_box"):
+        ui.place_facts(program, text)
+    ui.checked_note(program, text)
+    st.button(width="stretch", label=text["back_to_result"], key="back_bottom", on_click=go, args=(back,))
+    ui.back_guard("back_bottom")                              # 휴대폰 '뒤로 가기'를 눌러도 온 화면으로 돌아간다
 
 
 def screen_more_places(data, text) -> None:

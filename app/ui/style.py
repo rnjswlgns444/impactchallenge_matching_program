@@ -456,6 +456,53 @@ CSS = """
 .stApp .st-key-save_share .share { margin: 0; padding: 0; border: 0; background: none; }
 .stApp .st-key-save_share :is(.stButton > button, a.share-btn) { margin: 0; padding-inline: .5rem; background: var(--surface); border-color: var(--line); }
 
+/* ── 기관 세부 화면(11/26, 팀원 화면의 모양을 우리 색으로 옮김) ──
+   머리 상자: 베이지 바탕에 작은 글('○○형에 추천!') + 기관 이름, 오른쪽에 캐릭터 그림 */
+.stApp .place-head {
+  display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+  padding: .7rem .8rem .7rem 1rem; border-radius: var(--card-radius);
+  background: #FBF0DE; border: 1px solid #EDDDC7;
+}
+.stApp .place-head > div { min-width: 0; }
+.stApp .place-type { margin: 0 0 .2rem; color: var(--teal); font-size: 1.125rem; font-weight: 700; }
+.stApp .place-title {
+  margin: 0; padding: 0; color: var(--ink); font-size: clamp(1.6rem, 6.4vw, 2.1rem); line-height: 1.28;
+  word-break: keep-all; overflow-wrap: anywhere;
+}
+.stApp .place-pic { flex: none; width: clamp(64px, 20vw, 92px); height: auto; }
+.stApp .place-work { margin: 0; padding: 0; color: var(--ink); font-size: 1.375rem; line-height: 1.4; word-break: keep-all; }
+/* 단추 줄(ui.place_actions): 나란히 놓고, 좁으면 다음 줄로 넘긴다. 높이 52px. 첫 단추만 짙은 바탕이다 */
+.stApp .place-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.stApp .place-actions a {
+  flex: 1 1 auto; min-height: 3.25rem; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;
+  padding: .55rem 1rem; border: 1.5px solid var(--line); border-radius: .85rem; background: var(--surface);
+  color: var(--ink); font-size: 1.1875rem; font-weight: 700; line-height: 1.35; text-align: center; text-decoration: none;
+  word-break: keep-all;
+}
+.stApp .place-actions a:first-child { background: var(--teal); border-color: var(--teal); color: #fff; }
+@media (hover: hover) {
+  .stApp .place-actions a:hover { border-color: var(--teal); }
+}
+/* 무엇이 걱정되세요?: 작은 단추들을 나란히. 누른 것은 물빛 바탕 + 굵은 청록 테두리. 높이 48px */
+.stApp .st-key-worry_row { flex-direction: row; flex-wrap: wrap; gap: .5rem; }
+.stApp .st-key-worry_row > div { width: auto; flex: 0 1 auto; min-width: 0; }
+.stApp .st-key-worry_row .stButton > button {
+  width: auto; min-height: 3rem; padding: .4rem .95rem; border-radius: 999px;
+}
+.stApp .st-key-worry_row .stButton > button p { font-size: 1.125rem; font-weight: 650; }
+.stApp .st-key-worry_row .stButton > button[kind="primary"] { background: var(--aqua); border: 2px solid var(--teal); }
+.stApp .st-key-worry_row .stButton > button[kind="primary"] p { color: var(--ink); }
+.stApp .worry-answer {
+  padding: .75rem 1rem; border-radius: var(--card-radius); background: var(--aqua); border: 1px solid #B8D0C2;
+  color: var(--body); font-size: 1.1875rem; line-height: 1.6; word-break: keep-all;
+}
+.stApp .worry-answer b { color: var(--ink); }
+/* 접힌 칸 '지원을 처음 경험할 때' 안의 줄: 물음(굵게) 아래에 답 */
+.stApp .place-facts { margin: 0; }
+.stApp .place-facts dt { margin-top: .7rem; color: var(--ink); font-size: 1.1875rem; font-weight: 700; }
+.stApp .place-facts dt:first-child { margin-top: 0; }
+.stApp .place-facts dd { margin: .1rem 0 0; color: var(--body); font-size: 1.1875rem; line-height: 1.6; word-break: keep-all; }
+
 /* ── 센터 정보·다른 곳 목록 화면 맨 위의 한 줄(ui.title_row): '←' 단추 + 제목 ── */
 .stApp .st-key-title_row { flex-direction: row; flex-wrap: nowrap; align-items: flex-start; gap: .7rem; }
 .stApp .st-key-title_row > div { width: auto; min-width: 0; flex: 0 1 auto; }
