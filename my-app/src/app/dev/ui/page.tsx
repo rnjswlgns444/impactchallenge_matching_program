@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 
+import { SessionDemo } from "./session-demo";
+
 export const metadata: Metadata = { title: "부품 모아 보기", robots: { index: false } };
 
 // 개발용 화면. 넣은 부품이 우리 크기·색으로 보이는지 한곳에서 본다.
@@ -89,6 +91,11 @@ export default function DevUiPage() {
             <AlertTitle>실패</AlertTitle>
             <AlertDescription>잠시 뒤에 다시 눌러 주세요.</AlertDescription>
           </Alert>
+        </Group>
+
+        <Group title="답 저장소">
+          <SessionDemo />
+          <LinkButton href="/browse">둘러보기 화면으로 (ANTI 눌러 보기)</LinkButton>
         </Group>
 
         <Group title="기다림">
