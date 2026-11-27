@@ -20,6 +20,7 @@ export type Viewed =
 
 export function useViewedType(): Viewed {
   const answers = useSurvey((state) => state.answers);
+  const tuned = useSurvey((state) => state.tuned);
   const browseId = useSearchParams().get("type");
 
   if (browseId !== null) {
@@ -30,5 +31,6 @@ export function useViewedType(): Viewed {
   const judged = judge(answers);
   const type = judged.primary ? getType(judged.primary) : undefined;
   if (judged.state === CHOOSE || !type) return { ok: false, to: "/pick" };
+  if (!tuned) return { ok: false, to: "/tune" };
   return { ok: true, type, browse: false };
 }

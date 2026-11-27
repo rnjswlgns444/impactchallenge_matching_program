@@ -86,6 +86,7 @@ function PlaceBody({ programId, type, browse }: { programId: string; type: TypeI
   const gender = browse ? browseGender(type.id) : characterGender(genderAnswer);
   const links = placeLinks(program, appData.venues[program.id] ?? []);
   const facts = placeFacts(program);
+  const reason = context.reasons[program.id];
 
   // 가장 눈에 띄게 둘 단추 하나: 전화가 있으면 첫 전화, 없으면 첫 단추(공식 안내나 목록)
   const main = links.find((link) => link.kind === "phone") ?? links[0];
@@ -123,6 +124,14 @@ function PlaceBody({ programId, type, browse }: { programId: string; type: TypeI
         </div>
       </header>
 
+      {reason ? (
+        // AI가 쓴 글은 그대로 글자로만 보여 준다
+        <Notice kind="info">
+          <b className="font-bold text-ink">{text.aiReason}</b>
+          <br />
+          {reason}
+        </Notice>
+      ) : null}
       <p className="text-[1rem] leading-[1.6]">{program["한줄설명"]}</p>
       {program["종류"] === KIND_LIST ? <Notice kind="info">{text.listNote}</Notice> : null}
 

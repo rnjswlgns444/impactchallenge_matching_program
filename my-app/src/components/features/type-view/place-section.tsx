@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 
+import { StarIcon } from "lucide-react";
+
 import { Notice } from "@/components/common/notice";
 import { PlaceRow } from "@/components/common/place-row";
 import { fill, text } from "@/content/text";
@@ -13,6 +15,9 @@ import type { Program, TypeInfo } from "@/data/types";
 import { placeHref, placesHref } from "@/lib/routes";
 
 import { DetailQuestion } from "./detail-question";
+import { Spinner } from "@/components/ui/spinner";
+import type { AiState } from "@/stores/survey-store";
+
 import { FallbackCard } from "./fallback-card";
 
 // 유형에 맞는 기관 구역. 기관을 3곳까지 카드로 보여 주고, 더 있으면 '다른 곳 n곳'으로 묶는다.
@@ -35,12 +40,17 @@ export function PlaceSection({
   type,
   context,
   browse,
+  ai = null,
+  asking = false,
 }: {
   type: TypeInfo;
   context: PlaceContext;
   browse: boolean;
+  ai?: AiState | null; // AI 추가 추천 결과(설문 결과에서만)
+  asking?: boolean; // AI의 답을 기다리는 중
 }) {
-  const { result, places } = context;
+  const { result, places, reasons } = context;
+  const starred = Object.keys(reasons).length > 0;
   const browseType = browse ? type.id : null;
   const detail = detailOf(type);
   const rest = places.length - SHOWN_PLACES;
@@ -55,6 +65,25 @@ export function PlaceSection({
           <p className="text-[0.8rem] leading-[1.5] text-muted-foreground">{text.placesHint}</p>
         ) : null}
       </div>
+
+      {/* AI에게 묻는 동안에도 아래의 기본 기관은 그대로 보인다 */}
+      {asking ? (
+        <Notice kind="info" live>
+          <span className="flex items-start gap-[0.5rem]">
+            <Spinner className="mt-[0.3rem] size-[1rem] shrink-0 text-teal" />
+            <span>{text.aiWait}</span>
+          </span>
+        </Notice>
+      ) : null}
+      {/* AI가 못 찾았거나 실패해도 기관은 그대로 보여 주고, 그 사실만 알린다 */}
+      {!asking && ai?.status === "unclear" ? <Notice>{text.aiUnclear}</Notice> : null}
+      {!asking && ai?.status === "fail" ? <Notice kind="fail">{text.aiFail}</Notice> : null}
+      {!asking && ai && (ai.status === "ok" || ai.status === "partial") && !starred ? (
+        <Notice kind="info">{text.aiNone}</Notice>
+      ) : null}
+      {!asking && ai && starred && ai.unmatched.length > 0 ? (
+        <Notice>{fill(text.aiUnmatched, { items: ai.unmatched.join(", ") })}</Notice>
+      ) : null}
 
       {/* 먼저 골라야 하는 세부 질문(돌봄: 누구의 돌봄인지). 고르면 그 아래에 곳이 나온다 */}
       {detail?.require_choice ? <DetailQuestion typeId={type.id} detail={detail} browse={browse} /> : null}
@@ -71,11 +100,18 @@ export function PlaceSection({
           {/* 이 유형의 곳은 없어 일반 창구를 놓았다 */}
           {noPlace(result) ? <Notice>{text.noProgram}</Notice> : null}
           {result.widened ? <Notice kind="info">{text.widenedNote}</Notice> : null}
+          {starred ? (
+            <p className="flex items-start gap-[0.3rem] text-[0.8rem] leading-[1.5] font-semibold text-foreground">
+              <StarIcon aria-hidden="true" className="mt-[0.2rem] size-[0.9rem] shrink-0 fill-cta text-cta-border" />
+              {text.aiStarNote}
+            </p>
+          ) : null}
           {places.slice(0, SHOWN_PLACES).map((program) => (
             <PlaceRow
               key={program.id}
               href={placeHref(program.id, browseType)}
               badge={kindLabel(program)}
+              star={program.id in reasons ? text.aiStarLabel : undefined}
               title={placeName(program)}
               sub={program["프로그램명"]}
             />

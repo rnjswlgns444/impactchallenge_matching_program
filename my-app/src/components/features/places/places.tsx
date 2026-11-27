@@ -41,6 +41,7 @@ function PlacesBody({ type, browse }: { type: TypeInfo; browse: boolean }) {
           <PlaceRow
             href={placeHref(program.id, browseType, true)}
             badge={kindLabel(program)}
+            star={program.id in context.reasons ? text.aiStarLabel : undefined}
             title={placeName(program)}
             sub={program["프로그램명"]}
           />

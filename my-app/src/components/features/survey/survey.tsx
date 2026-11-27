@@ -108,6 +108,7 @@ function QuestionView({
     } else {
       // 마지막 문항: 가장 높은 유형이 여럿이면 먼저 볼 유형을 고르러 간다
       const judged = judge(useSurveyStore.getState().answers);
+      // 유형이 정해졌으면 '조금 더 맞춰 보기'를 한 번 거친다(이미 지나왔으면 결과 화면이 그대로 보여 준다)
       router.push(judged.state === CHOOSE ? "/pick" : "/result");
     }
   }

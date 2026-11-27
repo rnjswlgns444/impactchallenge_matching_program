@@ -14,6 +14,7 @@ import { CHOOSE } from "@/core/scoring";
 import { GENDER_Q, PRIORITY_Q, SCALE } from "@/core/table";
 import { appData, getType } from "@/data";
 import type { Question, TypeInfo } from "@/data/types";
+import { useAiRequest } from "@/hooks/use-ai-request";
 import { usePlaceContext } from "@/hooks/use-place-context";
 import { useSurvey } from "@/hooks/use-survey";
 import { placeHref, surveyEditHref } from "@/lib/routes";
@@ -26,11 +27,14 @@ import type { Answer } from "@/stores/survey-store";
 
 export function Result() {
   const answers = useSurvey((state) => state.answers);
+  const tuned = useSurvey((state) => state.tuned);
   if (!isComplete(answers)) return <Redirect to={resumeHref(answers)} />;
 
   const judged = judge(answers);
   const type = judged.primary ? getType(judged.primary) : undefined;
   if (judged.state === CHOOSE || !type) return <Redirect to="/pick" />;
+  // 유형이 정해진 뒤 한 번만 '조금 더 맞춰 보기'를 거친다
+  if (!tuned) return <Redirect to="/tune" />;
 
   // 가장 높은 유형이 여럿이어서 본인이 골랐던 사람에게만 '다시 고르기'를 보여 준다
   const canRepick = judged.candidates.length > 1 && PRIORITY_Q in answers;
@@ -56,6 +60,8 @@ function ResultBody({
   canRepick: boolean;
 }) {
   const context = usePlaceContext(type.id, false);
+  const ai = useSurvey((state) => state.ai);
+  const asking = useAiRequest(type, context); // 글을 적고 온 사람은 여기서 AI에게 한 번 묻는다
   const shown = context.places.slice(0, SHOWN_PLACES);
   // 위에 이미 놓인 창구는 '함께 찾아 주는 곳'에서 되풀이하지 않는다
   const onScreen = new Set(context.places.map((program) => program.id));
@@ -74,7 +80,7 @@ function ResultBody({
       <TypeHero type={type} label={text.typeLabel} gender={characterGender(answers[GENDER_Q])} />
       <TypeFeature type={type} />
 
-      <PlaceSection type={type} context={context} browse={false} />
+      <PlaceSection type={type} context={context} browse={false} ai={ai} asking={asking} />
 
       <FoldGroup className="mt-[0.3rem]">
         <Fold value="more" title={text.moreToggle}>
@@ -93,6 +99,9 @@ function ResultBody({
                 />
               ))}
             </Fold>
+          </FoldGroup>
+          <PlaceRow href="/tune" title={text.tuneAgain} />
+          <FoldGroup>
             {consults.length > 0 ? (
               <Fold value="consult" title={text.consultHeading}>
                 {consults.map((program) => (
