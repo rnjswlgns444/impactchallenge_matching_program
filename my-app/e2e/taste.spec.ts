@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 
-import { tasteTools, text } from "../src/content/text";
+import { tastePhotos, tasteTools, text } from "../src/content/text";
 import { expect, expectNoOverflow, seen, test } from "./fixtures";
 
 function browserStorage(page: Page) {
@@ -72,14 +72,19 @@ for (const width of [320, 390]) {
     await expect(page).toHaveURL(/\/place\/L13\?type=T06$/);
   });
 
-  test(`${width}px에서 체험 자료가 없는 기관은 카드가 없고, 체험 주소를 쳐도 기관 화면으로 돌아간다`, async ({ page }) => {
+  test(`${width}px에서 사진만 있는 기관은 '사진으로 둘러보기'이고, 공식 페이지를 새 창으로 연다`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
-    await page.goto("/place/JOB07?type=T01");
-    await expect(seen(page.getByRole("link", { name: text.backBottom }))).toBeVisible();
+    await page.goto("/place/JOB03?type=T03");
+    await expect(seen(page.getByText(text.tastePhotos))).toBeVisible();
     await expect(page.getByText(text.tasteLabel)).toHaveCount(0);
-    await expect(page.getByText(text.tasteVideos)).toHaveCount(0);
 
-    await page.goto("/place/JOB07/taste?type=T01");
-    await expect(page).toHaveURL(/\/place\/JOB07\?type=T01$/);
+    await seen(page.getByRole("link", { name: text.tastePhotoButton })).click();
+    await expect(page).toHaveURL(/\/place\/JOB03\/taste\?type=T03$/);
+    await expect(seen(page.getByRole("heading", { name: tastePhotos.JOB03[0].title }))).toBeVisible();
+    const link = seen(page.getByRole("link", { name: text.tastePhotoButton }));
+    await expect(link).toHaveAttribute("href", tastePhotos.JOB03[0].url);
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(page.locator("iframe")).toHaveCount(0);
+    await expectNoOverflow(page);
   });
 }

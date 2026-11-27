@@ -12,7 +12,7 @@ const all: Readonly<Record<string, Simulation>> = tasteSimulations;
 const simulations: readonly Simulation[] = Object.keys(tastePractices).map((id) => all[id]);
 const fields: Readonly<Record<string, FieldEntry>> = fieldContent;
 // 돌봄 유형은 세부 대상을 선택해야 해당 기관이 화면에 나타난다.
-const careDetails: Record<string, string> = { H20_INFO: "self", H22: "adult", H10: "child" };
+const careDetails: Record<string, string> = { H20_INFO: "self", H10: "child" };
 
 async function openSimulation(page: Page, id: string) {
   const hostId = id;
