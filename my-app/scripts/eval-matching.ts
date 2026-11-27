@@ -2,6 +2,7 @@
 // 실행: my-app 폴더에서
 //   npm run eval:ai            # 실제 AI로 잰다(무료 한도 때문에 호출 사이에 12초 쉰다. 4분쯤)
 //   npm run eval:ai -- --check # AI를 부르지 않고 정답표가 지금 정보표와 맞는지만 본다
+//   npm run eval:ai -- --only 김명수 --times 5 # 이름에 이 글자가 든 사례만, 여러 번 잰다
 // 키는 my-app/.env.local의 GEMINI_API_KEY를 읽는다. 키 값은 출력하지 않는다.
 //
 // 파이썬의 app/tests/eval_matching.py와 같은 채점 규칙이다. 다른 점은 하나다:
@@ -90,7 +91,15 @@ function check(one: Case, result: AiResult, kind: string | null): string[] {
 async function main() {
   const checkOnly = process.argv.includes("--check");
   const file = path.join(process.cwd(), "..", "app", "tests", "matching_cases.yaml");
-  const cases = (parse(readFileSync(file, "utf-8")) as { cases: Case[] }).cases;
+  const every = (parse(readFileSync(file, "utf-8")) as { cases: Case[] }).cases;
+  const option = (name: string) => {
+    const at = process.argv.indexOf(name);
+    return at >= 0 ? process.argv[at + 1] : undefined;
+  };
+  const only = option("--only");
+  const times_ = Math.max(1, Number(option("--times") ?? 1));
+  const chosen = only ? every.filter((one) => one.name.includes(only)) : every;
+  const cases = Array.from({ length: times_ }, () => chosen).flat();
   const when = now();
   const everyId = appData.programs.map((program) => program.id);
 
