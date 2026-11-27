@@ -169,7 +169,7 @@ function PlaceBody({ programId, type, browse }: { programId: string; type: TypeI
                   href={link.url}
                   variant="outline"
                   size="default"
-                  className="h-auto min-h-[2.6rem] flex-1 gap-[0.35rem] rounded-xl px-[0.75rem] py-[0.4rem] text-[0.85rem] leading-[1.4] font-bold whitespace-normal text-teal hover:text-teal [&_svg]:size-[1rem]"
+                  className="h-auto min-h-[2.6rem] grow basis-[calc(50%-0.2rem)] gap-[0.35rem] rounded-xl px-[0.75rem] py-[0.4rem] text-[0.85rem] leading-[1.4] font-bold whitespace-normal text-teal hover:text-teal [&_svg]:size-[1rem]"
                 >
                   {linkIcon(link.kind)}
                   {LINK_TEXT[link.kind]}
