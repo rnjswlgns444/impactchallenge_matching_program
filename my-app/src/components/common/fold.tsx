@@ -49,7 +49,7 @@ export function Fold({
       <AccordionTrigger className="min-h-[2.6rem] items-center gap-[0.4rem] py-[0.4rem] text-[0.95rem] leading-snug font-semibold text-ink hover:no-underline group-data-[look=box]/fold:px-[0.7rem] group-data-[look=line]/fold:rounded-none group-data-[look=line]/fold:font-bold **:data-[slot=accordion-trigger-icon]:size-[1.1rem] **:data-[slot=accordion-trigger-icon]:text-teal">
         {title}
       </AccordionTrigger>
-      <AccordionContent className="flex flex-col gap-[0.45rem] pb-[0.6rem] [&_a]:no-underline text-[0.95rem] leading-[1.6] text-foreground group-data-[look=box]/fold:px-[0.7rem]">
+      <AccordionContent className="flex flex-col gap-[0.45rem] pb-[0.6rem] [&_a]:no-underline [&_p:not(:last-child)]:mb-0 text-[0.95rem] leading-[1.6] text-foreground group-data-[look=box]/fold:px-[0.7rem]">
         {children}
       </AccordionContent>
     </AccordionItem>

@@ -17,7 +17,7 @@ import type { Question, TypeInfo } from "@/data/types";
 import { usePlaceContext } from "@/hooks/use-place-context";
 import { useSurvey } from "@/hooks/use-survey";
 import { placeHref, surveyEditHref } from "@/lib/routes";
-import { SURVEY, isComplete, judge } from "@/lib/session";
+import { SURVEY, isComplete, judge, resumeHref } from "@/lib/session";
 import type { Answer } from "@/stores/survey-store";
 
 // 결과 화면: 유형 카드 → 이 유형의 특징(접힌 줄) → 유형에 맞는 기관 → 더 보기 → 처음부터 다시 하기 → 작은 글.
@@ -26,7 +26,7 @@ import type { Answer } from "@/stores/survey-store";
 
 export function Result() {
   const answers = useSurvey((state) => state.answers);
-  if (!isComplete(answers)) return <Redirect to="/survey" />;
+  if (!isComplete(answers)) return <Redirect to={resumeHref(answers)} />;
 
   const judged = judge(answers);
   const type = judged.primary ? getType(judged.primary) : undefined;

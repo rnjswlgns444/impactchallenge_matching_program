@@ -16,7 +16,7 @@ import { optionsOf, question } from "@/core/selection";
 import { PRIORITY_Q } from "@/core/table";
 import { appData } from "@/data";
 import { useSurvey } from "@/hooks/use-survey";
-import { isComplete, judge } from "@/lib/session";
+import { isComplete, judge, resumeHref } from "@/lib/session";
 import { useSurveyStore, type Answer } from "@/stores/survey-store";
 
 // 점수가 가장 높은 유형이 여럿일 때, 무엇부터 볼지 본인이 고른다.
@@ -26,7 +26,7 @@ import { useSurveyStore, type Answer } from "@/stores/survey-store";
 export function Pick() {
   const answers = useSurvey((state) => state.answers);
   const details = useSurvey((state) => state.details);
-  if (!isComplete(answers)) return <Redirect to="/survey" />;
+  if (!isComplete(answers)) return <Redirect to={resumeHref(answers)} />;
 
   const candidates = judge(answers).candidates;
   // 가장 높은 유형이 하나뿐이면 고를 것이 없다

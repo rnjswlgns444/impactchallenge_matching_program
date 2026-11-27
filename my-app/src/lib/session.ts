@@ -21,6 +21,13 @@ export function isComplete(answers: Record<string, unknown>): boolean {
   return firstOpen(answers) === SURVEY.length;
 }
 
+// 설문을 덜 한 사람이 결과 쪽 화면에 왔을 때 보낼 곳.
+// 답이 하나도 없으면 시작 화면으로 보낸다('처음으로 가기'로 답을 지운 직후에도 여기로 온다).
+// 답하던 중이면 이어서 답할 문항으로 보낸다.
+export function resumeHref(answers: Record<string, unknown>): string {
+  return Object.keys(answers).length === 0 ? "/" : "/survey";
+}
+
 // 지금 답으로 유형을 판정한다. 설문을 다 한 뒤에만 부른다(빠진 답이 있으면 오류가 난다).
 // 본인이 고른 것(Q_PRIORITY)은 지금 후보에 있을 때만 쓰인다.
 export function judge(answers: Record<string, unknown>): Score {
