@@ -7,6 +7,7 @@ import { PlaceRow } from "@/components/common/place-row";
 import { Redirect } from "@/components/common/redirect";
 import { RestartButton } from "@/components/features/session/restart-button";
 import { SaveSection } from "@/components/features/result/save-section";
+import { ShareSection } from "@/components/features/result/share-section";
 import { PlaceSection } from "@/components/features/type-view/place-section";
 import { TypeFeature, TypeHero } from "@/components/features/type-view/type-hero";
 import { fill, koreanDate, text } from "@/content/text";
@@ -23,7 +24,7 @@ import { placeHref, surveyEditHref } from "@/lib/routes";
 import { SURVEY, isComplete, judge, resumeHref } from "@/lib/session";
 import type { Answer } from "@/stores/survey-store";
 
-// 결과 화면: 유형 머리 → 이 유형의 특징 → 유형에 맞는 기관 → 내 결과 저장하기 → 더 보기 → 처음부터 다시 하기 → 작은 글.
+// 결과 화면: 유형 머리 → 이 유형의 특징 → 유형에 맞는 기관 → 내 결과 저장하기 → 친구에게 공유하기 → 더 보기 → 처음부터 다시 하기 → 작은 글.
 // 대표 유형 하나만 보여 준다. 점수는 보여 주지 않는다. 결과는 저장해 두지 않고 답에서 다시 판정한다.
 // 설문을 덜 했으면 설문으로, 가장 높은 유형이 여럿인데 아직 고르지 않았으면 고르는 화면으로 보낸다.
 
@@ -101,6 +102,8 @@ function ResultBody({
         heading={noPlace(context.result) ? text.consultHeading : fill(text.placesHeading, { name: type.name })}
         places={shown.map((program) => ({ name: placeName(program), sub: program["프로그램명"] }))}
       />
+
+      <ShareSection />
 
       <FoldGroup className="mt-[0.3rem]">
         <Fold value="more" title={text.moreToggle}>

@@ -4,6 +4,7 @@ import { PhoneIcon } from "lucide-react";
 
 import { FinePrint } from "@/components/common/fine-print";
 import { KindIcon } from "@/components/common/kind-icon";
+import { ShareSection } from "@/components/features/result/share-section";
 import { SaveSection } from "@/components/features/result/save-section";
 import { WalkScene } from "@/components/features/type-view/walk-scene";
 import { Fold, FoldGroup } from "@/components/common/fold";
@@ -197,6 +198,10 @@ export default function DevUiPage() {
             }))}
           />
           <SaveSection type={appData.types[10]} gender={null} heading="기관 없음" places={[]} />
+        </Group>
+
+        <Group title="친구에게 공유하기">
+          <ShareSection />
         </Group>
 
         <Group title="유형 머리와 특징">

@@ -13,8 +13,6 @@ export const text = {
   restartAskTitle: "처음으로 갈까요?",
   restartAskBody:
     "처음으로 가면 답이 지워져요. 결과를 남기려면 먼저 '내 결과 저장하기'를 눌러 주세요.",
-  // 새로 씀: 아직 '내 결과 저장하기'가 없어서, 저장 안내를 뺀 문장을 쓴다(사진 저장을 넣으면 위 문장으로 바꾼다)
-  restartAskBodyPlain: "처음으로 가면 답이 지워져요.",
   restartKeep: "계속 보기",
   restartGo: "처음으로 가기",
 
