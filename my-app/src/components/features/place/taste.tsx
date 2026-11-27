@@ -1,18 +1,48 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import { useLayoutEffect, useRef, useState } from "react";
 
 import { BackLink } from "@/components/common/back-link";
 import { LinkButton } from "@/components/common/link-button";
 import { Notice } from "@/components/common/notice";
 import { Redirect } from "@/components/common/redirect";
-import { text } from "@/content/text";
+import { fill, text } from "@/content/text";
+import { ActivityPanel, CareHours } from "./taste-activity";
 import { placeName } from "@/core/places";
-import { tasteOf } from "@/core/taste";
+import { tasteOf, type TasteVideo } from "@/core/taste";
 import type { TypeInfo } from "@/data/types";
 import { usePlaceContext } from "@/hooks/use-place-context";
 import { useViewedType } from "@/hooks/use-viewed-type";
 import { placeHref, typeHomeHref } from "@/lib/routes";
+
+function FilmPanel({ video }: { video: TasteVideo }) {
+  const ref = useRef<HTMLIFrameElement>(null);
+  useLayoutEffect(() => {
+    const frame = ref.current;
+    if (!frame) return;
+    // 숨겨진 화면에 남은 플레이어가 계속 재생되지 않게 한다.
+    const pending = requestAnimationFrame(() => frame.setAttribute("src", video.url));
+    return () => {
+      cancelAnimationFrame(pending);
+      frame.removeAttribute("src");
+    };
+  }, [video.url]);
+  return (
+    <section className="grid min-w-0 gap-[0.6rem] rounded-xl border border-edge bg-card p-[0.8rem] shadow-card">
+      <h2 className="text-[1.25rem] leading-snug font-bold">{video.title}</h2>
+      <p className="text-[1rem] text-muted-foreground">{fill(text.tasteVideoBy, { by: video.by })}</p>
+      <iframe
+        ref={ref}
+        title={video.title}
+        allow="encrypted-media; fullscreen; picture-in-picture"
+        allowFullScreen
+        referrerPolicy="strict-origin-when-cross-origin"
+        className="aspect-video min-h-[10rem] w-full rounded-lg border-0"
+      />
+    </section>
+  );
+}
 
 // 체험 화면: 분야 색 머리('←' + '집에서 먼저 체험하기' + 기관 이름) → 체험 → '← 기관 안내로 돌아가기'.
 // 기관 화면과 같은 겹을 지킨다: 지금 후보에 없는 곳은 주소를 쳐도 열리지 않는다.
@@ -32,6 +62,9 @@ export function TasteScreen({ programId }: { programId: string }) {
 }
 
 function TasteBody({ programId, type, browse }: { programId: string; type: TypeInfo; browse: boolean }) {
+  const [visit, setVisit] = useState(0);
+  // Next가 이전 화면을 숨겨 보관해도, 다시 열 때 선택과 체크값은 새로 시작한다.
+  useLayoutEffect(() => () => setVisit(previous => previous + 1), []);
   const fromList = useSearchParams().get("from") === "places";
   const context = usePlaceContext(type.id, browse);
   const browseType = browse ? type.id : null;
@@ -58,11 +91,12 @@ function TasteBody({ programId, type, browse }: { programId: string; type: TypeI
         <h1 className="text-[clamp(1.4rem,6.4vw,1.9rem)] leading-[1.25] font-extrabold tracking-[-0.03em] text-pretty">
           {placeName(program)}
         </h1>
-        <p className="text-[0.95rem] leading-[1.4] font-bold text-(--area-ink)">{program["프로그램명"]}</p>
       </header>
 
-      {/* 동료가 넘겨주는 체험 기능은 여기에 끼운다(taste.ready일 때). 지금은 모든 기관이 준비 중이다 */}
-      {taste.ready ? null : <Notice kind="info">{text.tasteWaiting}</Notice>}
+      {taste.activity && <ActivityPanel key={visit} activity={taste.activity} />}
+      {taste.activity && program.id === "H10" && <CareHours key={`hours-${visit}`} />}
+      {taste.videos.map(video => <FilmPanel key={video.url} video={video} />)}
+      {!taste.ready && <Notice kind="info">{text.tasteWaiting}</Notice>}
 
       <LinkButton href={back} variant="outline" className="font-bold text-teal hover:text-teal">
         {text.tasteBack}
