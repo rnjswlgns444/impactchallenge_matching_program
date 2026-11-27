@@ -8,6 +8,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { DataError, defaultSources, readAll, readDongs, readVenues } from "./read";
+import { readMap } from "./read-map";
 import { BARRIER_Q, PIN_COLUMN, REQUIRED_COLUMNS } from "./validate";
 
 const myAppDir = path.resolve(import.meta.dirname, "..", "..");
@@ -67,6 +68,7 @@ describe("실제 자료 파일", () => {
   it("올려 둔 src/generated/가 지금 원본과 같다", () => {
     expect(generated("data.json")).toEqual(app);
     expect(generated("server.json")).toEqual(server);
+    expect(generated("map.json")).toEqual(readAll(sources).map);
   });
 });
 
@@ -142,6 +144,56 @@ describe("동 자료", () => {
     const dongs = readDongs(path.join(dir, "p.json"), problems);
     expect(dongs.map((dong) => dong.name)).toEqual(["가동"]);
     expect(problems).toHaveLength(2);
+    rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe("지도 자료", () => {
+  const { app, map } = readAll(sources);
+
+  it("동 고르기에 나오는 25개 동이 모두 경계·색·이름 자리를 가진다", () => {
+    expect(map).not.toBeNull();
+    expect(map!.dongs.map((dong) => dong.name).sort()).toEqual(app.dongs.map((dong) => dong.name).sort());
+    for (const dong of map!.dongs) {
+      expect(Object.keys(dong)).toEqual(["name", "gu", "color", "label", "rings"]);
+      expect(dong.color).toMatch(/^#[0-9a-f]{6}$/i);
+      expect(dong.rings.length).toBeGreaterThan(0);
+      for (const ring of dong.rings) expect(ring[0]).toEqual(ring[ring.length - 1]); // 닫힌 선
+    }
+  });
+
+  it("구의 경계가 두 개 있고, 출처 주소 같은 칸은 싣지 않는다", () => {
+    expect(map!.borders.map((border) => border.gu).sort()).toEqual(["단원구", "상록구"]);
+    expect(JSON.stringify(map)).not.toContain("http");
+  });
+
+  it("경계 파일이 없으면 null이고 앱은 멈추지 않는다", () => {
+    const none = { areasPath: "없는-파일.json", stylesPath: "없는-파일.json", districtsPath: "없는-파일.json" };
+    expect(readMap(none, ["일동"])).toBeNull();
+  });
+
+  it("닫히지 않은 경계, 색이 없는 동, 경계가 없는 동을 알린다", () => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), "anti-map-"));
+    const square = [[126.8, 37.3], [126.81, 37.3], [126.81, 37.31], [126.8, 37.31], [126.8, 37.3]];
+    const open = square.slice(0, 4);
+    const feature = (name: string, ring: number[][]) => ({
+      properties: { name, gu: "상록구" },
+      geometry: { type: "Polygon", coordinates: [ring] },
+    });
+    writeFileSync(
+      path.join(dir, "a.json"),
+      JSON.stringify({ features: [feature("가동", square), feature("나동", open), feature("다동", square)] })
+    );
+    writeFileSync(path.join(dir, "s.json"), JSON.stringify({ 가동: { lon: 126.805, lat: 37.305, color: "#bfd2b8" } }));
+    const problems: string[] = [];
+    const found = readMap(
+      { areasPath: path.join(dir, "a.json"), stylesPath: path.join(dir, "s.json"), districtsPath: "없는-파일.json" },
+      ["가동", "라동"],
+      problems
+    );
+    expect(found!.dongs.map((dong) => dong.name)).toEqual(["가동"]);
+    expect(found!.borders).toEqual([]);
+    expect(problems).toHaveLength(3); // 나동(안 닫힘), 다동(색 없음), 라동(경계 없음)
     rmSync(dir, { recursive: true, force: true });
   });
 });

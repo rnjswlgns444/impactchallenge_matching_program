@@ -68,6 +68,18 @@ export type Venue = { name: string; address: string; lat: number; lon: number };
 // lat·lon은 그 동 행정복지센터의 좌표다(가까운 곳을 고르는 기준점).
 export type Dong = { name: string; gu: string; lat: number; lon: number };
 
+// 지도 그림의 도형. [경도, 위도]를 이은 닫힌 선이다(첫 점과 끝 점이 같다).
+export type Ring = [number, number][];
+
+// 지도에 그리는 동 하나. color는 칠할 색, label은 동 이름을 적을 자리다.
+export type MapDong = { name: string; gu: string; color: string; label: [number, number]; rings: Ring[] };
+
+// 지도 그림 자료(src/generated/map.json). 지도를 그리는 부품만 읽는다.
+export type MapData = {
+  dongs: MapDong[]; // 안산 25개 동. 자료를 읽지 못하면 빈 목록이다(지도를 그리지 않는다)
+  borders: { gu: string; rings: Ring[] }[]; // 구의 경계
+};
+
 export type Worry = { id: string; label: string; show?: string[]; checks?: boolean };
 
 export type FallbackCard = {

@@ -7,7 +7,8 @@ import path from "node:path";
 import Papa from "papaparse";
 import { parse as parseYaml } from "yaml";
 
-import type { AppData, Dong, Program, ServerData, Venue } from "../../src/data/types";
+import type { AppData, Dong, MapData, Program, ServerData, Venue } from "../../src/data/types";
+import { readMap, type MapSources } from "./read-map";
 import { BARRIER_Q, PIN_COLUMN, REQUIRED_COLUMNS, validateAll, type RawFiles } from "./validate";
 
 // 형식이 틀렸을 때 던진다. problems에 고칠 곳 목록이 들어 있다.
@@ -25,6 +26,7 @@ export type Sources = {
   promptPath: string; // prompts/matching.md
   venuesPath: string; // anti_map/venues.json
   dongPointsPath: string; // anti_map/neighborhoods.json (동의 기준점)
+  map: MapSources; // 지도 그림의 도형(동 경계·색, 구 경계)
 };
 
 // my-app/ 옆의 app/ 폴더
@@ -35,6 +37,11 @@ export function defaultSources(myAppDir: string): Sources {
     promptPath: path.join(appDir, "prompts", "matching.md"),
     venuesPath: path.join(appDir, "anti_map", "venues.json"),
     dongPointsPath: path.join(appDir, "anti_map", "neighborhoods.json"),
+    map: {
+      areasPath: path.join(appDir, "anti_map", "neighborhood_areas.json"),
+      stylesPath: path.join(appDir, "anti_map", "dong_styles.json"),
+      districtsPath: path.join(appDir, "anti_map", "districts.geojson"),
+    },
   };
 }
 
@@ -130,7 +137,7 @@ const inAnsan = (lon: unknown, lat: unknown): boolean =>
 
 // 동의 기준점(행정복지센터 좌표)을 읽는다. 원본은 동료가 만든 파일이다(출처는 파일 안에 있다).
 // 파일이 없거나 읽지 못하면 빈 목록이다(동 고르기와 '가까운 곳' 딱지만 안 나온다). 모양이 틀린 동은 problems에 적는다.
-// 출처·전화·메모 칸은 싣지 않는다. 동의 경계(neighborhood_areas.json)는 실제 지도를 그리지 않게 되어 싣지 않는다.
+// 출처·전화·메모 칸은 싣지 않는다. 동의 경계는 지도 그림만 쓰므로 따로 읽는다(read-map.ts).
 export function readDongs(pointsFile: string, problems: string[] = []): Dong[] {
   let points: unknown;
   try {
@@ -160,13 +167,20 @@ export function readDongs(pointsFile: string, problems: string[] = []): Dong[] {
 }
 
 // 파일을 읽고 검사한다. 문제가 있으면 DataError를 던진다.
-export function readAll(sources: Sources): { app: AppData; server: ServerData; raw: RawFiles } {
+// map은 지도 그림의 도형이다. 화면용 자료(app)와 따로 둔다(지도를 그리는 화면만 받아 가게).
+export function readAll(sources: Sources): {
+  app: AppData;
+  server: ServerData;
+  map: MapData | null;
+  raw: RawFiles;
+} {
   const problems: string[] = [];
   const questionsFile = readYaml(path.join(sources.dataDir, "questions.yaml"), problems);
   const typesFile = readYaml(path.join(sources.dataDir, "types.yaml"), problems);
   const settings = readYaml(path.join(sources.dataDir, "settings.yaml"), problems);
   const programs = readPrograms(path.join(sources.dataDir, "programs.csv"), problems);
   const dongs = readDongs(sources.dongPointsPath, problems);
+  const map = readMap(sources.map, dongs.map((dong) => dong.name), problems);
   let prompt = "";
   if (existsSync(sources.promptPath)) {
     // 줄 끝을 \n으로 맞춘다. 윈도우에서 받은 파일은 \r\n이라, 그대로 두면 컴퓨터마다 결과가 달라진다
@@ -220,5 +234,5 @@ export function readAll(sources: Sources): { app: AppData; server: ServerData; r
       timeout_seconds: Number(s.llm?.timeout_seconds ?? 60),
     },
   };
-  return { app, server, raw };
+  return { app, server, map, raw };
 }

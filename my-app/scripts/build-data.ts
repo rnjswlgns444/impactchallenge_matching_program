@@ -13,10 +13,11 @@ const myAppDir = path.resolve(import.meta.dirname, "..");
 const outDir = path.join(myAppDir, "src", "generated");
 const appFile = path.join(outDir, "data.json");
 const serverFile = path.join(outDir, "server.json");
+const mapFile = path.join(outDir, "map.json");
 
 // 내용이 같으면 다시 쓰지 않는다(개발 서버가 괜히 새로 고치지 않게)
-function writeIfChanged(file: string, value: unknown): boolean {
-  const next = JSON.stringify(value, null, 2) + "\n";
+function writeIfChanged(file: string, value: unknown, pretty = true): boolean {
+  const next = JSON.stringify(value, null, pretty ? 2 : 0) + "\n";
   if (existsSync(file) && readFileSync(file, "utf8") === next) return false;
   writeFileSync(file, next, "utf8");
   return true;
@@ -27,7 +28,7 @@ const sources = defaultSources(myAppDir);
 // 원본 폴더가 보이지 않는 곳(배포 서버가 my-app/ 바깥을 주지 않을 때)에서는
 // 저장소에 올려 둔 src/generated/를 그대로 쓴다.
 if (!existsSync(sources.dataDir)) {
-  if (existsSync(appFile) && existsSync(serverFile)) {
+  if (existsSync(appFile) && existsSync(serverFile) && existsSync(mapFile)) {
     console.warn(`자료 원본 폴더가 없어 올려 둔 자료를 그대로 씁니다: ${sources.dataDir}`);
     process.exit(0);
   }
@@ -36,13 +37,18 @@ if (!existsSync(sources.dataDir)) {
 }
 
 try {
-  const { app, server } = readAll(sources);
+  const { app, server, map } = readAll(sources);
   mkdirSync(outDir, { recursive: true });
-  const changed = [writeIfChanged(appFile, app), writeIfChanged(serverFile, server)].some(Boolean);
+  const changed = [
+    writeIfChanged(appFile, app),
+    writeIfChanged(serverFile, server),
+    // 지도 도형은 줄을 나누지 않고 쓴다(좌표가 수천 개라 줄을 나누면 파일이 몇 배가 된다)
+    writeIfChanged(mapFile, map ?? { dongs: [], borders: [] }, false),
+  ].some(Boolean);
   const open = app.programs.filter((row) => row["매칭가능"] === "Y").length;
   console.log(
     `자료를 읽었습니다: 문항 ${app.questions.length}개, 유형 ${app.types.length}개, ` +
-      `프로그램 ${app.programs.length}행(안내 중 ${open}행), 좌표가 있는 곳 ${Object.keys(app.venues).length}곳` +
+      `프로그램 ${app.programs.length}행(안내 중 ${open}행), 좌표가 있는 곳 ${Object.keys(app.venues).length}곳, 지도의 동 ${map?.dongs.length ?? 0}개` +
       (changed ? "" : " (바뀐 것 없음)")
   );
 } catch (err) {
