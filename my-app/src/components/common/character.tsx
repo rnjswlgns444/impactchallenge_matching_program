@@ -12,6 +12,11 @@ export function characterGender(answer: unknown): CharacterGender | null {
   return answer === "female" || answer === "male" ? answer : null;
 }
 
+// 그림 파일의 주소. 결과 사진을 그릴 때도 쓴다
+export function characterSrc(typeId: string, gender: CharacterGender): string {
+  return `/characters/${typeId.toLowerCase()}-${gender}.webp`;
+}
+
 export function Character({
   typeId,
   gender,
@@ -29,7 +34,7 @@ export function Character({
 }) {
   return (
     <Image
-      src={`/characters/${typeId.toLowerCase()}-${gender}.webp`}
+      src={characterSrc(typeId, gender)}
       alt={alt}
       width={800}
       height={800}

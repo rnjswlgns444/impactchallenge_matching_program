@@ -4,6 +4,7 @@ import { PhoneIcon } from "lucide-react";
 
 import { FinePrint } from "@/components/common/fine-print";
 import { KindIcon } from "@/components/common/kind-icon";
+import { SaveSection } from "@/components/features/result/save-section";
 import { WalkScene } from "@/components/features/type-view/walk-scene";
 import { Fold, FoldGroup } from "@/components/common/fold";
 import { LinkButton } from "@/components/common/link-button";
@@ -173,6 +174,29 @@ export default function DevUiPage() {
             gender="male"
             buildings={[{ key: "d", href: "/dev/ui", number: 1, word: "전화", name: "전화로 쓰는 곳", label: "견본 4", star: false }]}
           />
+        </Group>
+
+        <Group title="내 결과 저장하기 (누르면 사진을 그린다: 기관 3곳 / 긴 이름 / 그림·기관 없음)">
+          <SaveSection
+            type={appData.types[4]}
+            gender="female"
+            heading={`${appData.types[4].name}에 맞는 기관`}
+            places={[
+              { name: "첫 번째 기관", sub: "하는 일 한 줄" },
+              { name: "두 번째 기관", sub: "하는 일 한 줄" },
+              { name: "세 번째 기관", sub: "하는 일 한 줄" },
+            ]}
+          />
+          <SaveSection
+            type={appData.types[0]}
+            gender="male"
+            heading={`${appData.types[0].name}에 맞는 기관`}
+            places={[1, 2, 3].map((n) => ({
+              name: `이름이 아주 길어서 두 줄을 넘길 만한 기관의 이름 ${n}번 안산시 상록구 무슨무슨 종합 지원 센터 분소`,
+              sub: "하는 일도 길게 적혀 있어서 한 줄에 다 들어가지 않고 끝이 잘리는 경우를 보는 견본",
+            }))}
+          />
+          <SaveSection type={appData.types[10]} gender={null} heading="기관 없음" places={[]} />
         </Group>
 
         <Group title="유형 머리와 특징">
