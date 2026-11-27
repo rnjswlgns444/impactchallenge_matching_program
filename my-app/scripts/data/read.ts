@@ -7,7 +7,7 @@ import path from "node:path";
 import Papa from "papaparse";
 import { parse as parseYaml } from "yaml";
 
-import type { AppData, Program, ServerData, Venue } from "../../src/data/types";
+import type { AppData, Dong, Program, ServerData, Venue } from "../../src/data/types";
 import { BARRIER_Q, PIN_COLUMN, REQUIRED_COLUMNS, validateAll, type RawFiles } from "./validate";
 
 // 형식이 틀렸을 때 던진다. problems에 고칠 곳 목록이 들어 있다.
@@ -24,6 +24,8 @@ export type Sources = {
   dataDir: string; // questions.yaml, types.yaml, settings.yaml, programs.csv
   promptPath: string; // prompts/matching.md
   venuesPath: string; // anti_map/venues.json
+  dongPointsPath: string; // anti_map/neighborhoods.json (동의 기준점)
+  dongAreasPath: string; // anti_map/neighborhood_areas.json (동의 경계)
 };
 
 // my-app/ 옆의 app/ 폴더
@@ -33,6 +35,8 @@ export function defaultSources(myAppDir: string): Sources {
     dataDir: path.join(appDir, "data"),
     promptPath: path.join(appDir, "prompts", "matching.md"),
     venuesPath: path.join(appDir, "anti_map", "venues.json"),
+    dongPointsPath: path.join(appDir, "anti_map", "neighborhoods.json"),
+    dongAreasPath: path.join(appDir, "anti_map", "neighborhood_areas.json"),
   };
 }
 
@@ -116,6 +120,77 @@ export function readVenues(file: string): Record<string, Venue[]> {
   return found;
 }
 
+// 안산을 넉넉히 감싸는 범위. 이 밖의 좌표는 잘못 적힌 것으로 본다
+const ANSAN = { minLat: 37.0, maxLat: 37.45, minLon: 126.3, maxLon: 127.0 };
+const inAnsan = (lon: unknown, lat: unknown): boolean =>
+  typeof lon === "number" &&
+  typeof lat === "number" &&
+  lon >= ANSAN.minLon &&
+  lon <= ANSAN.maxLon &&
+  lat >= ANSAN.minLat &&
+  lat <= ANSAN.maxLat;
+const round5 = (value: number) => Math.round(value * 1e5) / 1e5; // 소수 다섯 자리(약 1m)
+
+// 동의 기준점(행정복지센터 좌표)과 경계를 읽어 하나로 묶는다. 원본은 동료가 만든 파일이다(출처는 파일 안에 있다).
+// 파일이 없거나 읽지 못하면 빈 목록이다(지도와 거리만 안 나온다). 모양이 틀린 동은 problems에 적는다.
+// 출처·전화·메모 칸은 싣지 않는다. 경계는 바깥 선만 쓴다(구멍은 그리지 않는다).
+export function readDongs(pointsFile: string, areasFile: string, problems: string[] = []): Dong[] {
+  let points: unknown;
+  let areas: unknown;
+  try {
+    points = JSON.parse(readText(pointsFile).replace(/^\uFEFF/, ""));
+    areas = JSON.parse(readText(areasFile).replace(/^\uFEFF/, ""));
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(points) || !isDict(areas) || !Array.isArray(areas.features)) return [];
+
+  const ringsByName = new Map<string, [number, number][][]>();
+  for (const feature of areas.features.filter(isDict)) {
+    const name = isDict(feature.properties) ? String(feature.properties.name ?? "") : "";
+    const geometry = isDict(feature.geometry) ? feature.geometry : {};
+    const polygons =
+      geometry.type === "Polygon" ? [geometry.coordinates] : geometry.type === "MultiPolygon" ? geometry.coordinates : [];
+    const rings: [number, number][][] = [];
+    for (const polygon of Array.isArray(polygons) ? polygons : []) {
+      const outer = Array.isArray(polygon) ? polygon[0] : null; // 첫 선이 바깥 경계다
+      if (!Array.isArray(outer) || outer.length < 4) continue;
+      const ring = outer.map((pair): [number, number] => [round5(Number(pair?.[0])), round5(Number(pair?.[1]))]);
+      const [firstLon, firstLat] = ring[0];
+      const [lastLon, lastLat] = ring[ring.length - 1];
+      if (ring.some(([lon, lat]) => !inAnsan(lon, lat))) {
+        problems.push(`neighborhood_areas.json: '${name}'의 경계에 안산 밖의 좌표가 있습니다.`);
+      } else if (firstLon !== lastLon || firstLat !== lastLat) {
+        problems.push(`neighborhood_areas.json: '${name}'의 경계가 닫혀 있지 않습니다(첫 점과 끝 점이 다릅니다).`);
+      } else {
+        rings.push(ring);
+      }
+    }
+    if (name && rings.length > 0) ringsByName.set(name, rings);
+  }
+
+  const found: Dong[] = [];
+  const seen = new Set<string>();
+  for (const point of points.filter(isDict)) {
+    const name = String(point.name ?? "");
+    if (!name) continue;
+    if (seen.has(name)) {
+      problems.push(`neighborhoods.json: 동 이름 '${name}'이 두 번 있습니다.`);
+      continue;
+    }
+    seen.add(name);
+    const rings = ringsByName.get(name);
+    if (!inAnsan(point.lon, point.lat)) {
+      problems.push(`neighborhoods.json: '${name}'의 좌표가 없거나 안산 밖입니다.`);
+    } else if (!rings) {
+      problems.push(`neighborhood_areas.json: '${name}'의 경계가 없습니다.`);
+    } else {
+      found.push({ name, gu: String(point.gu ?? ""), lat: point.lat as number, lon: point.lon as number, rings });
+    }
+  }
+  return found;
+}
+
 // 파일을 읽고 검사한다. 문제가 있으면 DataError를 던진다.
 export function readAll(sources: Sources): { app: AppData; server: ServerData; raw: RawFiles } {
   const problems: string[] = [];
@@ -123,6 +198,7 @@ export function readAll(sources: Sources): { app: AppData; server: ServerData; r
   const typesFile = readYaml(path.join(sources.dataDir, "types.yaml"), problems);
   const settings = readYaml(path.join(sources.dataDir, "settings.yaml"), problems);
   const programs = readPrograms(path.join(sources.dataDir, "programs.csv"), problems);
+  const dongs = readDongs(sources.dongPointsPath, sources.dongAreasPath, problems);
   let prompt = "";
   if (existsSync(sources.promptPath)) {
     // 줄 끝을 \n으로 맞춘다. 윈도우에서 받은 파일은 \r\n이라, 그대로 두면 컴퓨터마다 결과가 달라진다
@@ -158,6 +234,7 @@ export function readAll(sources: Sources): { app: AppData; server: ServerData; r
       Object.fromEntries(columns.map((column) => [column, row[column] ?? ""]))
     ),
     venues: readVenues(sources.venuesPath),
+    dongs,
     settings: {
       scoring: { high: s.scoring.high },
       ai_top_n: s.ai_top_n,

@@ -1,13 +1,13 @@
 // 실제 자료 파일(app/data 등)을 읽어 보는 테스트.
 // 자료를 고친 뒤 이 테스트가 깨지면: `npm run data`를 돌리고 src/generated/를 함께 커밋한다.
 
-import { mkdtempSync, readFileSync, writeFileSync, cpSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync, cpSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { DataError, defaultSources, readAll, readVenues } from "./read";
+import { DataError, defaultSources, readAll, readDongs, readVenues } from "./read";
 import { BARRIER_Q, PIN_COLUMN, REQUIRED_COLUMNS } from "./validate";
 
 const myAppDir = path.resolve(import.meta.dirname, "..", "..");
@@ -106,5 +106,49 @@ describe("틀린 자료", () => {
 
   it("없는 위치 파일은 오류가 아니라 빈 자료다", () => {
     expect(readVenues(path.join(os.tmpdir(), "anti-no-such-file.json"))).toEqual({});
+  });
+});
+
+describe("동 자료", () => {
+  const { app } = readAll(sources);
+
+  it("안산 25개 동이 이름·구·기준점·경계와 함께 실린다", () => {
+    expect(app.dongs).toHaveLength(25);
+    expect(new Set(app.dongs.map((dong) => dong.name)).size).toBe(25);
+    for (const dong of app.dongs) {
+      expect(Object.keys(dong)).toEqual(["name", "gu", "lat", "lon", "rings"]);
+      expect(["상록구", "단원구"]).toContain(dong.gu);
+      expect(dong.rings.length).toBeGreaterThan(0);
+      for (const ring of dong.rings) expect(ring[0]).toEqual(ring[ring.length - 1]); // 닫힌 선
+    }
+  });
+
+  it("출처·전화 같은 칸은 싣지 않는다", () => {
+    const text = JSON.stringify(app.dongs);
+    for (const word of ["findby", "http", "031-", "verifiedOn"]) expect(text).not.toContain(word);
+  });
+
+  it("파일이 없으면 빈 목록이고 앱은 멈추지 않는다", () => {
+    expect(readDongs("없는-파일.json", "없는-파일.json")).toEqual([]);
+  });
+
+  it("안산 밖의 좌표와 겹친 동 이름을 알린다", () => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), "anti-dong-"));
+    const square = [[126.8, 37.3], [126.81, 37.3], [126.81, 37.31], [126.8, 37.31], [126.8, 37.3]];
+    const areas = {
+      features: ["가동", "나동"].map((name) => ({ properties: { name }, geometry: { type: "Polygon", coordinates: [square] } })),
+    };
+    const points = [
+      { name: "가동", gu: "상록구", lat: 37.305, lon: 126.805 },
+      { name: "가동", gu: "상록구", lat: 37.305, lon: 126.805 },
+      { name: "나동", gu: "단원구", lat: 35.1, lon: 129.0 },
+    ];
+    writeFileSync(path.join(dir, "p.json"), JSON.stringify(points));
+    writeFileSync(path.join(dir, "a.json"), JSON.stringify(areas));
+    const problems: string[] = [];
+    const dongs = readDongs(path.join(dir, "p.json"), path.join(dir, "a.json"), problems);
+    expect(dongs.map((dong) => dong.name)).toEqual(["가동"]);
+    expect(problems).toHaveLength(2);
+    rmSync(dir, { recursive: true, force: true });
   });
 });

@@ -64,6 +64,10 @@ export type Program = Record<string, string>;
 // 찾아갈 수 있는 곳의 좌표. 길찾기 단추와 지도가 쓴다.
 export type Venue = { name: string; address: string; lat: number; lon: number };
 
+// 안산의 동. 지도 그림과 '우리 동네에서 약 n km'에 쓴다.
+// lat·lon은 그 동 행정복지센터의 좌표(거리의 기준점)이고, rings는 동 경계의 바깥 선들이다([경도, 위도]).
+export type Dong = { name: string; gu: string; lat: number; lon: number; rings: [number, number][][] };
+
 export type Worry = { id: string; label: string; show?: string[]; checks?: boolean };
 
 export type FallbackCard = {
@@ -83,6 +87,7 @@ export type AppData = {
   types: TypeInfo[]; // 파일에 적힌 순서(T01~T12)
   programs: Program[];
   venues: Record<string, Venue[]>; // { 프로그램 id: 곳 목록 }. 곳이 없는 id는 없다
+  dongs: Dong[]; // 안산 25개 동(파일에 적힌 순서). 자료를 읽지 못하면 빈 목록이다
   settings: {
     scoring: { high: number };
     ai_top_n: number;

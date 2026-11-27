@@ -76,6 +76,7 @@ const data = {
     row("M1", { 유형태그: "T08" }),
   ],
   venues: {},
+  dongs: [],
   settings: {
     scoring: { high: 8 },
     ai_top_n: 3,
