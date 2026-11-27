@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { createContext, useContext, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import {
@@ -11,6 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { simUi } from "@/content/text";
 import type { Simulation, SimAnswer, SimStep } from "@/core/simulation";
 import styles from "./simulation-stage.module.css";
@@ -88,13 +89,12 @@ export function SceneObject({ label, index = 0, selected = false }: { label: str
   </span>;
 }
 
-type StageProps = { simulation: Simulation; step?: SimStep; answer?: SimAnswer; children: ReactNode };
+type StageProps = { simulation: Simulation; step?: SimStep; answer?: SimAnswer; children: ReactNode; onStart?: () => void };
 
-export function SimulationStage({ simulation, step, answer, children }: StageProps) {
+export function SimulationStage({ simulation, step, answer, children, onStart }: StageProps) {
   const station = stations[simulation.id] ?? stations.JOB01;
   const [bench, setBench] = useState<HTMLDivElement | null>(null);
   const [hand, setHand] = useState<HTMLDivElement | null>(null);
-  const content = useRef<HTMLDivElement>(null);
   const Icon = station.tools[0];
   const sceneStyle = {
     "--scene-x": `${(station.tile % 3) * 50}%`,
@@ -103,17 +103,14 @@ export function SimulationStage({ simulation, step, answer, children }: StagePro
     "--point-y": `${station.point[1]}%`,
   } as CSSProperties;
   const selected = answer?.values.length ?? 0;
-  function start() {
-    content.current?.querySelector<HTMLButtonElement>("[data-sim-start]")?.click();
-  }
   return <Setting.Provider value={station}>
     <div className={styles.stage} style={sceneStyle} data-sim-scene={simulation.id} data-shape={station.shape} data-mode={step?.mode ?? "intro"}>
       <div className={styles.scenery}>
         <div className={styles.window}>
           <div className={styles.art} aria-hidden={step ? true : undefined}>
-            {!step && <button className={styles.marker} type="button" onClick={start} aria-label={simUi.start} data-scene-start>
+            {!step && onStart && <Button className={styles.marker} type="button" variant="cta" onClick={onStart} data-sim-start data-scene-start>
               <Icon aria-hidden="true" /><span>{simUi.start}</span>
-            </button>}
+            </Button>}
           </div>
           {!step && <Image alt="" aria-hidden="true" unoptimized width={104} height={104}
             src={`/characters/${guides[station.tile]}.webp`} className={styles.guide}
@@ -129,7 +126,7 @@ export function SimulationStage({ simulation, step, answer, children }: StagePro
           <div className={styles.targets} ref={setBench} data-scene-targets />
         </div>}
       </div>
-      <div ref={content} className={styles.notes}>
+      <div className={styles.notes}>
         <Port.Provider value={bench}><HandPort.Provider value={hand}>{children}</HandPort.Provider></Port.Provider>
       </div>
     </div>

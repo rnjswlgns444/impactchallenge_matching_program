@@ -6,7 +6,7 @@ import {
   Check, CheckCheck, Circle, CircleDot, FileText, Hammer, Lightbulb,
   ListOrdered, MapPin, Minus, MonitorSmartphone, PackageOpen, Plus, RotateCcw,
   SlidersHorizontal, Undo2, FileBadge, Store, Sprout, HandHeart, ShoppingBag,
-  Palette, Coffee, BookOpen, Music2, MessageCircle, Users, Baby, ClipboardList,
+  Palette, BookOpen, Music2, MessageCircle, Users, Baby, ClipboardList,
   Utensils, NotebookPen, Salad, Leaf, CalendarSearch, BookMarked, Binoculars,
   Volume2, type LucideIcon,
 } from "lucide-react";
@@ -28,7 +28,7 @@ const layouts = {
 
 const programIcons: Record<string, LucideIcon> = {
   JOB01: BriefcaseBusiness, JOB02: FileBadge, JOB03: Store, JOB07: Sprout, JOB08: HandHeart, JOB11: ShoppingBag,
-  L06_PIUM_DIRECTORY: Palette, L13: Coffee, L15: BookOpen, L16: Music2, L08_MIND_COUNSELING: MessageCircle,
+  L06_PIUM_DIRECTORY: Palette, L15: BookOpen, L16: Music2, L08_MIND_COUNSELING: MessageCircle,
   L08_FAMILY_COUNSELING: Users, H10: Baby, H13: Utensils, H20_INFO: ClipboardList, H22: NotebookPen,
   H23: Salad, H24: Leaf, H25: CalendarSearch, C_BOOK: BookMarked, C_ECO: Binoculars,
 };
@@ -362,10 +362,9 @@ function SimulationSession({ simulation }: { simulation: Simulation }) {
       {page === -1 ? <div className="grid gap-[0.7rem] p-[0.85rem]">
         <h2 ref={titleRef} tabIndex={-1} className="text-[1.4rem] leading-snug font-extrabold text-ink">{simulation.title}</h2>
         <p>{simulation.intro}</p>
-        <SimulationStage simulation={simulation}>
+        <SimulationStage simulation={simulation} onStart={() => navigate(0)}>
           <div className="grid min-w-0 gap-[0.55rem] rounded-xl bg-card p-[0.6rem]">
             <p className="flex flex-wrap items-center gap-x-[0.35rem] text-ink"><span>{simUi.preview}</span><strong>{simulation.artifact}</strong></p>
-            <Button type="button" variant="cta" size="touch" data-sim-start onClick={() => navigate(0)}>{simUi.start}<ArrowRight aria-hidden="true" /></Button>
           </div>
         </SimulationStage>
         <Missions simulation={simulation} page={page} answers={answers} />

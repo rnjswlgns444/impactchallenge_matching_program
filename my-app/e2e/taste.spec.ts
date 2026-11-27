@@ -82,4 +82,3 @@ for (const width of [320, 390]) {
     await expectNoOverflow(page);
   });
 }
-
