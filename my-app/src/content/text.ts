@@ -1,3 +1,5 @@
+import type { Simulation } from "@/core/simulation";
+
 // 화면 문구. 컴포넌트 안에 글자로 적지 않고 여기서 가져다 쓴다.
 // '옮김'은 app/data/settings.yaml의 문장을 그대로 가져온 것이고,
 // '새로 씀'은 새 앱에서 처음 쓰는 문장이다(사용자 확인이 필요하다).
@@ -174,8 +176,6 @@ export const text = {
   tasteTitle: "가기 전에 미리 해 보세요", // 체험에 따로 제목이 없을 때
   tasteBody: "집에서 휴대폰으로 미리 살펴볼 수 있어요.", // 체험에 따로 설명이 없을 때
   tasteFilmBody: "기관에서 공개한 영상을 이 화면에서 볼 수 있어요.",
-  tasteChooseMany: "필요한 항목을 여러 개 고를 수 있어요.",
-  tasteChecklist: "준비한 항목에 표시하세요.",
   tasteHoursTitle: "일주일에 필요한 돌봄 시간",
   tasteHoursBody: "하루에 같은 분량을 이용할 때의 합계예요. 예약이나 요금 계산은 공식 서비스에서 해요.",
   tasteDaysLabel: "일주일에 며칠인가요?",
@@ -184,6 +184,10 @@ export const text = {
   tasteHoursUnit: "{n}시간",
   tasteHoursTotal: "일주일에 총 {n}시간",
   tasteButton: "체험해 보기",
+  relatedSimulation: "동네 활동도 해보기 · {name}",
+  officialDigitalTitle: "키오스크·교통 앱 직접 연습하기",
+  officialDigitalBody: "AI디지털배움터 공식 화면에서 ‘학습하기’를 누르세요. 주문과 예매를 직접 연습할 수 있어요.",
+  officialDigitalButton: "디지털배움터 시뮬레이션 열기",
   tasteVideos: "영상으로 둘러보기",
   tasteVideoBy: "{by} 영상", // 영상을 올린 곳
   tasteWaiting: "체험을 준비하고 있어요. 조금만 기다려 주세요.",
@@ -232,540 +236,714 @@ export function koreanDate(isoDate: string): string {
   return `${year}년 ${Number(month)}월 ${Number(day)}일`;
 }
 
-// 운영기관이 공개한 체험 안내와 출처. 화면에는 기관 하나에 해당하는 항목만 보여 준다.
-export const tasteActivities = {
+// 기관 자료를 참고해 ANTI가 만든 연습 장면과 활동 문구.
+export const tasteSimulations = {
   JOB01: {
-    title: "상담과 채용행사 준비하기",
-    body: "구직 상담과 기업 면접은 참여 방법이 달라요. 이용할 곳을 골라 준비물을 확인하세요.",
-    prompt: "어떤 도움을 받고 싶으세요?",
-    mode: "choose",
-    options: [
-      {
-        label: "일자리 상담부터 받기",
-        detail: "시청 일자리센터와 동 행정복지센터에 상담 창구가 있어요. 구직 등록과 일자리 소개를 받을 수 있어요.",
-        linkLabel: "동별 상담창구 전화번호 보기",
-        url: "https://www.ansan.go.kr/www/common/cntnts/selectContents.do?cntnts_id=C0001272"
-      },
-      {
-        label: "안산919취업광장에서 면접 보기",
-        detail: "행사 당일 참여하는 취업광장이에요. 이번 회차의 공지를 보고 챙긴 항목을 표시하세요.",
-        items: [
-          "이번 회차의 날짜와 장소 확인",
-          "이력서 준비",
-          "자기소개서 준비"
-        ]
-      },
-      {
-        label: "목요일에 희망 잡고 면접 보기",
-        detail: "센터에 사전 등록한 뒤 참여하는 채용행사예요. 면접 전에 챙긴 항목을 표시하세요.",
-        items: [
-          "이번 회차에 사전 등록",
-          "이력서 준비",
-          "자기소개서 준비"
-        ]
-      }
+    id: "JOB01", kind: "desk", title: "일자리센터에 보여 줄 구직 카드",
+    intro: "어떻게 일을 구하고 싶은지 카드 한 장에 담아 보세요. 안산시가 구인정보를 올린 직종을 예로 들었어요.",
+    artifact: "나의 구직 상담 카드", sourceLabel: "안산시 공식 구인정보 보기",
+    sourceUrl: "https://www.ansan.go.kr/www/common/bbs/selectPageListBbs.do?bbs_code=B0261",
+    steps: [
+      { mode: "pick", title: "어떤 일자리를 찾고 있나요?", instruction: "상담할 때 맨 먼저 전하고 싶은 말을 고르세요.", caption: "찾는 일자리",
+        options: [
+          { label: "짧은 기간 일하고 싶어요", note: "계약이 언제 끝나는지 물어볼 수 있어요." },
+          { label: "공공 일자리를 알아보고 싶어요", note: "관심 있는 사업의 모집 시기와 조건을 물어볼 수 있어요." },
+          { label: "오래 일할 곳에 다시 취업하고 싶어요", note: "오래 이어 가고 싶은 일을 다음 칸에 담아 보세요." },
+          { label: "어떤 일이 맞을지 함께 찾고 싶어요", note: "아직 직종을 정하지 않아도 해 본 일부터 정리할 수 있어요." },
+        ] },
+      { mode: "pack", title: "해 본 일을 카드에 담으세요", instruction: "일터나 집, 모임에서 해 본 일을 한두 가지 골라 보세요.", caption: "내가 해 본 일", min: 1, limit: 2,
+        options: [
+          { label: "물건 수량을 확인하고 정리했어요", note: "무엇을 확인했는지 떠올려 보세요." },
+          { label: "손님이나 이용자에게 안내했어요", note: "어려워하는 내용을 쉽게 알려 준 경험도 좋아요." },
+          { label: "신청서나 장부에 내용을 기록했어요", note: "종이에 적은 경험도 담을 수 있어요." },
+          { label: "도구를 써서 물건을 만들거나 수리했어요", note: "손에 익은 도구를 떠올려 보세요." },
+          { label: "식사나 행사 준비를 맡았어요", note: "함께할 사람들과 일을 나눈 경험도 좋아요." },
+        ] },
+      { mode: "pick", title: "구인 게시판에서 한 칸 열어 보세요", instruction: "아래는 안산시가 게시한 직종 구분이에요. 먼저 살펴볼 분야를 고르세요.", caption: "먼저 살펴볼 분야",
+        options: [
+          { label: "제조직", note: "공고에서 실제로 맡을 공정과 필요한 경험을 확인하세요." },
+          { label: "사무직", note: "공고에 적힌 문서 업무와 사용하는 도구를 확인하세요." },
+          { label: "서비스직", note: "누구를 응대하고 어떤 일을 하는지 공고를 확인하세요." },
+          { label: "여러 분야를 상담한 뒤 정하기", note: "카드에 담은 경험을 보여 주며 관련된 일부터 물어보세요." },
+        ] },
+      { mode: "pick", title: "상담에서 먼저 물을 것", instruction: "전화를 걸거나 상담할 때 잊지 않도록 질문 하나를 붙여 보세요.", caption: "첫 문의",
+        options: [
+          { label: "제가 해 본 일을 살릴 만한 공고가 있나요?", note: "앞에서 고른 경험을 함께 이야기할 수 있어요." },
+          { label: "원하는 기간에 맞는 일을 어떻게 찾나요?", note: "기간이 중요한 경우에 어울려요." },
+          { label: "지원 전에 어떤 서류를 준비할까요?", note: "희망 분야를 말하고 필요한 서류를 확인하세요." },
+        ] },
     ],
-    sourceLabel: "안산시 일자리센터 안내",
-    sourceUrl: "https://www.ansan.go.kr/www/common/cntnts/selectContents.do?cntnts_id=C0001272"
   },
   JOB02: {
-    title: "경력 상담과 동행면접 비교하기",
-    body: "앞으로 할 일을 정하는 상담과 기업 현장을 보는 면접을 비교할 수 있어요.",
-    prompt: "지금 알아보고 싶은 지원을 고르세요.",
-    mode: "choose",
-    options: [
-      {
-        label: "경력을 살릴 일 찾기",
-        detail: "생애경력설계에서는 지금까지의 경력을 살펴보고 앞으로 어떤 일을 할지 상담해요.",
-        linkLabel: "고용24 지원 내용 보기",
-        url: "https://www.work24.go.kr/wk/u/a/1000/seniorCenterSvcInfo.do"
-      },
-      {
-        label: "일을 옮길 준비하기",
-        detail: "퇴직을 앞두고 전직을 준비하는 교육과 퇴직 후 구직 활동을 돕는 교육이 있어요. 고용24에서 두 과정의 내용을 비교해 보세요.",
-        linkLabel: "고용24 교육 과정 보기",
-        url: "https://www.work24.go.kr/wk/u/a/1000/seniorCenterSvcInfo.do"
-      },
-      {
-        label: "면접 볼 기업 현장 알아보기",
-        detail: "안산에서는 기업이 찾는 직종과 구직자를 연결해 면접과 생산부서 견학을 함께 진행한 적이 있어요. 이번 모집 여부는 센터 공지에서 확인하세요.",
-        linkLabel: "안산의 동행면접 사례 보기",
-        url: "https://ansancci.korcham.net/front/board/boardContentsView.do?boardId=20187&contId=90171&menuId=9946"
-      }
+    id: "JOB02", kind: "field", title: "기업을 살펴볼 때 쓸 면접 수첩",
+    intro: "안산 중장년내일센터는 기업의 생산부서를 둘러보고 면접을 보는 행사를 진행했어요. 내 경험과 현장에서 확인할 점을 한 장에 담아 보세요.",
+    artifact: "기업 탐방·면접 수첩", sourceLabel: "안산상공회의소의 동행면접 사례 보기",
+    sourceUrl: "https://ansancci.korcham.net/front/board/boardContentsView.do?boardId=20187&contId=90171&menuId=9946",
+    steps: [
+      { mode: "sort", title: "눈으로 볼 것과 물어볼 것", instruction: "각 항목을 어디에서 확인할 수 있을지 나눠 보세요.", caption: "확인할 방법",
+        groups: ["현장에서 살펴보기", "담당자에게 묻기"],
+        items: [
+          { label: "작업대 주변의 공간", group: 0, hint: "작업대가 어떻게 놓였는지는 눈으로 살펴볼 수 있어요." },
+          { label: "처음 맡을 구체적인 일", group: 1, hint: "보이는 작업이 모두 내 일이 되는 것은 아니에요. 담당자에게 확인해요." },
+          { label: "현장에 놓인 도구의 생김새", group: 0, hint: "모양은 눈으로 보고, 사용법은 담당자에게 물어볼 수 있어요." },
+          { label: "신입에게 일을 가르치는 방식", group: 1, hint: "누가 어떻게 알려 주는지는 질문으로 확인해요." },
+        ] },
+      { mode: "pick", title: "면접 때 들려줄 경험 꺼내기", instruction: "실제로 해 본 일과 가장 가까운 예를 하나 고르세요.", caption: "소개하고 싶은 경험",
+        options: [
+          { label: "정해진 기준에 따라 빠진 것을 찾아냈어요", note: "무엇을 확인했는지 한 가지 떠올려 보세요." },
+          { label: "낯선 일을 배워서 혼자 마무리했어요", note: "처음 배울 때 도움이 된 방법을 떠올려 보세요." },
+          { label: "여럿이 맡은 일의 순서를 조율했어요", note: "내가 직접 정리한 부분을 떠올려 보세요." },
+          { label: "내 경험을 더 생각해 볼래요", note: "직장 밖에서 해 본 일도 나중에 떠올려 볼 수 있어요." },
+        ] },
+      { mode: "pack", title: "내 수첩에 질문 두기", instruction: "일을 시작하기 전에 답을 듣고 싶은 질문을 한두 개 고르세요.", caption: "기업에 물을 질문", min: 1, limit: 2,
+        options: [
+          { label: "처음 맡는 업무는 무엇인가요?", note: "공고의 직종 이름만으로 알기 어려운 부분이에요." },
+          { label: "처음 쓰는 도구는 어떻게 익히나요?", note: "현장에서 본 도구와 연결해 물어볼 수 있어요." },
+          { label: "제가 해 본 일은 어떤 업무에 도움이 될까요?", note: "앞에서 골라 놓은 경험을 함께 떠올리세요." },
+          { label: "혼자 하는 일과 함께 하는 일은 어떻게 나뉘나요?", note: "어떤 방식으로 협력하는지 알아볼 수 있어요." },
+        ] },
     ],
-    sourceLabel: "안산상공회의소 센터 공지 보기",
-    sourceUrl: "https://ansancci.korcham.net/front/board/boardContentsListPage.do?boardId=11295&menuId=10014"
   },
   JOB03: {
-    title: "내 가게에 필요한 특강 내용 고르기",
-    body: "안산 점주들이 지난 특강에서 들려준 내용이에요. 배우고 싶은 내용을 골라 올해 공고와 비교해 보세요.",
-    prompt: "점주에게 어떤 경험을 배우고 싶으세요?",
-    mode: "check",
-    options: [
-      {
-        label: "대표 메뉴 개발",
-        detail: "지난 특강에서는 지역 점주가 메뉴를 개발한 경험을 들려줬어요. 참가자는 점포의 대표 음식을 직접 맛봤어요."
-      },
-      {
-        label: "손님 응대",
-        detail: "점주들이 매장에서 손님을 응대한 경험을 나눴어요. 관심 있는 회차에서 이 주제를 다루는지 재단에 확인하세요."
-      },
-      {
-        label: "점포 운영 중 어려움 대처",
-        detail: "강사들은 가게를 운영하며 겪은 시행착오와 위기를 넘긴 경험을 소개했어요.",
-        linkLabel: "지난 상인 특강 내용 보기",
-        url: "https://amrf.or.kr/재단소식/보도자료/?mod=document&pageid=1&uid=411"
-      }
+    id: "JOB03", kind: "workshop", title: "손님이 읽기 쉬운 메뉴판 만들기",
+    intro: "지역 상인 특강에서는 대표 메뉴 개발과 손님 응대를 다뤘어요. 연습용 메뉴인 들깨버섯죽으로 한 줄 메뉴판을 만들어 보세요.",
+    artifact: "들깨버섯죽 메뉴판 초안", sourceLabel: "안산 상인 아카데미의 실제 강의 내용 보기",
+    sourceUrl: "https://amrf.or.kr/재단소식/보도자료/?mod=document&pageid=1&uid=411",
+    steps: [
+      { mode: "sort", title: "메뉴 정보를 두 칸에 놓기", instruction: "들깨버섯죽에 관한 예시 카드를 알맞은 칸에 놓으세요.", caption: "메뉴판 재료",
+        groups: ["음식 설명", "주문 안내"],
+        items: [
+          { label: "표고버섯과 들깨를 넣은 죽", group: 0, hint: "들어간 재료를 설명하는 말이에요." },
+          { label: "한 그릇씩 주문", group: 1, hint: "손님이 주문할 수 있는 단위를 알려 줘요." },
+          { label: "고소한 맛", group: 0, hint: "먹기 전에 맛을 떠올릴 수 있는 말이에요." },
+          { label: "포장 가능", group: 1, hint: "어떻게 받아 갈 수 있는지 알려 줘요." },
+        ] },
+      { mode: "pick", title: "메뉴 이름 아래 한 줄 넣기", instruction: "지나가는 손님에게 먼저 보여 줄 설명을 고르세요.", caption: "첫 줄",
+        options: [
+          { label: "들깨의 고소한 맛을 담은 버섯죽", note: "어떤 맛인지 궁금한 손님에게 보여 줄 문구예요." },
+          { label: "표고버섯과 들깨로 끓인 죽", note: "어떤 재료를 쓰는지 먼저 알리는 문구예요." },
+        ] },
+      { mode: "pack", title: "주문할 때 필요한 표시 붙이기", instruction: "메뉴 설명 옆에 붙일 안내를 한두 개 골라 보세요.", caption: "주문 표시", min: 1, limit: 2,
+        options: [
+          { label: "한 그릇씩 주문", note: "주문 단위를 바로 읽을 수 있어요." },
+          { label: "포장 가능", note: "가지고 갈 수 있는 메뉴임을 알려 줘요." },
+        ] },
     ],
-    sourceLabel: "재단 공고에서 회차와 접수 확인",
-    sourceUrl: "https://amrf.or.kr/알림공간/공지사항/?mod=document&uid=643"
   },
   JOB07: {
-    title: "이모작 상담에서 다룰 주제 정하기",
-    body: "일자리와 생활을 함께 상담할 수 있어요. 상담을 신청하기 전에 다루고 싶은 주제를 골라 보세요.",
-    prompt: "어떤 이야기를 상담에 가져가고 싶으세요?",
-    mode: "check",
-    options: [
-      {
-        label: "경력 정리와 재취업",
-        detail: "경력개발과 재취업은 이모작 상담 주제예요. 센터의 지난 특강에서는 경력을 이력서에 담고 면접에서 강점을 설명하는 방법을 다뤘어요.",
-        linkLabel: "지난 재취업 특강 내용 보기",
-        url: "https://www.ansan.go.kr/www/common/bbs/selectBbsDetail.do?bbs_code=B0238&bbs_seq=1683065"
-      },
-      {
-        label: "사회공헌과 여가 활동",
-        detail: "일을 그만둔 뒤에도 경험을 나눌 수 있는 사회공헌 활동과 여가·문화 생활을 상담할 수 있어요."
-      },
-      {
-        label: "가족과 주변 사람들과의 관계",
-        detail: "가족관계와 사회적 관계도 생애설계 상담에서 함께 다루는 주제예요."
-      }
+    id: "JOB07", kind: "planner", title: "내가 바라는 일주일 짜 보기",
+    intro: "인생이모작지원센터의 상담 주제에는 일, 여가, 사회공헌이 있어요. 다음 주에 해 볼 일을 골라 상담에 가져갈 계획표를 만들어 보세요.",
+    artifact: "나의 일주일 활동 계획표", sourceLabel: "안산시 인생이모작 상담 안내 보기",
+    sourceUrl: "https://www.ansan.go.kr/www/common/cntnts/selectContents.do?cntnts_id=www01617",
+    steps: [
+      { mode: "pick", title: "이번 주제 정하기", instruction: "다음 주에 조금이라도 시간을 내고 싶은 주제 하나를 고르세요.", caption: "이번 주의 중심",
+        options: [
+          { label: "다시 할 일 찾기", note: "경험을 정리하거나 관심 있는 공고부터 볼 수 있어요." },
+          { label: "배움과 여가 시작하기", note: "배워 보고 싶은 활동을 한 가지 찾아볼 수 있어요." },
+          { label: "경험을 나눌 곳 찾기", note: "도울 수 있는 일이나 함께할 모임을 떠올려 보세요." },
+        ] },
+      { mode: "quantity", title: "한 주에 몇 번 해 볼까요?", instruction: "부담 없이 낼 수 있는 횟수로 조절해 보세요. 쉬어 갈 활동은 0회로 두세요.", caption: "일주일에 해 볼 횟수",
+        items: [
+          { label: "혼자 자료 살펴보기", unit: "회", min: 0, max: 5, initial: 1, step: 1 },
+          { label: "사람과 만나거나 이야기하기", unit: "회", min: 0, max: 5, initial: 1, step: 1 },
+          { label: "배우거나 손으로 해 보기", unit: "회", min: 0, max: 5, initial: 0, step: 1 },
+        ] },
+      { mode: "pack", title: "계획을 실행할 조건 담기", instruction: "계획이 부담스러워지지 않도록 지키고 싶은 조건을 한두 개 붙이세요.", caption: "상담에서 함께 맞출 조건", min: 1, limit: 2,
+        options: [
+          { label: "한 번만 해 보고 계속할지 정하기", note: "처음부터 오래 약속하기 어려울 때 쓸 수 있어요." },
+          { label: "집에서도 할 수 있는 일 찾기", note: "외출이 힘든 날에도 계획을 이어 갈 수 있어요." },
+          { label: "비용을 확인하고 정하기", note: "참여 비용이 궁금하다는 점을 남길 수 있어요." },
+          { label: "다른 사람과 함께 시작하기", note: "함께 참여할 기회가 있는지 물어보세요." },
+        ] },
     ],
-    sourceLabel: "안산시 이모작 상담 안내",
-    sourceUrl: "https://www.ansan.go.kr/www/common/cntnts/selectContents.do?cntnts_id=www01617"
   },
   JOB08: {
-    title: "참여할 봉사활동 찾기",
-    body: "개인 봉사 모집, 센터 행사, 집에서 받는 교육은 신청하는 곳이 달라요.",
-    prompt: "어떤 활동을 찾으세요?",
-    mode: "choose",
-    options: [
-      {
-        label: "개인으로 참여할 봉사 찾기",
-        detail: "1365에서 개인 봉사활동을 찾아보세요. 모집 기간과 활동 장소를 보고 참여할 공고를 고를 수 있어요.",
-        linkLabel: "1365에서 봉사 모집 보기",
-        url: "https://www.1365.go.kr/"
-      },
-      {
-        label: "센터 교육이나 행사 찾기",
-        detail: "교육·행사 공고에서 참여할 수 있는 회차인지 살펴보세요.",
+    id: "JOB08", kind: "field", title: "김장 나눔 포장대 맡아 보기",
+    intro: "안산시자원봉사센터의 김장 나눔에서는 포장과 배부도 봉사예요. 연습용 포장대에서 무엇을 챙기고 몇 통을 나눌지 정해 보세요.",
+    artifact: "김장 나눔 작업 메모", sourceLabel: "안산센터의 김장 나눔 활동 사례 보기",
+    sourceUrl: "https://www.ansan1365.or.kr/sub.php?id=notice&idx=2255&menukey=24&mode=view&page=1",
+    steps: [
+      { mode: "sort", title: "현장에서 주는 물품 나누기", instruction: "지난 행사 공지를 읽는 연습이에요. 아래 항목을 알맞은 칸에 놓으세요.", caption: "지난 행사 준비 안내",
+        groups: ["센터에서 제공", "참여자가 준비"],
         items: [
-          "접수 기간과 마감 여부 확인",
-          "행사 날짜와 장소 확인",
-          "접수 인원과 정원 확인"
-        ],
-        linkLabel: "센터 교육·행사 목록 보기",
-        url: "https://www.ansan1365.or.kr/sub.php?menukey=22"
-      },
-      {
-        label: "집에서 봉사의 기본 배우기",
-        detail: "센터의 온라인 교육에는 봉사의 의미와 활동할 때 주의할 점이 있어요. 봉사 시간 인정을 원하면 다음 사항도 확인하세요.",
+          { label: "앞치마", group: 0, hint: "지난 공고에서 현장 제공 물품으로 안내했어요." },
+          { label: "움직이기 편한 옷차림", group: 1, hint: "참여자가 간편한 복장을 준비하도록 안내했어요." },
+          { label: "장갑", group: 0, hint: "지난 공고에서 앞치마와 함께 제공한다고 안내했어요." },
+        ] },
+      { mode: "quantity", title: "받을 곳마다 김치 통 놓기", instruction: "연습용 배부표예요. 두 곳에 나눌 김치 통 수를 조절하고 합계를 확인하세요.", caption: "연습용 배부 수량",
         items: [
-          "1365 자원봉사포털 가입 확인",
-          "소속센터가 경기도 안산시인지 확인",
-          "센터 교육의 문제풀이와 인정 조건 확인"
-        ],
-        linkLabel: "센터 온라인 교육 보기",
-        url: "https://www.ansan1365.or.kr/sub.php?menukey=21"
-      }
+          { label: "첫 번째 배부처", unit: "통", min: 1, max: 6, initial: 1, step: 1 },
+          { label: "두 번째 배부처", unit: "통", min: 1, max: 6, initial: 1, step: 1 },
+        ] },
+      { mode: "pick", title: "해 보고 싶은 역할 표시하기", instruction: "포장대에서 해 본 일을 떠올리며 실제 활동에서 맡아 보고 싶은 역할을 고르세요.", caption: "관심 있는 역할",
+        options: [
+          { label: "김치를 통에 담아 포장하기", note: "포장하는 일을 해 보고 싶다고 말할 수 있어요." },
+          { label: "버무릴 재료를 옮기기", note: "어떤 물품을 옮기는지 담당자에게 물어보세요." },
+          { label: "포장한 김치를 나누어 주기", note: "받을 곳별 수량을 확인하는 일에 관심 있다고 말할 수 있어요." },
+        ] },
     ],
-    sourceLabel: "안산센터의 1365 이용 안내",
-    sourceUrl: "https://www.ansan1365.or.kr/sub.php?menukey=20"
   },
   JOB11: {
-    title: "가게 운영에 필요한 창구 찾기",
-    body: "지원사업 신청, 자금 문의, 경영 교육 가운데 필요한 일을 골라 해당 창구를 확인하세요.",
-    prompt: "어떤 일을 해결하고 싶으세요?",
-    mode: "choose",
-    options: [
-      {
-        label: "지원사업 공고와 신청 방법 찾기",
-        detail: "소상공인24의 ‘소진공 지원사업 공고조회 및 신청’에서 공고를 찾아보세요. 신청은 로그인한 뒤 진행해요.",
-        linkLabel: "소상공인24 열기",
-        url: "https://www.sbiz24.kr/"
-      },
-      {
-        label: "사업 운영 자금 알아보기",
-        detail: "소상공인24의 ‘대출상품 조회’에서 정책자금 상품을 살펴볼 수 있어요. 통합콜센터에서는 대출 상담을 받아요."
-      },
-      {
-        label: "가게 운영 방법 배우기",
-        detail: "지식배움터에서 점포 운영과 홍보 강의를 찾을 수 있어요. 온라인 강의와 현장교육을 나눠 볼 수 있어요.",
-        linkLabel: "공단 지식배움터 열기",
-        url: "https://edu.sbiz.or.kr/edu/main/main.do"
-      }
+    id: "JOB11", kind: "kiosk", title: "소상공인24에서 필요한 창구 찾기",
+    intro: "소상공인24의 실제 메뉴 이름을 이용해 연습해요. 가게에 필요한 공고를 찾고 신청 전에 볼 부분을 표시해 보세요.",
+    artifact: "가게 지원사업 확인 메모", sourceLabel: "공식 소상공인24 열기",
+    sourceUrl: "https://www.sbiz24.kr/",
+    steps: [
+      { mode: "sort", title: "공고를 어디에서 찾을까요?", instruction: "공고를 낸 곳을 보고 알맞은 메뉴에 넣으세요.", caption: "공고를 찾을 메뉴",
+        groups: ["소진공 지원사업", "지방정부 지원사업"],
+        items: [
+          { label: "소상공인시장진흥공단이 낸 공고", group: 0, hint: "‘소진공’은 소상공인시장진흥공단을 줄인 말이에요." },
+          { label: "안산시가 낸 공고", group: 1, hint: "시는 지방정부에 속해요." },
+          { label: "경기도가 낸 공고", group: 1, hint: "도에서 낸 공고는 지방정부 메뉴에서 찾아요." },
+        ] },
+      { mode: "pack", title: "공고에 책갈피 붙이기", instruction: "공고를 열었을 때 다시 찾아볼 부분을 두 개 고르세요.", caption: "먼저 읽을 항목", min: 2, limit: 2,
+        options: [
+          { label: "신청할 수 있는 대상", note: "내 업종과 지역도 포함되는지 살펴볼 부분이에요." },
+          { label: "접수 기간", note: "지금 신청을 받는지 판단할 수 있어요." },
+          { label: "제출할 자료", note: "미리 준비할 자료와 나중에 보낼 자료를 확인할 수 있어요." },
+          { label: "접수 방법과 문의처", note: "신청할 곳과 궁금한 점을 물을 곳을 확인할 수 있어요." },
+        ] },
+      { mode: "pick", title: "내가 이어서 할 일", instruction: "공고를 한 번 읽고 나서 할 일을 메모에 남기세요.", caption: "다음에 할 일",
+        options: [
+          { label: "조건이 맞는 공고를 더 찾아보기", note: "공단 사업과 지방정부 사업을 나누어 비교할 수 있어요." },
+          { label: "공고가 요구한 자료부터 챙기기", note: "실제 제출 목록은 선택한 사업의 공고에서 확인하세요." },
+          { label: "모호한 조건을 문의처에 물어보기", note: "공고 이름과 책갈피로 표시한 부분을 함께 보면 물어보기 쉬워요." },
+        ] },
     ],
-    sourceLabel: "소상공인24 서비스 안내",
-    sourceUrl: "https://www.sbiz24.kr/"
   },
   L06_PIUM_DIRECTORY: {
-    title: "수업에서 내 손으로 만드는 것",
-    body: "안산시평생학습관의 지난 피움과정 세 가지예요. 완성하고 싶은 것을 누르면 그 수업에서 무엇을 연습했는지 볼 수 있어요.",
-    prompt: "어떤 걸 만들어 볼까요?",
-    mode: "choose",
-    options: [
-      {
-        label: "내 사진에 짧은 시 붙이기",
-        detail: "디카시 수업은 주변 사물이나 풍경을 찍고, 사진만으로 전해지지 않는 생각을 짧은 시로 쓰는 과정이었어요. 마지막 수업에는 각자 다듬은 작품을 읽고 전시하는 활동이 있었어요.",
-        items: [
-          "스마트폰",
-          "필기도구"
-        ],
-        linkLabel: "디카시 수업 내용 보기",
-        url: "https://lll.ansan.go.kr/web/cop/regEduDetail.do?mId=EDUMNG_0000000001578"
-      },
-      {
-        label: "‘찔레꽃’에 장구 가락 얹기",
-        detail: "트롯 장구 수업은 양손에 채를 쥐는 법부터 시작했어요. ‘찔레꽃’에 맞춰 가락을 익히고 몸동작을 더하는 활동이 강의계획에 담겨 있어요.",
-        linkLabel: "트롯 장구 수업 내용 보기",
-        url: "https://lll.ansan.go.kr/web/cop/regEduDetail.do?mId=EDUMNG_0000000001561"
-      },
-      {
-        label: "카푸치노에 하트 그리기",
-        detail: "바리스타 과정에는 드리퍼를 바꿔 커피를 내려 보고 추출 결과를 비교하는 연습이 있어요. 후반에는 우유 거품으로 카푸치노에 하트와 나뭇잎 무늬를 만드는 내용이 담겼어요.",
-        items: [
-          "앞치마",
-          "행주",
-          "텀블러"
-        ],
-        linkLabel: "바리스타 수업 내용 보기",
-        url: "https://lll.ansan.go.kr/web/cop/regEduDetail.do?mId=EDUMNG_0000000001616"
-      }
+    id: "L06_PIUM_DIRECTORY",
+    title: "찻잔에 붙일 짧은 시",
+    intro: "피움과정의 디카시 수업에서는 사물을 바라보고 짧은 시를 씁니다. 찻잔 하나를 떠올리며 나만의 시 한 편을 엮어 보세요.",
+    kind: "workshop",
+    artifact: "내 찻잔에 붙일 시",
+    sourceLabel: "평생학습관 디카시 강좌 살펴보기",
+    sourceUrl: "https://lll.ansan.go.kr/web/cop/regEduDetail.do?mId=EDUMNG_0000000001578",
+    steps: [
+      { mode: "pick", title: "첫 줄에 무엇을 담을까요?", instruction: "찻잔을 가까이 들여다보듯, 눈이 머무는 부분을 한 줄 골라 보세요.", caption: "첫 줄", options: [
+        { label: "둥근 손잡이 안에", note: "손잡이 사이의 빈 곳에서 시작해요." },
+        { label: "낡은 찻잔 바닥에", note: "오랫동안 곁에 둔 물건을 떠올려요." },
+        { label: "흰 잔의 가장자리에", note: "잔의 가느다란 테두리를 따라가 봐요." },
+      ] },
+      { mode: "pack", title: "그 자리에 무엇이 남았나요?", instruction: "가운데에 놓을 한 줄을 담으세요. 다른 말을 담아 읽어본 뒤 바꿔도 좋아요.", caption: "가운데 줄", min: 1, limit: 1, options: [
+        { label: "한 모금의 온기가 남았다", note: "따뜻한 느낌을 더해요." },
+        { label: "오래된 약속 하나가 걸렸다", note: "물건에 기억을 담아요." },
+        { label: "바깥의 빛이 잠시 쉬어 간다", note: "빛의 움직임을 따라가요." },
+      ] },
+      { mode: "pick", title: "작품에 이름을 붙여 보세요", instruction: "고른 두 줄을 소리 내어 읽어 보세요. 그 말과 어울리는 제목을 붙이세요.", caption: "작품 제목", options: [
+        { label: "남겨 둔 자리", note: "비어 있는 공간을 제목에 담아요." },
+        { label: "잠깐의 온도", note: "잠시 머무는 느낌을 제목에 담아요." },
+        { label: "손끝에 닿는 것", note: "잔을 들 때의 감각을 제목에 담아요." },
+      ] },
     ],
-    sourceLabel: "평생학습관 정규강좌와 접수 상태 보기",
-    sourceUrl: "https://lll.ansan.go.kr/web/cop/regEduList.do"
-  },
-  L13: {
-    title: "커피 주문부터 기차표 예매까지",
-    body: "AI디지털배움터의 공개 연습 화면에서는 휴대전화로 메뉴와 버튼을 직접 눌러 볼 수 있어요. 실제 주문이나 결제는 이루어지지 않아요.",
-    prompt: "어떤 화면을 연습할까요?",
-    mode: "choose",
-    options: [
-      {
-        label: "카페에서 커피 주문하기",
-        detail: "아래 공식 과정에서 ‘학습하기’를 누르고 ‘연습하기’를 선택하세요. 카페에서 커피를 주문하며 화면을 터치하는 법을 익힐 수 있어요.",
-        linkLabel: "디지털배움터 주문 연습 열기",
-        url: "https://www.xn--2z1bw8k1pjz5ccumkb.kr/cnt/vid/webgl/1/dtl.do"
-      },
-      {
-        label: "영화관에서 표 예매하기",
-        detail: "공식 과정의 ‘학습하기’에서 ‘키오스크’를 선택하세요. 영화 예매 연습을 고르면 영화관 기기의 버튼을 직접 눌러 볼 수 있어요.",
-        linkLabel: "디지털배움터 영화 예매 연습 열기",
-        url: "https://www.xn--2z1bw8k1pjz5ccumkb.kr/cnt/vid/webgl/1/dtl.do"
-      },
-      {
-        label: "휴대전화로 기차표 예매하기",
-        detail: "공식 과정의 ‘학습하기’에서 ‘대중교통 앱’을 선택하세요. KTX 예매 연습을 고르면 휴대전화로 기차표를 예매하는 화면을 익힐 수 있어요.",
-        linkLabel: "디지털배움터 기차표 연습 열기",
-        url: "https://www.xn--2z1bw8k1pjz5ccumkb.kr/cnt/vid/webgl/1/dtl.do"
-      }
-    ],
-    sourceLabel: "단원구의 무료 디지털 교육 안내",
-    sourceUrl: "https://www.ansan.go.kr/danwongu/common/cntnts/selectContents.do?cntnts_id=C0002056"
   },
   L15: {
-    title: "책 한 권에서 시작하는 세 모임",
-    body: "안산시평생학습관 작은도서관은 북세통·한뉘·옹달샘의 활동과 사진을 공개했어요. 새 회원 모집 여부는 따로 확인해야 해요.",
-    prompt: "읽은 책으로 무엇을 해 볼까요?",
-    mode: "choose",
-    options: [
-      {
-        label: "같은 책을 다르게 읽은 사람들과 토론하기",
-        detail: "북세통은 선정한 책을 함께 읽고 각자의 생각을 나누는 모임이에요. 문학뿐 아니라 사회과학, 역사, 과학, 그림책까지 다뤄요."
-      },
-      {
-        label: "역사책의 무대를 찾아가 보기",
-        detail: "한뉘에서는 역사책을 읽고 토론한 뒤 책에 등장하는 지역을 답사하기도 해요. 읽으며 떠올린 장소를 실제 풍경과 맞춰 볼 수 있어요."
-      },
-      {
-        label: "내가 쓴 시 읽기와 동화 구연",
-        detail: "옹달샘은 시니어 회원들이 직접 쓴 시를 발표하고 추억의 노래도 부르는 모임이에요. 어린이에게 손동작이나 짧은 연극으로 동화를 들려주는 회원도 있어요."
-      }
+    id: "L15",
+    title: "독서모임에서 꺼낼 첫 질문",
+    intro: "작은도서관의 북세통에서는 같은 책을 읽고 의견을 나눕니다. ANTI가 쓴 짧은 글로 작은 토론을 준비해 보세요.",
+    kind: "desk",
+    artifact: "내 독서모임 질문지",
+    sourceLabel: "작은도서관 독서모임 소개",
+    sourceUrl: "https://lll.ansan.go.kr/web/content.do?proFn=9314000",
+    steps: [
+      { mode: "pick", title: "밑줄 하나를 그어 보세요", instruction: "“같은 책을 읽어도 밑줄은 저마다 다르다. 모임의 재미는 그 이유를 듣는 데 있다.” 함께 읽고 싶은 대목을 고르세요.", caption: "함께 읽을 대목", options: [
+        { label: "같은 책을 읽어도", note: "같은 것을 함께 읽는 경험에 밑줄을 그었어요." },
+        { label: "밑줄은 저마다 다르다", note: "읽는 사람마다 마음이 가는 곳이 다르다는 말이에요." },
+        { label: "그 이유를 듣는 데 있다", note: "다른 사람이 왜 골랐는지 듣는 일에 주목했어요." },
+      ] },
+      { mode: "sort", title: "글에 있는 말과 떠오른 생각", instruction: "글에서 직접 읽은 내용과, 읽고 나서 덧붙인 생각을 나눠 놓으세요.", caption: "토론 메모", groups: ["글에 있는 말", "덧붙인 생각"], items: [
+        { label: "사람마다 밑줄이 다르다", group: 0, hint: "글에 ‘밑줄은 저마다 다르다’고 쓰여 있어요." },
+        { label: "밑줄 없이 읽은 사람에게도 묻고 싶다", group: 1, hint: "밑줄이 없는 사람에 관한 이야기는 새로 덧붙인 생각이에요." },
+        { label: "다른 사람이 고른 이유를 들으면 재미있다", group: 0, hint: "글의 마지막 문장을 다른 말로 옮긴 내용이에요." },
+      ] },
+      { mode: "pack", title: "답이 여러 개인 질문을 담으세요", instruction: "실제 모임에서 꺼내 보고 싶은 질문을 두 개까지 담으세요.", caption: "내가 건넬 질문", min: 1, limit: 2, options: [
+        { label: "어디에서 읽는 속도가 느려졌나요?", note: "기억에 남은 장면을 떠올리기 좋은 질문이에요." },
+        { label: "다시 읽고 싶은 문장은 무엇인가요?", note: "서로 다른 밑줄을 나란히 놓을 수 있어요." },
+        { label: "같은 문장이 다르게 느껴진 적 있나요?", note: "각자 겪은 일을 나눌 여지를 둬요." },
+      ] },
     ],
-    sourceLabel: "작은도서관 모임 소개와 활동 사진 보기",
-    sourceUrl: "https://lll.ansan.go.kr/web/content.do?proFn=9314000"
   },
   L16: {
-    title: "안산 동아리 활동 세 가지 비교하기",
-    body: "평생비전센터 등록부에서 동아리들이 직접 적은 활동을 골랐어요. 비교할 활동을 눌러 보세요. 가입 가능 여부는 모임마다 달라요.",
-    prompt: "어떤 활동을 함께 살펴볼까요?",
-    mode: "check",
-    options: [
-      {
-        label: "은빛날개 · 지역 축제 패션쇼",
-        detail: "은빛날개는 평생학습관 ‘영그는 마당’과 호수동 별빛문화축제 등에서 회원들이 패션쇼 무대에 섰다고 기록했어요."
-      },
-      {
-        label: "사물놀이 장비통 · 악기 배우고 공연하기",
-        detail: "사물놀이 장비통은 매주 모여 사물놀이 악기를 배우고, 연습한 곡으로 해마다 한 번 이상 공연한다고 소개했어요."
-      },
-      {
-        label: "스마일파크클럽 · 파크골프 현장 실습",
-        detail: "스마일파크클럽은 규칙과 안전 수칙을 익혀 현장에서 연습해요. 강사를 준비하는 회원은 직접 수업을 진행하는 연습도 해요."
-      }
+    id: "L16",
+    title: "네 박짜리 합주 악보 맞추기",
+    intro: "평생비전센터 동아리 목록에는 사물놀이 장비통이 있어요. ANTI가 만든 네 박 손장단으로 함께 소리를 맞추는 감각을 익혀 보세요.",
+    kind: "workshop",
+    artifact: "내 손장단 연습 악보",
+    sourceLabel: "평생비전센터 동아리 활동 보기",
+    sourceUrl: "https://wm.ansan.go.kr/operation/eduClub/selectEduClubPageList.do",
+    steps: [
+      { mode: "sort", title: "무엇이 울리는 악기일까요?", instruction: "사물놀이 악기 네 가지를 소리가 나는 재료에 맞춰 놓으세요.", caption: "악기 묶음", groups: ["가죽이 울려요", "쇠가 울려요"], items: [
+        { label: "북", group: 0, hint: "북은 팽팽하게 댄 가죽을 두드려요." },
+        { label: "징", group: 1, hint: "징은 둥근 금속판을 쳐요." },
+        { label: "장구", group: 0, hint: "장구는 양쪽에 댄 가죽을 두드려요." },
+        { label: "꽹과리", group: 1, hint: "꽹과리는 손에 들고 치는 작은 쇠악기예요." },
+      ] },
+      { mode: "order", title: "손장단 악보를 맞춰 보세요", instruction: "오늘의 악보는 ‘무릎 한 번 → 손뼉 한 번 → 무릎 두 번 → 한 박 쉬기’예요. 카드를 순서대로 누르세요.", caption: "네 박 악보", items: ["무릎 한 번", "손뼉 한 번", "무릎 두 번", "한 박 쉬기"], hint: "무릎에서 시작해 손뼉으로 옮겨요. 다시 무릎을 두드리고 마지막 박에 쉬어요." },
+      { mode: "pick", title: "내가 맡을 소리를 정하세요", instruction: "손장단을 한 번 더 해 보세요. 여럿이 할 때 직접 맡고 싶은 부분을 고르세요.", caption: "합주에서 맡을 부분", options: [
+        { label: "무릎 장단 맡기", note: "무릎을 치는 박에만 소리를 내 보세요." },
+        { label: "손뼉 장단 맡기", note: "다른 박에는 기다렸다가 손뼉이 나올 때 맞춰요." },
+        { label: "박자 세기", note: "하나부터 넷까지 세면서 쉬는 박도 같은 길이로 맞춰요." },
+      ] },
     ],
-    sourceLabel: "평생비전센터 학습동아리 등록현황 보기",
-    sourceUrl: "https://wm.ansan.go.kr/operation/eduClub/selectEduClubPageList.do"
+  },
+  C_BOOK: {
+    id: "C_BOOK",
+    title: "동네책방에 내 작은 서가 꾸미기",
+    intro: "마을상점생활관이 소개한 ‘생활책’으로 꾸미는 가상 책장이에요. 모임에서 함께 펼쳐 보고 싶은 두 권을 골라 서가 이름표를 만들어 보세요.",
+    kind: "workshop",
+    artifact: "내 두 권짜리 서가",
+    sourceLabel: "마을상점생활관 생활책 둘러보기",
+    sourceUrl: "https://www.insidethevillage.com/index",
+    steps: [
+      { mode: "pack", title: "함께 펼쳐 볼 두 권을 꽂으세요", instruction: "실제 책방 목록에 실린 제목이에요. 마음에 걸리는 두 권을 골라 한 칸에 나란히 꽂으세요.", caption: "서가에 꽂은 두 권", min: 2, limit: 2, options: [
+        { label: "단정한 반복이 나를 살릴 거야", note: "‘반복’이라는 단어에서 무엇이 떠오르나요?" },
+        { label: "우리가 서로를", note: "‘서로’ 뒤에 어떤 말이 올지 상상해 보세요." },
+        { label: "천 개의 파랑", note: "제목을 색으로 그려 볼 수 있어요." },
+        { label: "슬픈 세상의 기쁜 말", note: "‘슬픈’과 ‘기쁜’이 한 제목에 있어요." },
+      ] },
+      { mode: "pick", title: "두 책 사이에 이름표를 붙이세요", instruction: "두 제목을 보고 떠오른 느낌에 맞게 내 서가의 이름을 정하세요.", caption: "서가 이름표", options: [
+        { label: "일상을 다르게 보는 책장", note: "평소와 다른 시선으로 읽자는 이름표예요." },
+        { label: "말 한마디가 남는 책장", note: "곱씹고 싶은 말을 찾아보자는 이름표예요." },
+        { label: "뜻밖의 이웃이 된 두 권", note: "닮지 않은 두 책도 나란히 놓고 읽을 수 있어요." },
+      ] },
+      { mode: "pick", title: "책장 앞에 권하는 말을 남기세요", instruction: "누군가 두 권 앞에 멈추면 어떤 방식으로 읽어 보라고 권하고 싶으세요?", caption: "책장 앞에 붙일 쪽지", options: [
+        { label: "두 제목에서 마음에 걸리는 낱말을 골라 보세요.", note: "표지만 보고도 대화를 시작할 수 있어요." },
+        { label: "첫 문장을 나란히 읽어 보세요.", note: "글의 첫인상을 서로 들려줄 수 있어요." },
+        { label: "한 권씩 골라 읽고 바꿔 보세요.", note: "다음에 만나 서로 다르게 읽은 대목을 나눠요." },
+      ] },
+    ],
+  },
+  C_ECO: {
+    id: "C_ECO",
+    title: "수달 흔적을 관찰 노트에 옮기기",
+    intro: "안산환경운동연합은 물가에 남은 수달 흔적을 사진으로 기록했어요. 공개 기록의 사진 제목을 살펴보고, 확인한 것과 더 알아볼 것을 나눠 보세요.",
+    kind: "field",
+    artifact: "내 하천 생태 관찰 노트",
+    sourceLabel: "안산환경운동연합의 실제 관찰 사진 보기",
+    sourceUrl: "https://ansan.ekfem.or.kr/posts/0ktMwK7",
+    steps: [
+      { mode: "pack", title: "공개 기록에서 단서를 담으세요", instruction: "단체가 사진에 붙인 두 제목이에요. 관찰 노트에 옮길 단서를 하나 이상 담으세요.", caption: "기록에서 가져온 사진 제목", min: 1, limit: 2, options: [
+        { label: "수달 배설물", note: "사진에 붙은 이름을 기록해요." },
+        { label: "수달 휴식흔", note: "‘휴식흔’은 쉬어 간 흔적이라는 뜻이에요." },
+      ] },
+      { mode: "sort", title: "어디까지 알 수 있을까요?", instruction: "두 사진 제목으로 확인할 수 있는 말과 더 살펴봐야 할 말을 나누세요.", caption: "확인한 내용과 남은 질문", groups: ["제목으로 확인했어요", "더 확인해야 해요"], items: [
+        { label: "배설물을 담은 사진이 있다", group: 0, hint: "공개 기록의 사진 제목에 배설물이 나와요." },
+        { label: "같은 수달이 두 흔적을 남겼다", group: 1, hint: "두 사진의 제목에는 같은 개체인지 나와 있지 않아요." },
+        { label: "수달이 쉬어 간 흔적 사진이 있다", group: 0, hint: "‘수달 휴식흔’이라는 제목이 있어요." },
+        { label: "이곳에 사는 수달의 수를 알았다", group: 1, hint: "흔적 사진만으로 개체 수를 셀 수 없어요." },
+      ] },
+      { mode: "pick", title: "다음 관찰에 남길 질문을 고르세요", instruction: "다른 날의 기록과 비교할 때 다시 살펴보고 싶은 것을 하나 남기세요.", caption: "다음 기록에서 확인할 점", options: [
+        { label: "같은 종류의 흔적이 또 기록됐을까?", note: "다음 공개 기록의 사진 설명과 대조할 수 있어요." },
+        { label: "다른 종류의 흔적도 관찰됐을까?", note: "이번 기록과 다른 점을 찾아볼 수 있어요." },
+      ] },
+    ],
   },
   L08_MIND_COUNSELING: {
-    title: "마음건강 상담, 편한 방법으로 예약하기",
-    body: "전화로 일정을 조율하거나 센터 누리집에서 상담을 요청할 수 있어요.",
-    prompt: "어떤 방식이 편하세요?",
-    mode: "choose",
-    options: [
+    id: "L08_MIND_COUNSELING",
+    title: "첫 상담 문의 메모 만들기",
+    intro: "상담을 어떻게 신청하는지 궁금할 때 쓸 메모를 만들어요. 속사정을 쓰지 않고 준비된 낱말로 연습해요.",
+    kind: "desk",
+    artifact: "첫 상담 문의 메모",
+    sourceLabel: "안산시정신건강복지센터 이용 안내",
+    sourceUrl: "https://wmind.org/sub.php?menukey=12",
+    steps: [
       {
-        label: "전화로 예약 문의",
-        detail: "상담 사유를 어디까지 설명해야 할지, 방문 전에 무엇을 준비할지 담당자에게 먼저 물어볼 수 있어요. 전화예약은 안산시정신건강복지센터 031-411-7573이에요.",
-        linkLabel: "이용 방법과 연락처 보기",
-        url: "https://wmind.org/sub.php?menukey=12"
+        mode: "sort", title: "메모에 남길 내용 가리기",
+        instruction: "예약 방법만 묻는 짧은 메모예요. 각 쪽지를 어디에 둘지 골라 보세요.",
+        caption: "문의 메모 정리", groups: ["문의할 내용", "메모에서 빼기"],
+        items: [
+          { label: "예약을 신청하는 방법", group: 0, hint: "이번 문의에서 알아내려는 내용이에요." },
+          { label: "지인과 나눈 메시지 원문", group: 1, hint: "다른 사람의 사적인 대화를 적지 않아도 예약 방법을 물을 수 있어요." },
+          { label: "일정을 바꾸는 방법", group: 0, hint: "예약에 대해 센터에 물어볼 수 있는 내용이에요." },
+          { label: "지인의 이름과 연락처", group: 1, hint: "이 메모에는 다른 사람의 신상 정보를 담을 필요가 없어요." },
+        ],
       },
       {
-        label: "온라인 접수 항목 살펴보기",
-        detail: "공식 신청서에서 연락처 등 필수 항목과 개인정보 수집 안내를 확인해요. 작성하고 동의할지는 센터 화면에서 결정할 수 있어요.",
-        linkLabel: "센터 상담 신청서 열기",
-        url: "https://wmind.org/sub.php?menukey=33"
-      }
+        mode: "pack", title: "묻고 싶은 질문 담기",
+        instruction: "메모를 보며 금방 찾을 수 있도록 질문을 한두 개만 남겨 보세요.",
+        caption: "먼저 물을 질문", min: 1, limit: 2,
+        options: [
+          { label: "예약 후 연락은 어떻게 받나요?", note: "신청 뒤의 절차를 물어요." },
+          { label: "상담 전에 준비할 것이 있나요?", note: "미리 챙길 것을 물어요." },
+          { label: "상담에서 나눈 내용은 어떻게 다루나요?", note: "개인정보가 궁금할 때 쓸 질문이에요." },
+        ],
+      },
+      {
+        mode: "pick", title: "메모를 쓸 곳 정하기",
+        instruction: "센터가 안내하는 두 가지 예약 방법 중 메모와 함께 살펴볼 쪽을 골라요.",
+        caption: "문의할 방법",
+        options: [
+          { label: "전화로 예약 문의", note: "메모에 남긴 질문을 통화할 때 참고할 수 있어요." },
+          { label: "홈페이지 상담 예약", note: "센터 공식 홈페이지에서 신청 항목을 직접 살펴볼 수 있어요." },
+        ],
+      },
     ],
-    sourceLabel: "안산시정신건강복지센터 이용 안내",
-    sourceUrl: "https://wmind.org/sub.php?menukey=12"
   },
   L08_FAMILY_COUNSELING: {
-    title: "가족상담 예약 전에 맞춰볼 것",
-    body: "안산센터의 2026년 안내는 매주 같은 요일에 만나는 여섯 차례 상담을 기준으로 해요.",
-    prompt: "접수 전에 무엇을 정리할까요?",
-    mode: "choose",
-    options: [
+    id: "L08_FAMILY_COUNSELING",
+    title: "가족과 꺼낼 이야기 한 장",
+    intro: "집안일 분담을 예로 들어, 있었던 일과 바라는 변화를 두 칸에 정리해요. 가족상담에서 다뤄 보고 싶은 주제를 고르는 연습이에요.",
+    kind: "workshop",
+    artifact: "가족 대화 준비 카드",
+    sourceLabel: "안산시건강가정지원센터 가족상담 문의",
+    sourceUrl: "https://ansan.familynet.or.kr/center/lay1/program/S295T315C321/center_info/view.do",
+    steps: [
       {
-        label: "여섯 차례 참석 일정 맞추기",
-        detail: "회당 50~60분이에요. 누구와 함께할지, 여섯 주 연속 가능한 요일과 시간대가 있는지 살펴본 뒤 신청할 수 있어요.",
-        linkLabel: "2026년 가족상담 접수 안내",
-        url: "https://ansan.familynet.or.kr/center/lay1/program/S295T322C449/receipt/view.do?seq=188977",
+        mode: "sort", title: "있었던 일과 바람 나누기",
+        instruction: "집안일 쪽지를 읽고, 이미 일어난 일인지 앞으로 바라는 일인지 골라요.",
+        caption: "두 칸으로 나눈 이야기", groups: ["있었던 일", "바라는 변화"],
         items: [
-          "함께 참석할 사람과 일정 상의",
-          "여섯 주 연속 가능한 요일 확인",
-          "한 회 50~60분 낼 수 있는 시간 확인"
-        ]
+          { label: "설거지 담당을 따로 정하지 않았다", group: 0, hint: "그동안 어떻게 해 왔는지 적은 내용이에요." },
+          { label: "장보기 목록을 함께 적으면 좋겠다", group: 1, hint: "앞으로 해 보고 싶은 행동이에요." },
+          { label: "분리수거 날짜를 서로 다르게 기억했다", group: 0, hint: "이미 있었던 일을 설명해요." },
+          { label: "집안일을 각자 하나씩 맡으면 좋겠다", group: 1, hint: "다음번에 바뀌었으면 하는 점이에요." },
+        ],
       },
       {
-        label: "전화 접수와 대기 절차 확인",
-        detail: "안산센터 031-501-0033으로 전화해 상담 1번을 선택해요. 접수 뒤 차례가 되면 센터에서 전화해 일정을 조율해요.",
-        linkLabel: "접수 안내와 연락처 보기",
-        url: "https://ansan.familynet.or.kr/center/lay1/program/S295T322C449/receipt/view.do?seq=188977"
-      }
+        mode: "pick", title: "함께 정할 일 하나 꺼내기",
+        instruction: "세 가지 집안일 중 다음 대화에서 함께 정할 주제 하나를 고르세요.",
+        caption: "함께 정할 주제",
+        options: [
+          { label: "설거지를 서로 나누는 방법", note: "누가 어떤 날 맡을지 의논할 수 있어요." },
+          { label: "분리수거를 잊지 않는 방법", note: "함께 확인할 표시를 정할 수 있어요." },
+          { label: "장보기 목록을 함께 쓰는 방법", note: "누가 어디에 적을지 정할 수 있어요." },
+        ],
+      },
+      {
+        mode: "pack", title: "대화를 도울 약속 붙이기",
+        instruction: "고른 주제를 한 사람이 다 말하지 않도록, 함께 지켜 보고 싶은 약속을 한두 개 붙여요.",
+        caption: "대화 중 지켜 볼 약속", min: 1, limit: 2,
+        options: [
+          { label: "각자 바라는 점 하나씩 말하기", note: "서로 무엇을 원하는지 듣는 데 쓸 약속이에요." },
+          { label: "들은 내용을 내 말로 확인하기", note: "어떻게 이해했는지 두 사람이 확인하는 약속이에요." },
+          { label: "마지막에 함께 해볼 일 하나 정하기", note: "대화를 마칠 때 작은 행동 하나를 남겨요." },
+        ],
+      },
     ],
-    sourceLabel: "안산시건강가정지원센터 2026 가족상담 안내",
-    sourceUrl: "https://ansan.familynet.or.kr/center/lay1/program/S295T322C449/receipt/view.do?seq=188977"
   },
   H10: {
-    title: "아이돌봄에서 부탁할 수 있는 일",
-    body: "등·하원과 간식 챙기기, 아이 식사 조리와 옷 세탁은 신청할 서비스가 달라요.",
-    prompt: "맡기려는 일을 골라보세요.",
-    mode: "choose",
-    options: [
+    id: "H10",
+    title: "아이돌봄 부탁 목록 꾸리기",
+    intro: "아이를 돌볼 때 부탁할 일을 나눈 뒤, 예시 하루에 필요한 돌봄 시간과 일을 한 장에 담아요.",
+    kind: "planner",
+    artifact: "하루 돌봄 요청 메모",
+    sourceLabel: "아이돌봄서비스 시간제 돌봄 범위와 이용 시간",
+    sourceUrl: "https://www.idolbom.go.kr/front/srvcGuide/prttm",
+    steps: [
       {
-        label: "등·하원 동행과 간식 챙기기",
-        detail: "시간제 기본형에 등·하원 보조와 놀이, 이미 준비한 식사와 간식 챙기기가 포함돼요. 만들어 둔 식사를 데워 주는 일도 기본형에 해당해요.",
-        linkLabel: "시간제 기본형 범위 보기",
-        url: "https://www.idolbom.go.kr/front/srvcGuide/prttm"
+        mode: "sort", title: "어느 서비스에서 부탁할 수 있을까요?",
+        instruction: "기본형에서 할 수 있는 일, 종합형에 더해지는 일, 두 유형 모두에서 맡기기 어려운 일을 나눠요.",
+        caption: "돌봄 업무 구분", groups: ["기본형부터 가능", "종합형에 추가", "두 유형 밖의 일"],
+        items: [
+          { label: "준비해 둔 아이 밥 데우기", group: 0, hint: "만들어 둔 아이 식사를 데우는 일은 기본형에서 가능해요." },
+          { label: "돌보는 아이의 옷 세탁하기", group: 1, hint: "아이의 옷과 관련된 가사는 종합형에 더해져요." },
+          { label: "어른들 저녁상 차리기", group: 2, hint: "종합형에서 추가할 수 있는 식사 준비는 돌보는 아이를 위한 일이에요." },
+          { label: "아이와 그림책 읽기", group: 0, hint: "아이와 함께하는 놀이는 기본형에 들어가요." },
+        ],
       },
       {
-        label: "아이 식사 조리와 놀이공간 정리",
-        detail: "시간제 종합형은 기본형 돌봄에 아이 식사·간식 조리와 그에 따른 설거지, 아이 옷 세탁 및 놀이공간 정리를 더해요.",
-        linkLabel: "시간제 종합형 범위 보기",
-        url: "https://www.idolbom.go.kr/front/srvcGuide/prttm"
+        mode: "quantity", title: "한 번에 부탁할 시간 맞추기",
+        instruction: "시간제는 한 번에 두 시간부터 이용하고 반 시간씩 더할 수 있어요. 단추를 눌러 이번 예시의 시간을 맞춰 보세요.",
+        caption: "한 번에 이용할 시간",
+        items: [{ label: "돌봄 한 번", unit: "시간", min: 2, max: 6, initial: 2, step: 0.5 }],
       },
       {
-        label: "이용요금 비교와 신청 준비",
-        detail: "아이돌봄 공식 안내의 이용요금 모의계산에서 기본형과 종합형 비용을 비교할 수 있어요. 신청에 필요한 절차는 공식 누리집에서 확인해요.",
-        linkLabel: "신청 전 준비 확인",
-        url: "https://www.idolbom.go.kr/front/srvcUtztnGuide/beforeApply"
-      }
+        mode: "pack", title: "전달할 일 두 가지까지 담기",
+        instruction: "예시 하루에 꼭 필요한 일을 골라요. 일 옆에서 해당하는 유형도 확인할 수 있어요.",
+        caption: "부탁할 일", min: 1, limit: 2,
+        options: [
+          { label: "기본형부터 · 하원 동행", note: "등·하원 보조는 기본형과 종합형에 들어가요." },
+          { label: "기본형부터 · 준비된 간식 챙기기", note: "준비한 간식을 아이에게 챙겨 주는 일이에요." },
+          { label: "종합형 · 아이 식사 조리", note: "아이 먹을 음식을 직접 조리하는 일은 종합형에 추가돼요." },
+          { label: "종합형 · 아이 옷 세탁", note: "아이 옷을 세탁기에 넣고 정리하는 일은 종합형에 추가돼요." },
+        ],
+      },
     ],
-    sourceLabel: "아이돌봄서비스 시간제 돌봄 범위",
-    sourceUrl: "https://www.idolbom.go.kr/front/srvcGuide/prttm"
   },
   H13: {
-    title: "원스톱 상담에서 물어볼 내용 고르기",
-    body: "안산서부건강생활지원센터 2층에서 대사증후군 검진 결과를 상담하고, 평소 식습관도 상의할 수 있어요.",
-    prompt: "상담 때 확인하고 싶은 내용을 선택하세요.",
-    mode: "check",
-    options: [
+    id: "H13",
+    title: "식판으로 만드는 영양상담 메모",
+    intro: "안산서부건강생활지원센터에는 영양상담을 맡은 상담실이 있어요. 예시 식판을 채우고 어떤 점을 물어볼지 정해 보세요.",
+    kind: "workshop",
+    artifact: "한 끼 영양상담 메모",
+    sourceLabel: "단원보건소 서부건강생활지원센터 안내",
+    sourceUrl: "https://ansan.go.kr/health/common/cntnts/selectContents.do?cntnts_id=health05",
+    steps: [
       {
-        label: "검진 결과 설명",
-        detail: "측정한 항목이 무엇을 뜻하는지 설명을 요청할 수 있어요. 전에 받은 결과표와 함께 봐 주는지도 예약할 때 확인해 보세요."
+        mode: "pack", title: "예시 식판 채우기",
+        instruction: "상담에서 예로 들 한 끼예요. 먹거리 카드를 세 가지까지 식판에 담아요.",
+        caption: "예시 한 끼", min: 1, limit: 3,
+        options: [
+          { label: "밥", note: "밥 한 그릇을 식사 메모에 올려요." },
+          { label: "국", note: "국 한 그릇을 식사 메모에 올려요." },
+          { label: "두부 반찬", note: "두부 반찬을 식사 메모에 올려요." },
+          { label: "채소 반찬", note: "채소 반찬을 식사 메모에 올려요." },
+          { label: "과일", note: "과일을 식사 메모에 올려요." },
+        ],
       },
       {
-        label: "평소 먹는 한 끼 상담",
-        detail: "평소 자주 먹는 한 끼를 떠올려 두세요. 센터에서 영양 상담을 받을 때 일상 식사에서 어떤 부분을 살펴보면 좋을지 구체적으로 물을 수 있어요."
+        mode: "sort", title: "메모의 두 칸에 쪽지 놓기",
+        instruction: "무엇을 먹었는지 기록한 쪽지와 상담에서 답을 듣고 싶은 쪽지를 구분해요.",
+        caption: "식사 메모 정리", groups: ["먹은 내용", "물어볼 내용"],
+        items: [
+          { label: "간식으로 과일을 먹음", group: 0, hint: "먹은 것을 적은 기록이에요." },
+          { label: "반찬은 어떻게 골라 볼까?", group: 1, hint: "상담에서 의견을 들으려는 질문이에요." },
+          { label: "밥과 국을 함께 먹음", group: 0, hint: "식탁에 올린 음식을 적은 기록이에요." },
+          { label: "한 끼를 어떻게 기록해 둘까?", group: 1, hint: "기록 방법에 대해 설명을 듣고 싶은 질문이에요." },
+        ],
       },
       {
-        label: "방문 전 준비",
-        detail: "안산서부건강생활지원센터 031-369-1590~1591에서 방문 가능 여부와 필요한 준비사항을 확인할 수 있어요.",
-        linkLabel: "상담실 이용 안내",
-        url: "https://ansan.go.kr/health/common/cntnts/selectContents.do?cntnts_id=health05"
-      }
+        mode: "pick", title: "식판 옆에 질문 붙이기",
+        instruction: "완성한 식판을 가리키며 물어볼 질문 하나를 붙이세요.",
+        caption: "상담에서 꺼낼 질문",
+        options: [
+          { label: "이 식판에서 어떤 점부터 살펴볼까요?", note: "준비한 한 끼를 가지고 이야기를 시작할 수 있어요." },
+          { label: "다른 반찬으로 바꾸려면 어떤 점을 볼까요?", note: "다음번 식사에 적용할 점을 물을 수 있어요." },
+          { label: "다음에 식사 기록을 어떻게 준비할까요?", note: "기록 분량과 방법에 대해 함께 상의할 수 있어요." },
+        ],
+      },
     ],
-    sourceLabel: "안산시 단원보건소 서부건강생활지원센터",
-    sourceUrl: "https://ansan.go.kr/health/common/cntnts/selectContents.do?cntnts_id=health05"
   },
   H20_INFO: {
-    title: "도시락 배달과 집안일 도움 구별하기",
-    body: "같은 식사 문제라도 필요한 도움에 따라 문의할 돌봄 분야가 달라져요.",
-    prompt: "동 행정복지센터에 어떤 도움을 문의할까요?",
-    mode: "choose",
-    options: [
+    id: "H20_INFO", title: "식탁에 필요한 도움 나누기", kind: "planner",
+    intro: "끼니는 같아도 필요한 손길은 달라요. 예시 집안일을 나누고 동에 문의할 식사 도움 메모를 만들어 보세요.",
+    artifact: "식사 도움 문의 메모",
+    sourceLabel: "경기도 누구나돌봄 지원 내용 보기",
+    sourceUrl: "https://www.gg.go.kr/ggcare/hmpg/srap/appl/srapInfoForm.do",
+    steps: [
       {
-        label: "조리된 식사를 배달받기",
-        detail: "식사지원은 먹을 수 있게 준비한 식사를 제공하는 분야예요. 주소지 동에 지원 가능 기간과 비용, 식사 제공 방법을 확인해요.",
-        linkLabel: "경기도 식사지원 내용 보기",
-        url: "https://www.gg.go.kr/ggcare/hmpg/srap/appl/srapInfoForm.do"
+        mode: "sort", title: "도움 카드를 알맞은 칸에 놓으세요", caption: "두 지원의 차이",
+        instruction: "집 안에서 함께 할 일과 조리된 음식을 받아 먹는 일을 나눠 보세요.",
+        groups: ["생활돌봄", "식사지원"],
+        items: [
+          { label: "집에서 식사 준비 돕기", group: 0, hint: "집 안에서 가사 일을 돕는 생활돌봄이에요." },
+          { label: "준비된 도시락 받기", group: 1, hint: "먹을 수 있게 조리한 끼니를 제공하는 식사지원이에요." },
+          { label: "식사 뒤 설거지 돕기", group: 0, hint: "그릇을 씻는 일은 가사활동에 들어가요." },
+          { label: "조리된 죽 제공받기", group: 1, hint: "식사지원은 일반식과 죽식을 안내해요." },
+        ],
       },
       {
-        label: "집에서 밥을 차리고 설거지하기",
-        detail: "생활돌봄의 가사활동 지원으로 식사 준비와 설거지를 문의할 수 있어요. 가능한 지원 범위는 동 담당자와 상의해요.",
-        linkLabel: "경기도 생활돌봄 범위 보기",
-        url: "https://www.gg.go.kr/ggcare/hmpg/srap/appl/srapInfoForm.do"
+        mode: "pick", title: "먼저 부탁할 일을 정하세요", caption: "먼저 문의할 일",
+        instruction: "앞에서 두 칸으로 나눈 일 중 하나를 메모 맨 위에 놓아 보세요.",
+        options: [
+          { label: "집에서 식사 차리기", note: "생활돌봄 중 가사활동 지원을 문의해요." },
+          { label: "식사 후 설거지하기", note: "생활돌봄에서 맡을 수 있는 일을 확인해요." },
+          { label: "조리된 식사 받기", note: "식사지원의 제공 방식과 가능한 식사를 확인해요." },
+        ],
       },
       {
-        label: "지원 대상과 본인 부담 확인",
-        detail: "공식 신청 안내에서 돌봄 공백 기준과 비용 구분을 볼 수 있어요. 주소지 동에서 이용 상황을 확인한 뒤 지원 내용이 정해져요.",
-        linkLabel: "누구나돌봄 공식 신청 안내",
-        url: "https://www.gg.go.kr/ggcare/hmpg/srap/appl/srapInfoForm.do"
-      }
+        mode: "pack", title: "동에 물어볼 질문을 담으세요", caption: "함께 확인할 내용",
+        instruction: "꼭 확인하고 싶은 내용을 두 가지까지 골라요. 지원 여부와 비용은 담당자가 안내해요.",
+        min: 1, limit: 2, options: [
+          { label: "언제부터 이용할 수 있나요?", note: "시작 가능한 때를 묻는 질문이에요." },
+          { label: "제가 부담할 비용이 있나요?", note: "각 상황에 맞는 본인 부담을 확인해요." },
+          { label: "몇 번까지 이용할 수 있나요?", note: "필요한 지원의 이용 한도를 확인해요." },
+          { label: "신청할 때 무엇이 필요한가요?", note: "미리 마련할 자료를 확인해요." },
+        ],
+      },
     ],
-    sourceLabel: "경기도 누구나돌봄 지원 내용",
-    sourceUrl: "https://www.gg.go.kr/ggcare/hmpg/srap/appl/srapInfoForm.do"
   },
   H22: {
-    title: "치매안심센터에서 받을 도움 찾기",
-    body: "본인이 이용하는 조기검진, 낮 활동을 하는 쉼터, 가족을 위한 교육은 참여 대상이 달라요.",
-    prompt: "찾으시는 서비스를 고르세요.",
-    mode: "choose",
-    options: [
+    id: "H22", title: "쉼터 원예 체험, 작은 화단 꾸미기", kind: "workshop",
+    intro: "단원치매안심센터 쉼터에는 원예 활동이 있어요. 종이꽃으로 탁상 화단을 꾸미는 ANTI의 예시 활동을 해 보세요.",
+    artifact: "탁상 화단 작품표",
+    sourceLabel: "단원치매안심센터 쉼터·가족지원 안내",
+    sourceUrl: "https://www.ansan.go.kr/health/common/cntnts/selectContents.do?cntnts_id=C0001702",
+    steps: [
       {
-        label: "본인의 조기검진 문의",
-        detail: "거주지 관할 치매안심센터에 이용 대상과 방문 준비물을 확인해요. 단원보건소 안내에서 검진 절차와 담당 연락처를 볼 수 있어요.",
-        linkLabel: "단원 조기검진 안내",
-        url: "https://ansan.go.kr/health/common/cntnts/selectContents.do?cntnts_id=C0001699"
+        mode: "pick", title: "화단 바탕을 고르세요", caption: "화단 바탕",
+        instruction: "작품을 만들 종이 받침을 한 장 고르세요.",
+        options: [
+          { label: "길쭉한 창가 화단", note: "긴 받침 위에 꽃이 나란히 놓여요." },
+          { label: "둥근 탁자 화단", note: "둥근 받침 가운데로 꽃을 모을 수 있어요." },
+        ],
       },
       {
-        label: "낮에 참여할 쉼터 활동",
-        detail: "상록수센터는 2026년 음악·운동·작업 활동을 포함한 쉼터 운영을 발표했어요. 해당 회차 운영 내용과 대상을 보고 다음 모집 여부를 센터에 문의할 수 있어요.",
-        linkLabel: "상록수센터 쉼터 운영 사례",
-        url: "https://www.ansan.go.kr/www/common/bbs/selectBbsDetail.do?bbs_code=B0238&bbs_seq=1664608"
+        mode: "quantity", title: "종이꽃과 잎을 배치하세요", caption: "작품에 담은 재료",
+        instruction: "더하기와 빼기를 눌러 꽃송이와 초록 잎의 수를 정하세요.",
+        items: [
+          { label: "노란 종이꽃", unit: "송이", min: 1, max: 5, initial: 1, step: 1 },
+          { label: "분홍 종이꽃", unit: "송이", min: 0, max: 5, initial: 1, step: 1 },
+          { label: "초록 종이 잎", unit: "장", min: 0, max: 5, initial: 1, step: 1 },
+        ],
       },
       {
-        label: "돌보는 가족을 위한 교육",
-        detail: "단원센터 가족교실에는 돌봄 방법을 배우고 경험을 나누는 과정이 있어요. 가족이 직접 참여할 수 있는 회차와 접수 방법을 확인해요.",
-        linkLabel: "단원 가족지원 안내",
-        url: "https://www.ansan.go.kr/health/common/cntnts/selectContents.do?cntnts_id=C0001702"
-      }
+        mode: "pick", title: "화단에 이름표를 꽂으세요", caption: "작품 이름",
+        instruction: "완성한 화단에 어울리는 이름을 하나 붙여 주세요.",
+        options: [
+          { label: "창가에 온 봄", note: "계절을 떠올리는 이름표예요." },
+          { label: "햇살 한 줌", note: "빛을 떠올리는 이름표예요." },
+          { label: "내 책상 작은 정원", note: "작품을 둘 자리를 담은 이름표예요." },
+        ],
+      },
     ],
-    sourceLabel: "안산시 단원보건소 가족지원 안내",
-    sourceUrl: "https://www.ansan.go.kr/health/common/cntnts/selectContents.do?cntnts_id=C0001702"
   },
   H23: {
-    title: "식사 상담·실습·집에서 공부하기",
-    body: "평소 식사를 상담할지, 교육에 참여할지에 따라 이용할 창구를 고를 수 있어요.",
-    prompt: "어떤 방식으로 배울까요?",
-    mode: "choose",
-    options: [
+    id: "H23", title: "식품 포장지 두 장 비교하기", kind: "workshop",
+    intro: "안산 등록교육센터는 식습관 상담과 영양실습을 운영해요. 연습용 영양표시를 같은 양으로 맞춰 읽어 보세요.",
+    artifact: "영양표시 비교 메모",
+    sourceLabel: "안산 등록교육센터 영양교육·실습 안내",
+    sourceUrl: "https://www.ansan.ac.kr/www/content/135",
+    steps: [
       {
-        label: "평소 식습관을 개별 상담",
-        detail: "안산 등록교육센터는 식습관 영양상담을 운영해요. 대표번호 031-416-9088로 개별 상담을 받을 수 있는지 문의해요.",
-        linkLabel: "영양상담 안내 보기",
-        url: "https://www.ansan.ac.kr/www/content/135"
+        mode: "sort", title: "표시가 어느 양에 해당할까요?", caption: "포장지의 표시 기준",
+        instruction: "포장지에 적힌 기준을 읽고 표시 카드를 나눠 주세요. 숫자는 체험용 예시예요.",
+        groups: ["한 봉지 기준", "반 봉지 기준"],
+        items: [
+          { label: "가 제품 · 한 봉지당 나트륨 400mg", group: 0, hint: "‘한 봉지당’은 포장 전체에 든 양이에요." },
+          { label: "나 제품 · 반 봉지당 나트륨 250mg", group: 1, hint: "이 숫자는 반 봉지에 들어 있는 양이에요." },
+          { label: "다 제품 · 한 봉지당 나트륨 300mg", group: 0, hint: "한 봉지 전체라고 표시되어 있어요." },
+        ],
       },
       {
-        label: "당뇨 식사를 직접 체험",
-        detail: "영양실습교실에서는 당뇨 식사를 체험해요. 공식 운영표를 보고 다음 회차의 참여 대상과 남은 자리를 센터에 확인해요.",
-        linkLabel: "영양실습교실 운영 안내",
-        url: "https://www.ansan.ac.kr/www/content/135"
+        mode: "order", title: "한 봉지 기준으로 비교해 보세요", caption: "한 봉지당 나트륨이 적은 순서",
+        instruction: "나 제품 한 봉지는 반 봉지 두 개분이에요. 한 봉지에 든 나트륨이 적은 제품부터 누르세요.",
+        items: ["다 제품 · 한 봉지 300mg", "가 제품 · 한 봉지 400mg", "나 제품 · 반 봉지 250mg"],
+        hint: "나 제품은 250mg을 두 번 더한 500mg이에요. 세 제품을 300mg, 400mg, 500mg 순으로 놓아요.",
       },
       {
-        label: "집에서 워크북으로 시작",
-        detail: "고당e공부방에서 고혈압·당뇨병 워크북 무료 교육을 따로 신청할 수 있어요. 강좌명을 보고 원하는 과정을 선택해요.",
-        linkLabel: "공식 워크북 과정 열기",
-        url: "https://www.godang-e.kr/web/42"
-      }
+        mode: "pack", title: "영양상담 때 볼 질문을 남기세요", caption: "다음에 펼쳐 볼 질문",
+        instruction: "다른 포장지를 읽을 때 헷갈릴 것 같은 부분을 두 가지까지 담아 보세요.",
+        min: 1, limit: 2, options: [
+          { label: "한 봉지에 몇 회분이 있나요?", note: "포장 전체와 1회분이 다른 제품을 비교할 때 써요." },
+          { label: "먹은 양에 맞춰 어떻게 계산하나요?", note: "포장에 적힌 기준과 실제 먹은 양을 맞출 때 써요." },
+          { label: "크기가 다른 두 제품을 어떻게 비교하나요?", note: "같은 무게로 맞춰 볼 때 가져갈 질문이에요." },
+        ],
+      },
     ],
-    sourceLabel: "안산대학교 등록교육센터 교육 안내",
-    sourceUrl: "https://www.ansan.ac.kr/www/content/135"
   },
   H24: {
-    title: "생활에 맞는 금연 상담 고르기",
-    body: "상록수·단원보건소에는 방문 상담 창구가 있어요. 상록수보건소는 전화 상담과 정해진 날의 야간 운영도 안내해요.",
-    prompt: "이용하기 편한 방법은 무엇인가요?",
-    mode: "choose",
-    options: [
+    id: "H24", title: "담배가 떠오를 때 꺼내는 행동 카드", kind: "planner",
+    intro: "금연 상담에서 이야기할 예시 상황을 하나 고르고, 그때 대신 해 볼 행동과 도움받을 방법을 묶어 보세요.",
+    artifact: "상황별 금연 행동 카드",
+    sourceLabel: "상록수보건소 금연 상담 이용 안내",
+    sourceUrl: "https://www.ansan.go.kr/snshealth/common/cntnts/selectContents.do?cntnts_id=C0001775",
+    steps: [
       {
-        label: "보건소 방문 전에 전화 상담",
-        detail: "상록수 금연클리닉 031-481-5899에서는 방문 전에도 상담할 수 있어요. 첫 방문에서 무엇을 하고 이후 지원이 어떻게 이어지는지 물어볼 수 있어요.",
-        linkLabel: "상록수 상담 방법 보기",
-        url: "https://ansan.go.kr/snshealth/common/cntnts/selectContents.do?cntnts_id=C0001775"
+        mode: "pick", title: "카드에 넣을 상황을 고르세요", caption: "이런 순간에",
+        instruction: "연습할 장면 하나를 골라 문장의 앞부분을 완성해요.",
+        options: [
+          { label: "식탁에서 일어났을 때", note: "식사를 마친 장면을 카드에 놓아요." },
+          { label: "커피를 마시며 쉴 때", note: "잠시 쉬는 장면을 카드에 놓아요." },
+          { label: "주변 사람이 담배를 꺼낼 때", note: "다른 사람과 함께 있는 장면을 카드에 놓아요." },
+        ],
       },
       {
-        label: "퇴근 후 상록수보건소 방문",
-        detail: "상록수보건소는 매월 넷째 주 화요일 야간 운영을 안내해요. 방문하려는 달에 실제로 운영하는지 금연클리닉에 확인해요.",
-        linkLabel: "상록수 야간 운영 확인",
-        url: "https://ansan.go.kr/snshealth/common/cntnts/selectContents.do?cntnts_id=C0001775"
+        mode: "pack", title: "대신 해 볼 행동을 담으세요", caption: "바로 해 볼 행동",
+        instruction: "앞에서 고른 장면을 떠올리며 손쉽게 할 수 있는 행동을 두 가지까지 담아요.",
+        min: 1, limit: 2, options: [
+          { label: "물을 천천히 마시기", note: "물을 마시는 동안 잠시 다른 일에 집중해요." },
+          { label: "담배 연기 없는 자리로 옮기기", note: "공간을 바꾸는 행동을 카드에 넣어요." },
+          { label: "가까운 사람에게 안부 전화하기", note: "대화로 관심을 돌리는 행동이에요." },
+        ],
       },
       {
-        label: "단원보건소 방문",
-        detail: "단원보건소 2층 금연클리닉에서 상담사와 시작 시기를 정할 수 있어요. 방문 전 공식 페이지에서 이용 방법을 확인해요.",
-        linkLabel: "단원 금연클리닉 이용 안내",
-        url: "https://ansan.go.kr/health/common/cntnts/selectContents.do?cntnts_id=C0001644"
-      }
+        mode: "pick", title: "도움이 필요할 때 쓸 방법을 붙이세요", caption: "혼자 하기 어려운 날에는",
+        instruction: "마지막 칸에 상록수 금연클리닉과 연결할 방법을 하나 붙이세요.",
+        options: [
+          { label: "전화로 상담 가능 여부 묻기", note: "공식 안내에서 금연클리닉 전화번호를 확인할 수 있어요." },
+          { label: "카카오톡으로 이용 방법 묻기", note: "공식 안내의 채널 연결 방법을 이용해요." },
+          { label: "방문 상담 방법 확인하기", note: "공식 안내에서 상담 장소와 운영 내용을 볼 수 있어요." },
+        ],
+      },
     ],
-    sourceLabel: "상록수보건소 금연클리닉",
-    sourceUrl: "https://ansan.go.kr/snshealth/common/cntnts/selectContents.do?cntnts_id=C0001775"
   },
   H25: {
-    title: "국가건강검진에 필요한 업무 바로 열기",
-    body: "공단에서 본인 대상을 조회하고, 검진은 지정 병·의원에서 받아요. 끝난 뒤에는 결과표도 다시 열 수 있어요.",
-    prompt: "지금 처리할 일은 무엇인가요?",
-    mode: "choose",
-    options: [
+    id: "H25", title: "조건에 맞는 검진기관 찾기", kind: "kiosk",
+    intro: "연습용 기관 카드를 보고 지역과 검진 종류가 모두 맞는 곳을 찾아보세요. 실제로 검색할 조건도 한 장에 남겨요.",
+    artifact: "검진기관 검색 조건표",
+    sourceLabel: "공단에서 실제 검진기관 찾기",
+    sourceUrl: "https://www.nhis.or.kr/nhis/healthin/retrieveExmdAdminSearch.do",
+    steps: [
       {
-        label: "올해 검진 대상 확인",
-        detail: "공단 로그인 뒤 내 검진 대상과 항목을 조회해요. 본인 확인은 공식 누리집에서 진행해요.",
-        linkLabel: "공단 검진대상 조회",
-        url: "https://www.nhis.or.kr/nhis/healthin/retrieveHealthinCheckUpTargetPerson.do"
-      },
-      {
-        label: "안산의 지정 검진기관 찾기",
-        detail: "공단 검색 화면에서 경기도와 안산 지역, 일반검진을 선택해요. 방문 전에 해당 병·의원에 예약 가능일과 준비물을 확인해요.",
-        linkLabel: "공단 검진기관 찾기",
-        url: "https://www.nhis.or.kr/nhis/healthin/retrieveExmdAdminSearch.do",
+        mode: "sort", title: "상록구에서 일반검진을 받을 곳을 찾아보세요", caption: "예시 검색 결과",
+        instruction: "카드에 적힌 지역과 항목이 두 조건에 모두 맞으면 ‘찾던 곳’에 놓아요. 모두 연습용 결과예요.",
+        groups: ["찾던 곳", "조건이 달라요"],
         items: [
-          "경기도에서 안산 지역 선택",
-          "검진유형에서 일반 선택",
-          "희망 기관에 예약과 준비물 확인"
-        ]
+          { label: "상록구 · 일반검진", group: 0, hint: "상록구에 있고 일반검진을 제공하는 카드예요." },
+          { label: "단원구 · 일반검진", group: 1, hint: "검진 종류는 맞지만 연습에서 정한 지역은 상록구예요." },
+          { label: "상록구 · 구강검진만", group: 1, hint: "지역은 맞지만 찾는 항목은 일반검진이에요." },
+          { label: "상록구 · 일반검진과 구강검진", group: 0, hint: "이 카드에는 찾는 일반검진도 들어 있어요." },
+        ],
       },
       {
-        label: "받았던 검진 결과표 확인",
-        detail: "공단 로그인 뒤 검진 연도와 기관을 확인하고 결과를 열람할 수 있어요. 종이 결과표가 필요하면 출력 메뉴를 이용해요.",
-        linkLabel: "공단 건강검진 결과조회",
-        url: "https://www.nhis.or.kr/nhis/healthin/retrieveHealthinCheckUpTargetResultPerson.do"
-      }
+        mode: "pick", title: "다음 검색에 쓸 지역을 고르세요", caption: "검색할 지역",
+        instruction: "공단 화면에서 찾아볼 지역을 하나 고르세요. 주소를 입력할 필요는 없어요.",
+        options: [
+          { label: "경기도 안산시 상록구", note: "상록구에 있는 지정 기관을 찾을 때 쓰는 조건이에요." },
+          { label: "경기도 안산시 단원구", note: "단원구에 있는 지정 기관을 찾을 때 쓰는 조건이에요." },
+        ],
+      },
+      {
+        mode: "pick", title: "볼 검진 항목을 붙이세요", caption: "검색할 항목",
+        instruction: "찾고 싶은 항목을 하나 더해 검색 조건표를 완성해요. 조건표로 예약이 접수되지는 않아요.",
+        options: [
+          { label: "일반검진", note: "공단에서 이 항목을 제공하는 지정 기관을 찾아요." },
+          { label: "구강검진", note: "공단에서 구강검진 항목을 선택해 지정 기관을 찾아요." },
+        ],
+      },
     ],
-    sourceLabel: "국민건강보험공단 일반건강검진 안내",
-    sourceUrl: "https://www.nhis.or.kr/nhis/healthin/wbhaca04500m01.do"
-  }
+  },
+} as const satisfies Record<string, Simulation>;
+
+export const simUi = {
+  practice: "연습 화면",
+  start: "직접 해보기",
+  progress: "{now} / {total}",
+  count: "{now} / {total}개",
+  selected: "고른 항목",
+  packed: "담은 항목",
+  range: "{min}개에서 {max}개까지 담으세요.",
+  exact: "{max}개를 담으세요.",
+  full: "다른 항목을 담으려면 먼저 하나를 빼 주세요.",
+  empty: "여기에 고른 항목이 놓여요.",
+  groupEmpty: "빈 칸",
+  sortCard: "옮길 카드",
+  placeCard: "카드를 끌어 놓거나 넣을 칸을 누르세요.",
+  answer: "도움 보기",
+  sortHint: "이 카드는 ‘{group}’ 칸에 넣어요.",
+  orderHint: "다음에 놓을 카드는 ‘{item}’예요.",
+  orderStart: "먼저 할 일을 골라 주세요.",
+  nextSlot: "다음에 놓을 자리",
+  undo: "마지막 카드 되돌리기",
+  matched: "‘{item}’ 카드를 ‘{group}’ 칸에 넣었어요.",
+  arranged: "‘{item}’ 카드를 놓았어요.",
+  wrong: "다시 해볼 수 있어요. {hint}",
+  less: "{label} 줄이기",
+  more: "{label} 늘리기",
+  keepValues: "이 수치로 정하기",
+  kept: "수치를 정했어요.",
+  total: "합계",
+  pair: "{label} · {value}",
+  quantity: "{n}{unit}",
+  next: "다음",
+  finish: "결과물 보기",
+  previous: "이전 단계",
+  restart: "다시 해보기",
+  edit: "선택 수정하기",
+  complete: "완성했어요",
+  preview: "완성할 결과물",
+  workSummary: "작업 중인 카드",
+  blankOrder: "선택하면 여기에 표시돼요.",
+  missions: "오늘의 미션",
+  completedCount: "{n}개 완료",
+  currentMission: "하고 있어요",
+  foodTray: "내가 채운 식판",
+  soundTitle: "두 소리로 리듬 쳐보기",
+  soundInfo: "동그라미를 번갈아 눌러 보세요. 소리를 켜면 박자도 들려요.",
+  low: "무릎 박자",
+  high: "손뼉 박자",
+  strokes: "{n}번 두드렸어요.",
+  kind: {
+    desk: "자료 정리대",
+    kiosk: "터치 화면",
+    workshop: "작업대",
+    planner: "계획표",
+    field: "관찰 기록판",
+  },
 } as const;
 
-// 공식 유튜브 채널에서 올리고 내장 플레이어로 재생이 확인된 영상.
+// 기관·운영기관·정부 채널의 공식 영상.
 export const tasteFilms = {
   JOB12: {
     id: "PUKIzp4S0WY",

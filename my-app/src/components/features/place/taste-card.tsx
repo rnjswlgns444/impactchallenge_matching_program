@@ -18,7 +18,7 @@ export function TasteCard({ taste, href }: { taste: Taste; href: string }) {
       </h2>
       <p className="text-[1rem] leading-relaxed">{taste.body ?? text.tasteBody}</p>
       <LinkButton href={taste.action.kind === "link" ? taste.action.url : href} variant="outline" className="font-bold text-teal hover:text-teal">
-        {text.tasteButton}
+        {taste.action.kind === "link" ? taste.action.label ?? text.tasteButton : text.tasteButton}
         <ArrowRightIcon aria-hidden="true" />
       </LinkButton>
     </section>

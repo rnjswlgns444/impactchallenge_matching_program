@@ -8,7 +8,8 @@ import { LinkButton } from "@/components/common/link-button";
 import { Notice } from "@/components/common/notice";
 import { Redirect } from "@/components/common/redirect";
 import { fill, text } from "@/content/text";
-import { ActivityPanel, CareHours } from "./taste-activity";
+import { CareHours } from "./taste-activity";
+import { SimulationPanel } from "./taste-simulation";
 import { placeName } from "@/core/places";
 import { tasteOf, type TasteVideo } from "@/core/taste";
 import type { TypeInfo } from "@/data/types";
@@ -93,8 +94,31 @@ function TasteBody({ programId, type, browse }: { programId: string; type: TypeI
         </h1>
       </header>
 
-      {taste.activity && <ActivityPanel key={visit} activity={taste.activity} />}
-      {taste.activity && program.id === "H10" && <CareHours key={`hours-${visit}`} />}
+      {taste.action.kind === "link" && (
+        <section className="grid min-w-0 gap-[0.65rem] rounded-xl border border-edge bg-card p-[0.9rem]">
+          <h2 className="text-[1.25rem] font-bold">{taste.title}</h2>
+          <p className="text-[1rem]">{taste.body}</p>
+          <LinkButton href={taste.action.url} variant="cta">{taste.action.label ?? text.tasteButton}</LinkButton>
+        </section>
+      )}
+      {taste.activity && <SimulationPanel key={visit} simulation={taste.activity} />}
+      {taste.activity && program.id === "H10" && (
+        <details key={`hours-${visit}`} className="rounded-xl border border-edge bg-card">
+          <summary className="min-h-[3.1rem] cursor-pointer content-center px-[0.9rem] text-[1rem] font-bold text-teal">
+            {text.tasteHoursTitle}
+          </summary>
+          <CareHours />
+        </details>
+      )}
+      {taste.relatedActivity && (
+        <details key={`related-${visit}`} data-related-sim={taste.relatedActivity.id}
+          className="min-w-0 rounded-xl border border-edge bg-card">
+          <summary className="min-h-[3.1rem] cursor-pointer content-center px-[0.9rem] py-[0.55rem] text-[1rem] font-bold text-teal">
+            {fill(text.relatedSimulation, { name: taste.relatedActivity.title })}
+          </summary>
+          <SimulationPanel simulation={taste.relatedActivity} />
+        </details>
+      )}
       {taste.videos.map(video => <FilmPanel key={video.url} video={video} />)}
       {!taste.ready && <Notice kind="info">{text.tasteWaiting}</Notice>}
 
