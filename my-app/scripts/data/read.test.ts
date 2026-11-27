@@ -112,14 +112,12 @@ describe("틀린 자료", () => {
 describe("동 자료", () => {
   const { app } = readAll(sources);
 
-  it("안산 25개 동이 이름·구·기준점·경계와 함께 실린다", () => {
+  it("안산 25개 동이 이름·구·기준점과 함께 실린다", () => {
     expect(app.dongs).toHaveLength(25);
     expect(new Set(app.dongs.map((dong) => dong.name)).size).toBe(25);
     for (const dong of app.dongs) {
-      expect(Object.keys(dong)).toEqual(["name", "gu", "lat", "lon", "rings"]);
+      expect(Object.keys(dong)).toEqual(["name", "gu", "lat", "lon"]);
       expect(["상록구", "단원구"]).toContain(dong.gu);
-      expect(dong.rings.length).toBeGreaterThan(0);
-      for (const ring of dong.rings) expect(ring[0]).toEqual(ring[ring.length - 1]); // 닫힌 선
     }
   });
 
@@ -129,24 +127,19 @@ describe("동 자료", () => {
   });
 
   it("파일이 없으면 빈 목록이고 앱은 멈추지 않는다", () => {
-    expect(readDongs("없는-파일.json", "없는-파일.json")).toEqual([]);
+    expect(readDongs("없는-파일.json")).toEqual([]);
   });
 
   it("안산 밖의 좌표와 겹친 동 이름을 알린다", () => {
     const dir = mkdtempSync(path.join(os.tmpdir(), "anti-dong-"));
-    const square = [[126.8, 37.3], [126.81, 37.3], [126.81, 37.31], [126.8, 37.31], [126.8, 37.3]];
-    const areas = {
-      features: ["가동", "나동"].map((name) => ({ properties: { name }, geometry: { type: "Polygon", coordinates: [square] } })),
-    };
     const points = [
       { name: "가동", gu: "상록구", lat: 37.305, lon: 126.805 },
       { name: "가동", gu: "상록구", lat: 37.305, lon: 126.805 },
       { name: "나동", gu: "단원구", lat: 35.1, lon: 129.0 },
     ];
     writeFileSync(path.join(dir, "p.json"), JSON.stringify(points));
-    writeFileSync(path.join(dir, "a.json"), JSON.stringify(areas));
     const problems: string[] = [];
-    const dongs = readDongs(path.join(dir, "p.json"), path.join(dir, "a.json"), problems);
+    const dongs = readDongs(path.join(dir, "p.json"), problems);
     expect(dongs.map((dong) => dong.name)).toEqual(["가동"]);
     expect(problems).toHaveLength(2);
     rmSync(dir, { recursive: true, force: true });

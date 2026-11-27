@@ -23,9 +23,10 @@ import { cn } from "@/lib/utils";
 // 낱말 묶음은 app/core/loader.py의 PIN_WORDS와 같다. 낱말이 없거나 모르는 낱말이면 기본 그림을 쓴다.
 // 색은 네 묶음이다: 일(청록) / 배움·여가(살구) / 생활·건강(하늘) / 전화·온라인(회갈색).
 
-type Look = { Icon: LucideIcon; tone: keyof typeof TONES };
+export type KindTone = "work" | "leisure" | "life" | "remote";
+type Look = { Icon: LucideIcon; tone: KindTone };
 
-const TONES = {
+const TONES: Record<KindTone, string> = {
   work: "bg-[#DDF4EC] text-[#12675F] ring-[#9CCFBF]",
   leisure: "bg-[#FBE8D3] text-[#984A32] ring-[#E3BE9A]",
   life: "bg-[#DFEDF2] text-[#295B72] ring-[#A9C8D4]",
@@ -51,6 +52,11 @@ const LOOKS: Record<string, Look> = {
 
 const DEFAULT: Look = { Icon: MapPinIcon, tone: "work" };
 
+// 낱말의 그림과 색 묶음. 산책길 그림의 건물도 이것을 쓴다
+export function kindLook(word: string | undefined): Look {
+  return (word ? LOOKS[word] : undefined) ?? DEFAULT;
+}
+
 export function KindIcon({
   word,
   className,
@@ -58,7 +64,7 @@ export function KindIcon({
   word: string | undefined; // 정보표의 '핀그림' 칸
   className?: string; // 크기는 size-*로 준다(기본 2.4rem)
 }) {
-  const { Icon, tone } = (word ? LOOKS[word] : undefined) ?? DEFAULT;
+  const { Icon, tone } = kindLook(word);
   return (
     <span
       aria-hidden="true"

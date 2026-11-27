@@ -30,7 +30,7 @@ export function TypeIntro({ type }: { type: TypeInfo }) {
     <>
       <TypeHero type={type} label={text.typeLabelBrowse} gender={browseGender(type.id)} />
       <TypeFeature type={type} />
-      <PlaceSection type={type} context={context} browse dong={dong} />
+      <PlaceSection type={type} context={context} browse dong={dong} gender={browseGender(type.id)} />
       <div className="mt-[0.4rem] flex flex-col gap-[0.45rem]">
         <LinkButton href="/browse" variant="outline">
           {text.viewBack}

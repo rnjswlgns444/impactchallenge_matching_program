@@ -4,6 +4,7 @@ import { PhoneIcon } from "lucide-react";
 
 import { FinePrint } from "@/components/common/fine-print";
 import { KindIcon } from "@/components/common/kind-icon";
+import { WalkScene } from "@/components/features/type-view/walk-scene";
 import { Fold, FoldGroup } from "@/components/common/fold";
 import { LinkButton } from "@/components/common/link-button";
 import { Notice } from "@/components/common/notice";
@@ -153,7 +154,24 @@ export default function DevUiPage() {
             lead={<KindIcon word="문화" />}
             number={1}
             title="그림과 번호가 붙은 기관 줄"
-            sub="문화 · 약 2.4km"
+            sub="문화"
+          />
+        </Group>
+
+        <Group title="첫걸음 산책길 (건물 모양 네 가지, 별, 가까운 곳 딱지)">
+          <WalkScene
+            typeId="T05"
+            gender="female"
+            buildings={[
+              { key: "a", href: "/dev/ui", number: 1, word: "문화", name: "별이 붙은 기관 (AI가 고른 곳)", label: "견본 1", star: true },
+              { key: "b", href: "/dev/ui", number: 2, word: "일", name: "일자리 기관", label: "견본 2", star: false, tag: "우리 동네에서 가까워요" },
+              { key: "c", href: "/dev/ui", number: 3, word: "상담", name: "상담 기관의 이름이 길어서 두 줄을 넘는 경우", label: "견본 3", star: false },
+            ]}
+          />
+          <WalkScene
+            typeId="T09"
+            gender="male"
+            buildings={[{ key: "d", href: "/dev/ui", number: 1, word: "전화", name: "전화로 쓰는 곳", label: "견본 4", star: false }]}
           />
         </Group>
 

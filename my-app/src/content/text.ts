@@ -63,15 +63,16 @@ export const text = {
 
   // ── 사는 동과 첫걸음 길 (새로 씀) ──
   dongAsk: "사는 동을 알려 주세요.",
-  dongHelp: "가까운 곳을 지도에 보여 드려요. 안 고르셔도 돼요.",
+  dongHelp: "가까운 곳을 표시해 드려요. 안 고르셔도 돼요.",
   routeHeading: "{name}의 첫걸음 길", // 기관 구역의 제목
   myDong: "우리 동네: {dong}",
   dongChange: "바꾸기",
   dongPick: "우리 동네 고르기",
-  distance: "약 {km}km",
-  distanceNear: "1km 안쪽",
+  nearTag: "우리 동네에서 가까워요", // 추천 3곳 중 가장 가까운 한 곳(3km 안)에 붙는 딱지
+  seeList: "목록으로 보기 · 모두 {count}곳", // 그림 아래의 단추. 추천 3곳과 다른 곳이 함께 나온다
+  allPlacesHeading: "{type}에 맞는 기관 모두 보기", // 목록 화면의 제목
+  placeOpen: "{number}번 {kind} {name}", // 그림 속 건물을 읽어 주는 말
   remotePlace: "전화·온라인으로", // 찾아가지 않고 쓰는 곳
-  distanceNote: "거리는 동 행정복지센터에서 잰 직선거리예요. 실제 가는 길과 다를 수 있어요.",
 
   // ── AI가 고른 곳 (옮김) ──
   aiWait: "적어 주신 내용에 맞는 곳을 찾고 있어요. 길면 1분쯤 걸려요. 화면을 그대로 두고 기다려 주세요.",
@@ -100,8 +101,6 @@ export const text = {
   featureHeading: "이 유형의 특징", // 옮김
   placesHeading: "{name}에 맞는 기관", // 11/27에 정한 제목(동료 지도의 제목)을 카드 목록에 쓴다
   placesHint: "기관 이름을 누르면 더 자세한 정보를 볼 수 있어요.", // 옮김
-  moreCount: "다른 곳 {count}곳", // 옮김
-  morePlacesHeading: "{type}의 다른 곳", // 옮김
   detailFirst:
     "먼저 위에서 하나를 골라 주세요. 고르신 내용에 맞는 곳을 보여 드려요. 맞는 것이 없으면 아래 '무엇이 맞을지 함께 찾아 주는 곳'에 물어보세요.", // 옮김
   // 유형 소개 화면에는 '함께 찾아 주는 곳'이 없어서 앞의 두 문장만 쓴다
@@ -176,7 +175,7 @@ export const text = {
   },
 } as const;
 
-// 문장의 {자리}에 값을 넣는다. 예) fill(text.moreCount, { count: 2 }) → "다른 곳 2곳"
+// 문장의 {자리}에 값을 넣는다. 예) fill(text.seeList, { count: 5 }) → "목록으로 보기 · 모두 5곳"
 export function fill(template: string, values: Record<string, string | number>): string {
   return template.replace(/\{(\w+)\}/g, (whole, key: string) =>
     key in values ? String(values[key]) : whole

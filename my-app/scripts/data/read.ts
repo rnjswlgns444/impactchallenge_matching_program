@@ -25,7 +25,6 @@ export type Sources = {
   promptPath: string; // prompts/matching.md
   venuesPath: string; // anti_map/venues.json
   dongPointsPath: string; // anti_map/neighborhoods.json (동의 기준점)
-  dongAreasPath: string; // anti_map/neighborhood_areas.json (동의 경계)
 };
 
 // my-app/ 옆의 app/ 폴더
@@ -36,7 +35,6 @@ export function defaultSources(myAppDir: string): Sources {
     promptPath: path.join(appDir, "prompts", "matching.md"),
     venuesPath: path.join(appDir, "anti_map", "venues.json"),
     dongPointsPath: path.join(appDir, "anti_map", "neighborhoods.json"),
-    dongAreasPath: path.join(appDir, "anti_map", "neighborhood_areas.json"),
   };
 }
 
@@ -129,45 +127,18 @@ const inAnsan = (lon: unknown, lat: unknown): boolean =>
   lon <= ANSAN.maxLon &&
   lat >= ANSAN.minLat &&
   lat <= ANSAN.maxLat;
-const round5 = (value: number) => Math.round(value * 1e5) / 1e5; // 소수 다섯 자리(약 1m)
 
-// 동의 기준점(행정복지센터 좌표)과 경계를 읽어 하나로 묶는다. 원본은 동료가 만든 파일이다(출처는 파일 안에 있다).
-// 파일이 없거나 읽지 못하면 빈 목록이다(지도와 거리만 안 나온다). 모양이 틀린 동은 problems에 적는다.
-// 출처·전화·메모 칸은 싣지 않는다. 경계는 바깥 선만 쓴다(구멍은 그리지 않는다).
-export function readDongs(pointsFile: string, areasFile: string, problems: string[] = []): Dong[] {
+// 동의 기준점(행정복지센터 좌표)을 읽는다. 원본은 동료가 만든 파일이다(출처는 파일 안에 있다).
+// 파일이 없거나 읽지 못하면 빈 목록이다(동 고르기와 '가까운 곳' 딱지만 안 나온다). 모양이 틀린 동은 problems에 적는다.
+// 출처·전화·메모 칸은 싣지 않는다. 동의 경계(neighborhood_areas.json)는 실제 지도를 그리지 않게 되어 싣지 않는다.
+export function readDongs(pointsFile: string, problems: string[] = []): Dong[] {
   let points: unknown;
-  let areas: unknown;
   try {
     points = JSON.parse(readText(pointsFile).replace(/^\uFEFF/, ""));
-    areas = JSON.parse(readText(areasFile).replace(/^\uFEFF/, ""));
   } catch {
     return [];
   }
-  if (!Array.isArray(points) || !isDict(areas) || !Array.isArray(areas.features)) return [];
-
-  const ringsByName = new Map<string, [number, number][][]>();
-  for (const feature of areas.features.filter(isDict)) {
-    const name = isDict(feature.properties) ? String(feature.properties.name ?? "") : "";
-    const geometry = isDict(feature.geometry) ? feature.geometry : {};
-    const polygons =
-      geometry.type === "Polygon" ? [geometry.coordinates] : geometry.type === "MultiPolygon" ? geometry.coordinates : [];
-    const rings: [number, number][][] = [];
-    for (const polygon of Array.isArray(polygons) ? polygons : []) {
-      const outer = Array.isArray(polygon) ? polygon[0] : null; // 첫 선이 바깥 경계다
-      if (!Array.isArray(outer) || outer.length < 4) continue;
-      const ring = outer.map((pair): [number, number] => [round5(Number(pair?.[0])), round5(Number(pair?.[1]))]);
-      const [firstLon, firstLat] = ring[0];
-      const [lastLon, lastLat] = ring[ring.length - 1];
-      if (ring.some(([lon, lat]) => !inAnsan(lon, lat))) {
-        problems.push(`neighborhood_areas.json: '${name}'의 경계에 안산 밖의 좌표가 있습니다.`);
-      } else if (firstLon !== lastLon || firstLat !== lastLat) {
-        problems.push(`neighborhood_areas.json: '${name}'의 경계가 닫혀 있지 않습니다(첫 점과 끝 점이 다릅니다).`);
-      } else {
-        rings.push(ring);
-      }
-    }
-    if (name && rings.length > 0) ringsByName.set(name, rings);
-  }
+  if (!Array.isArray(points)) return [];
 
   const found: Dong[] = [];
   const seen = new Set<string>();
@@ -179,13 +150,10 @@ export function readDongs(pointsFile: string, areasFile: string, problems: strin
       continue;
     }
     seen.add(name);
-    const rings = ringsByName.get(name);
     if (!inAnsan(point.lon, point.lat)) {
       problems.push(`neighborhoods.json: '${name}'의 좌표가 없거나 안산 밖입니다.`);
-    } else if (!rings) {
-      problems.push(`neighborhood_areas.json: '${name}'의 경계가 없습니다.`);
     } else {
-      found.push({ name, gu: String(point.gu ?? ""), lat: point.lat as number, lon: point.lon as number, rings });
+      found.push({ name, gu: String(point.gu ?? ""), lat: point.lat as number, lon: point.lon as number });
     }
   }
   return found;
@@ -198,7 +166,7 @@ export function readAll(sources: Sources): { app: AppData; server: ServerData; r
   const typesFile = readYaml(path.join(sources.dataDir, "types.yaml"), problems);
   const settings = readYaml(path.join(sources.dataDir, "settings.yaml"), problems);
   const programs = readPrograms(path.join(sources.dataDir, "programs.csv"), problems);
-  const dongs = readDongs(sources.dongPointsPath, sources.dongAreasPath, problems);
+  const dongs = readDongs(sources.dongPointsPath, problems);
   let prompt = "";
   if (existsSync(sources.promptPath)) {
     // 줄 끝을 \n으로 맞춘다. 윈도우에서 받은 파일은 \r\n이라, 그대로 두면 컴퓨터마다 결과가 달라진다

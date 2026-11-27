@@ -82,7 +82,15 @@ function ResultBody({
       <TypeHero type={type} label={text.typeLabel} gender={characterGender(answers[GENDER_Q])} />
       <TypeFeature type={type} />
 
-      <PlaceSection type={type} context={context} browse={false} dong={dong} ai={ai} asking={asking} />
+      <PlaceSection
+        type={type}
+        context={context}
+        browse={false}
+        dong={dong}
+        gender={characterGender(answers[GENDER_Q])}
+        ai={ai}
+        asking={asking}
+      />
 
       <FoldGroup className="mt-[0.3rem]">
         <Fold value="more" title={text.moreToggle}>

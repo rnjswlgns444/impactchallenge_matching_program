@@ -65,8 +65,8 @@ export type Program = Record<string, string>;
 export type Venue = { name: string; address: string; lat: number; lon: number };
 
 // 안산의 동. 지도 그림과 '우리 동네에서 약 n km'에 쓴다.
-// lat·lon은 그 동 행정복지센터의 좌표(거리의 기준점)이고, rings는 동 경계의 바깥 선들이다([경도, 위도]).
-export type Dong = { name: string; gu: string; lat: number; lon: number; rings: [number, number][][] };
+// lat·lon은 그 동 행정복지센터의 좌표다(가까운 곳을 고르는 기준점).
+export type Dong = { name: string; gu: string; lat: number; lon: number };
 
 export type Worry = { id: string; label: string; show?: string[]; checks?: boolean };
 
