@@ -22,7 +22,7 @@ export type Building = {
 };
 
 // 종류 묶음마다의 건물 색
-const PAINT: Record<KindTone, { wall: string; roof: string; ink: string }> = {
+export const PAINT: Record<KindTone, { wall: string; roof: string; ink: string }> = {
   work: { wall: "#DDF4EC", roof: "#1E7A70", ink: "#12675F" },
   leisure: { wall: "#FBE8D3", roof: "#D9825B", ink: "#984A32" },
   life: { wall: "#DFEDF2", roof: "#5E97AE", ink: "#295B72" },
