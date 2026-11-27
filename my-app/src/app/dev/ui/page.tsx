@@ -219,7 +219,9 @@ export default function DevUiPage() {
                   by: "견본 기관",
                 },
               ],
+              practice: null,
               videos: [],
+              photos: [],
             }}
             href="/dev/ui"
           />
@@ -227,6 +229,8 @@ export default function DevUiPage() {
             taste={{
               ready: true,
               tools: [],
+              practice: null,
+              photos: [],
               videos: [{ title: "제목이 길어서 두 줄로 넘어가는 견본 영상", url: "https://example.com/1", by: "견본 정부 채널" }],
             }}
             href="/dev/ui"
