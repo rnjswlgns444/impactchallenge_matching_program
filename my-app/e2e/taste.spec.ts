@@ -44,7 +44,9 @@ for (const width of [320, 390]) {
   test(`${width}px에서 기관 체험 선택은 화면 안에서 끝난다`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.goto("/place/JOB01/taste?type=T01");
-    const choices = seen(page.locator("button[aria-pressed]"));
+    const start = seen(page.locator('[data-sim="JOB01"] [data-sim-start]'));
+    await start.click();
+    const choices = seen(page.locator('[data-sim="JOB01"] button[data-sim-option]'));
     await expect(choices.first()).toBeVisible();
     const original = await choices.evaluateAll((buttons) => buttons.map((b) => b.getAttribute("aria-pressed")));
     const pickIndex = original.indexOf("false");
@@ -73,6 +75,8 @@ for (const width of [320, 390]) {
     // 캐시된 경로를 다시 열어도 지난번에 고른 항목은 남지 않는다.
     await seen(page.getByRole("link", { name: text.tasteButton })).click();
     await expect(page).toHaveURL(/\/place\/JOB01\/taste\?type=T01$/);
+    await expect(start).toBeVisible();
+    await start.click();
     await expect(choices.nth(pickIndex)).toHaveAttribute("aria-pressed", "false");
     await expect(seen(page.locator('button[aria-pressed="true"]'))).toHaveCount(0);
     await expectNoOverflow(page);
