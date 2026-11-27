@@ -39,7 +39,14 @@ npm run lint
 npx tsc --noEmit
 npm test
 npm run build
+npm run test:e2e
 ```
+
+- `npm test`: 판단 코드 테스트(금방 끝난다).
+- `npm run test:e2e`: 화면 흐름 테스트(Playwright, 1분쯤). 휴대폰 크기의 크롬으로 설문부터 결과·기관·사진 저장까지 눌러 본다.
+  - 개발 서버가 켜져 있으면 그것을 쓰고, 없으면 켠다.
+  - 실제 AI는 부르지 않는다(`e2e/fixtures.ts`가 가짜 답으로 막는다).
+  - 처음 한 번은 `npx playwright install chromium`으로 브라우저를 받는다.
 
 ## 배포
 
