@@ -3,7 +3,7 @@
 import { useSearchParams } from "next/navigation";
 
 import { CHOOSE } from "@/core/scoring";
-import { appData, getType } from "@/data";
+import { getType } from "@/data";
 import type { TypeInfo } from "@/data/types";
 import { isComplete, judge, resumeHref } from "@/lib/session";
 
@@ -31,9 +31,4 @@ export function useViewedType(): Viewed {
   const type = judged.primary ? getType(judged.primary) : undefined;
   if (judged.state === CHOOSE || !type) return { ok: false, to: "/pick" };
   return { ok: true, type, browse: false };
-}
-
-// 둘러보기에서 쓸 캐릭터 그림의 성별. 성별 답이 없으므로 유형 순서대로 여성·남성을 번갈아 쓴다.
-export function browseGender(typeId: string): "female" | "male" {
-  return appData.types.findIndex((type) => type.id === typeId) % 2 === 0 ? "female" : "male";
 }

@@ -2,8 +2,13 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { PhoneIcon } from "lucide-react";
 
+import { FinePrint } from "@/components/common/fine-print";
+import { Fold, FoldGroup } from "@/components/common/fold";
 import { LinkButton } from "@/components/common/link-button";
+import { Notice } from "@/components/common/notice";
+import { PlaceRow } from "@/components/common/place-row";
 import { ScreenSkeleton } from "@/components/common/screen-skeleton";
+import { TypeFeature, TypeHero } from "@/components/features/type-view/type-hero";
 import { AppHeader } from "@/components/layout/app-header";
 import { AppShell } from "@/components/layout/app-shell";
 import { Screen } from "@/components/layout/screen";
@@ -12,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
+import { appData } from "@/data";
 
 import { SessionDemo } from "./session-demo";
 import { SurveyDemo } from "./survey-demo";
@@ -108,6 +114,35 @@ export default function DevUiPage() {
             <Spinner className="size-5" /> 찾는 중이에요
           </p>
           <ScreenSkeleton />
+        </Group>
+        <Group title="안내 상자">
+          <Notice>주의를 알리는 상자예요.</Notice>
+          <Notice kind="info">정보를 알리는 상자예요.</Notice>
+          <Notice kind="fail">잘 되지 않았을 때의 상자예요.</Notice>
+        </Group>
+
+        <Group title="기관 카드와 접힌 줄">
+          <PlaceRow href="/dev/ui" badge="언제든 문의할 수 있어요" title="기관 이름" sub="하는 일을 한 줄로 적어요" />
+          <PlaceRow href="/dev/ui" title="딱지와 작은 글이 없는 줄" />
+          <FoldGroup>
+            <Fold value="a" title="접힌 줄(상자 모양)">
+              <p>누르면 아래로 펼쳐져요.</p>
+            </Fold>
+          </FoldGroup>
+          <FoldGroup look="line">
+            <Fold value="b" title="접힌 줄(가는 줄 모양)">
+              <p>기관 세부 화면에서 써요.</p>
+            </Fold>
+          </FoldGroup>
+        </Group>
+
+        <Group title="유형 머리와 특징">
+          <TypeHero type={appData.types[4]} label="나의 유형" gender="female" />
+          <TypeFeature type={appData.types[4]} />
+        </Group>
+
+        <Group title="작은 글">
+          <FinePrint title="유의사항" items={["맨 아래에 두는 10px 글이에요.", "한 줄씩 보여 줘요."]} />
         </Group>
       </Screen>
     </AppShell>

@@ -7,7 +7,7 @@ import { PlaceRow } from "@/components/common/place-row";
 import { Redirect } from "@/components/common/redirect";
 import { RestartButton } from "@/components/features/session/restart-button";
 import { PlaceSection } from "@/components/features/type-view/place-section";
-import { TypeHero } from "@/components/features/type-view/type-hero";
+import { TypeFeature, TypeHero } from "@/components/features/type-view/type-hero";
 import { fill, koreanDate, text } from "@/content/text";
 import { SHOWN_PLACES, placeName } from "@/core/places";
 import { CHOOSE } from "@/core/scoring";
@@ -72,15 +72,11 @@ function ResultBody({
     <>
       {/* 성별 답은 그림을 고르는 데만 쓴다 */}
       <TypeHero type={type} label={text.typeLabel} gender={characterGender(answers[GENDER_Q])} />
-      <FoldGroup>
-        <Fold value="feature" title={text.featureHeading}>
-          <p>{type.feature}</p>
-        </Fold>
-      </FoldGroup>
+      <TypeFeature type={type} />
 
       <PlaceSection type={type} context={context} browse={false} />
 
-      <FoldGroup className="mt-[0.4rem]">
+      <FoldGroup className="mt-[0.3rem]">
         <Fold value="more" title={text.moreToggle}>
           <FoldGroup>
             <Fold value="edit" title={text.editHeading}>

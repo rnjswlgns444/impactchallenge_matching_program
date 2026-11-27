@@ -1,15 +1,14 @@
 "use client";
 
 import { FinePrint } from "@/components/common/fine-print";
-import { Fold, FoldGroup } from "@/components/common/fold";
 import { LinkButton } from "@/components/common/link-button";
 import { PlaceSection } from "@/components/features/type-view/place-section";
-import { TypeHero } from "@/components/features/type-view/type-hero";
+import { TypeFeature, TypeHero } from "@/components/features/type-view/type-hero";
 import { fill, koreanDate, text } from "@/content/text";
 import { SHOWN_PLACES } from "@/core/places";
 import type { TypeInfo } from "@/data/types";
 import { usePlaceContext } from "@/hooks/use-place-context";
-import { browseGender } from "@/hooks/use-viewed-type";
+import { browseGender } from "@/lib/session";
 
 // 유형 소개 화면: 둘러보기에서 고른 유형의 기본 화면. 유형 카드 → 이 유형의 특징 → 맞는 기관 → 돌아가기.
 // 설문 답을 쓰지 않는다. 그래서 성별·나이로 거르지 않고, 답변 수정과 다시 하기가 없다.
@@ -28,11 +27,7 @@ export function TypeIntro({ type }: { type: TypeInfo }) {
   return (
     <>
       <TypeHero type={type} label={text.typeLabelBrowse} gender={browseGender(type.id)} />
-      <FoldGroup>
-        <Fold value="feature" title={text.featureHeading}>
-          <p>{type.feature}</p>
-        </Fold>
-      </FoldGroup>
+      <TypeFeature type={type} />
       <PlaceSection type={type} context={context} browse />
       <div className="mt-[0.4rem] flex flex-col gap-[0.45rem]">
         <LinkButton href="/browse" variant="outline">

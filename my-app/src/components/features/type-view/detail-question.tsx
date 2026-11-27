@@ -45,7 +45,7 @@ export function DetailQuestion({
             size="touch"
             aria-pressed={selected}
             onClick={() => pick(option.id)}
-            className="justify-start gap-[0.6rem] text-left aria-pressed:border-teal aria-pressed:bg-aqua aria-pressed:ring-1 aria-pressed:ring-teal"
+            className="justify-start gap-[0.7rem] rounded-xl text-left aria-pressed:border-teal aria-pressed:bg-aqua aria-pressed:shadow-none aria-pressed:ring-2 aria-pressed:ring-teal"
           >
             {/* 앞 동그라미: 고르면 채워진다(색을 구분하기 어려운 분도 모양으로 안다) */}
             <span

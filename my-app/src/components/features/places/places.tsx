@@ -9,6 +9,7 @@ import { SHOWN_PLACES, placeName } from "@/core/places";
 import type { TypeInfo } from "@/data/types";
 import { usePlaceContext } from "@/hooks/use-place-context";
 import { useViewedType } from "@/hooks/use-viewed-type";
+import { kindLabel } from "@/components/features/type-view/place-section";
 import { placeHref, typeHomeHref } from "@/lib/routes";
 
 // '다른 곳 n곳'을 눌러서 온 화면: 앞의 3곳 말고 나머지 곳의 줄. 줄을 누르면 그 기관의 안내 화면으로 간다.
@@ -30,8 +31,8 @@ function PlacesBody({ type, browse }: { type: TypeInfo; browse: boolean }) {
   return (
     <>
       <div className="flex items-start gap-[0.56rem]">
-        <BackLink href={home} className="size-[2.6rem] border-[1.5px] border-teal text-teal" />
-        <h1 className="pt-[0.28rem] text-[clamp(1.24rem,4.5vw,1.6rem)] leading-[1.4] font-bold text-balance">
+        <BackLink href={home} className="size-[2.6rem]" />
+        <h1 className="pt-[0.3rem] text-[clamp(1.3rem,5vw,1.6rem)] leading-[1.35] font-extrabold tracking-[-0.02em] text-balance">
           {fill(text.morePlacesHeading, { type: type.name })}
         </h1>
       </div>
@@ -39,13 +40,14 @@ function PlacesBody({ type, browse }: { type: TypeInfo; browse: boolean }) {
         <div key={program.id} className="flex flex-col gap-[0.2rem]">
           <PlaceRow
             href={placeHref(program.id, browseType, true)}
+            badge={kindLabel(program)}
             title={placeName(program)}
             sub={program["프로그램명"]}
           />
           <p className="px-[0.24rem] text-sm text-muted-foreground">{program["한줄설명"]}</p>
         </div>
       ))}
-      <LinkButton href={home} variant="outline" className="justify-start border-teal font-bold text-teal hover:text-teal">
+      <LinkButton href={home} variant="outline" className="font-bold text-teal hover:text-teal">
         {text.backBottom}
       </LinkButton>
     </>
