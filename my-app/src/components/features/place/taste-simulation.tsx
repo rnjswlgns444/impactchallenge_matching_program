@@ -13,10 +13,20 @@ import {
 
 import { LinkButton } from "@/components/common/link-button";
 import { Button } from "@/components/ui/button";
-import { fill, simUi } from "@/content/text";
+import { fieldContent, fieldNavigation, fill, simUi } from "@/content/text";
 import { isStepReady, newSimAnswer, type SimAnswer, type SimStep, type Simulation } from "@/core/simulation";
 import { SceneHand, SceneObject, SceneTargets, SimulationStage } from "./simulation-stage";
 import { SimulationWorkpiece } from "./simulation-workpiece";
+
+import { FieldLabPanel, FieldLabResult } from "./field-lab";
+import { ArtPractice } from "./art-practice";
+import { JobPractice } from "./job-practice";
+import { LocalPractice } from "./field-tools-local";
+import { HealthPractice } from "./health-practice";
+import type { FieldEntry, FieldLabState } from "@/core/field-lab";
+
+const fieldEntries: Readonly<Partial<Record<string, FieldEntry>>> = fieldContent;
+const instruments: Readonly<Partial<Record<string, string>>> = fieldNavigation.instruments;
 
 const layouts = {
   desk: { icon: BriefcaseBusiness, band: "bg-ink text-white" },
@@ -342,12 +352,25 @@ function SimulationSession({ simulation }: { simulation: Simulation }) {
   const Icon = programIcons[simulation.id] ?? layout.icon;
   const step = simulation.steps[page];
   const answer = answers[page];
-  const finished = page === simulation.steps.length;
+  const entry = fieldEntries[simulation.id];
+  const fieldPage = simulation.steps.length;
+  const [fieldState, setFieldState] = useState<FieldLabState>();
+  const [direct, setDirect] = useState(false);
+  const [visitedLab, setVisitedLab] = useState(false);
+  const [toolOpen, setToolOpen] = useState(false);
+  const toolTitle = useRef<HTMLElement>(null);
+  const enteringTool = useRef(false);
+  const inField = !!entry && page === fieldPage;
+  const finished = page === fieldPage + (entry ? 1 : 0);
   useEffect(() => {
-    if (moved.current) titleRef.current?.focus();
+    if (enteringTool.current) {
+      toolTitle.current?.focus();
+      enteringTool.current = false;
+    } else if (moved.current) titleRef.current?.focus();
   }, [page]);
   function navigate(next: number) {
     moved.current = true;
+    if (entry && next === fieldPage) setVisitedLab(true);
     setPage(next);
   }
   function update(value: SimAnswer) {
@@ -359,16 +382,35 @@ function SimulationSession({ simulation }: { simulation: Simulation }) {
         <span className="flex items-center gap-[0.4rem]"><Icon aria-hidden="true" className="size-[1.2rem]" />{simUi.kind[simulation.kind]}</span>
         <span>{step ? fill(simUi.progress, { now: page + 1, total: simulation.steps.length }) : simUi.practice}</span>
       </div>
+      {visitedLab && instruments[simulation.id] && <div hidden={!inField && !finished} className="px-[0.65rem] pt-[0.65rem]">
+        <details open={toolOpen} onToggle={event => setToolOpen(event.currentTarget.open)} data-field-tool={simulation.id} className="rounded-xl border border-teal bg-aqua">
+          <summary ref={toolTitle} className="min-h-[3.1rem] cursor-pointer content-center rounded-xl px-[0.75rem] py-[0.5rem] text-[1rem] font-bold text-teal focus-visible:outline-2">{instruments[simulation.id]}</summary>
+          <div className="min-w-0 p-[0.35rem]"><ArtPractice id={simulation.id}/><JobPractice id={simulation.id}/>
+            <LocalPractice id={simulation.id}/><HealthPractice id={simulation.id}/></div>
+        </details>
+      </div>}
       {page === -1 ? <div className="grid gap-[0.7rem] p-[0.85rem]">
         <h2 ref={titleRef} tabIndex={-1} className="text-[1.4rem] leading-snug font-extrabold text-ink">{simulation.title}</h2>
         <p>{simulation.intro}</p>
-        <SimulationStage simulation={simulation} onStart={() => navigate(0)}>
+        {entry && <div className="grid gap-[0.5rem] rounded-xl border border-teal bg-aqua p-[0.75rem]">
+          <h3 className="text-[1.15rem] font-bold text-ink">{entry.lab.title}</h3>
+          <p>{entry.lab.brief}</p>
+          <Button size="touch" type="button" variant="cta" data-field-direct onClick={() => {
+            enteringTool.current = !!instruments[simulation.id]; setToolOpen(enteringTool.current);
+            setDirect(true); navigate(fieldPage);
+          }}>{instruments[simulation.id] ?? fieldNavigation.open}<ArrowRight aria-hidden="true" /></Button>
+        </div>}
+        <SimulationStage simulation={simulation} onStart={() => { setDirect(false); navigate(0); }}>
           <div className="grid min-w-0 gap-[0.55rem] rounded-xl bg-card p-[0.6rem]">
             <p className="flex flex-wrap items-center gap-x-[0.35rem] text-ink"><span>{simUi.preview}</span><strong>{simulation.artifact}</strong></p>
           </div>
         </SimulationStage>
         <Missions simulation={simulation} page={page} answers={answers} />
-      </div> : finished ? <div data-sim-result className="grid gap-[0.65rem] p-[0.75rem]">
+      </div> : inField && entry ? <FieldLabPanel entry={entry} initialState={fieldState}
+        onBack={state => { setFieldState(state); navigate(direct ? -1 : fieldPage - 1); }}
+        onComplete={state => { setFieldState(state); navigate(fieldPage + 1); }} /> : finished ? <div data-sim-result className="grid gap-[0.65rem] p-[0.75rem]">
+        {entry && fieldState && <FieldLabResult entry={entry} state={fieldState} />}
+        {!direct && <div data-basic-result className="grid gap-[0.65rem]">
         <SimulationWorkpiece simulation={simulation} answers={answers} page={page} />
         <div className={`border border-line bg-card p-[0.75rem] shadow-card ${paperStyles[simulation.kind]}`}>
           <PaperTop kind={simulation.kind} />
@@ -378,11 +420,14 @@ function SimulationSession({ simulation }: { simulation: Simulation }) {
             <dt className="font-bold text-teal">{task.caption}</dt>
             {resultRows(task, answers[index]).map((row, i) => <dd key={i} className="mt-[0.12rem] break-words">{row}</dd>)}
           </div>)}</dl>
-        </div>
+        </div></div>}
         <LinkButton href={simulation.sourceUrl} variant="cta">{simulation.sourceLabel}<ArrowUpRight aria-hidden="true" /></LinkButton>
-        <Button size="touch" type="button" variant="outline" data-sim-edit onClick={() => navigate(0)}><ArrowLeft aria-hidden="true" />{simUi.edit}</Button>
+        {entry && fieldState && <Button size="touch" type="button" variant="outline" data-field-edit onClick={() => {
+          setFieldState({ ...fieldState, page: 0 }); navigate(fieldPage);
+        }}><ArrowLeft aria-hidden="true" />{fieldNavigation.edit}</Button>}
+        {!direct && <Button size="touch" type="button" variant="outline" data-sim-edit onClick={() => navigate(0)}><ArrowLeft aria-hidden="true" />{simUi.edit}</Button>}
         <Button size="touch" type="button" variant="ghost" data-sim-restart onClick={() => {
-          setAnswers(simulation.steps.map(newSimAnswer)); navigate(-1);
+          setAnswers(simulation.steps.map(newSimAnswer)); setFieldState(undefined); setDirect(false); setVisitedLab(false); setToolOpen(false); navigate(-1);
         }}><RotateCcw aria-hidden="true" />{simUi.restart}</Button>
       </div> : <div data-step-mode={step.mode} data-step-index={page} className="grid min-w-0 gap-[0.65rem]">
         <ol className="mx-[0.75rem] mt-[0.6rem] flex gap-[0.25rem]" aria-label={simUi.missions}>
@@ -412,7 +457,7 @@ function SimulationSession({ simulation }: { simulation: Simulation }) {
         <Missions simulation={simulation} page={page} answers={answers} />
         <div className="grid min-w-0 gap-[0.35rem] px-[0.7rem] pb-[0.7rem]">
           <Button type="button" variant="cta" size="touch" data-sim-next disabled={!isStepReady(step, answer)} onClick={() => navigate(page + 1)}>
-            {page + 1 === simulation.steps.length ? simUi.finish : simUi.next}<ArrowRight aria-hidden="true" />
+            {page + 1 === simulation.steps.length ? (entry ? fieldNavigation.next : simUi.finish) : simUi.next}<ArrowRight aria-hidden="true" />
           </Button>
           <Button type="button" variant="ghost" size="touch" data-sim-back onClick={() => navigate(page - 1)}><ArrowLeft aria-hidden="true" />{simUi.previous}</Button>
         </div>
