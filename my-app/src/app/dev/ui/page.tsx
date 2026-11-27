@@ -7,8 +7,7 @@ import { KindIcon } from "@/components/common/kind-icon";
 import { TasteCard } from "@/components/features/place/taste-card";
 import { ShareSection } from "@/components/features/result/share-section";
 import { SaveSection } from "@/components/features/result/save-section";
-import { AnsanMap } from "@/components/features/type-view/ansan-map";
-import { RemoteRow } from "@/components/features/type-view/remote-row";
+import { PlaceMap } from "@/components/features/type-view/place-map";
 import { Fold, FoldGroup } from "@/components/common/fold";
 import { LinkButton } from "@/components/common/link-button";
 import { Notice } from "@/components/common/notice";
@@ -162,41 +161,22 @@ export default function DevUiPage() {
           />
         </Group>
 
-        <Group title="기관 지도 (건물 3곳 + 우리 동네 + 별 + 가까운 곳 / 한데 몰린 경우 / 지도 1곳 + 아래 줄 / 대부동)">
-          <AnsanMap
-            typeId="T05"
-            gender="female"
+        <Group title="기관 지도 (핀 + 이름표, 누르면 아래 카드 / 한데 몰린 경우 / 지도에 없는 곳)">
+          <PlaceMap
             homeName="고잔동"
             dots={[{ lat: 37.3013, lon: 126.8682 }]}
-            items={[
-              { building: { key: "a", href: "/dev/ui", number: 1, word: "문화", name: "별이 붙은 기관", label: "견본 1", star: true }, point: { lat: 37.3003, lon: 126.8451 } },
-              { building: { key: "b", href: "/dev/ui", number: 2, word: "일", name: "일자리 기관", label: "견본 2", star: false, near: true }, point: { lat: 37.3214, lon: 126.8309 } },
-              { building: { key: "c", href: "/dev/ui", number: 3, word: "상담", name: "상담 기관의 이름이 길어서 두 줄을 넘는 경우", label: "견본 3", star: false }, point: { lat: 37.338, lon: 126.7622 } },
+            places={[
+              { key: "a", href: "/dev/ui", number: 1, word: "문화", name: "별이 붙은 기관", work: "AI가 고른 곳의 하는 일", note: "문화", label: "견본 1", star: true, near: false, point: { lat: 37.3003, lon: 126.8451 } },
+              { key: "b", href: "/dev/ui", number: 2, word: "일", name: "일자리 기관", work: "구직 상담", note: "일", label: "견본 2", star: false, near: true, point: { lat: 37.3214, lon: 126.8309 } },
+              { key: "c", href: "/dev/ui", number: 3, word: "상담", name: "상담 기관의 이름이 길어서 잘리는 경우", work: "하는 일 한 줄", note: "상담", label: "견본 3", star: false, near: false, point: { lat: 37.338, lon: 126.7622 } },
             ]}
           />
-          <AnsanMap
-            typeId="T01"
-            gender="male"
+          <PlaceMap
             homeName={null}
-            items={[
-              { building: { key: "a", href: "/dev/ui", number: 1, word: "일", name: "안산시 일자리센터", label: "견본 1", star: false }, point: { lat: 37.32137, lon: 126.8309 } },
-              { building: { key: "b", href: "/dev/ui", number: 2, word: "상담", name: "중장년내일센터", label: "견본 2", star: false }, point: { lat: 37.318943, lon: 126.826407 } },
-              { building: { key: "c", href: "/dev/ui", number: 3, word: "교육", name: "바로 옆 기관", label: "견본 3", star: false }, point: { lat: 37.3197, lon: 126.83 } },
-            ]}
-          />
-          <AnsanMap
-            typeId="T09"
-            gender="male"
-            homeName="대부동"
-            items={[
-              { building: { key: "a", href: "/dev/ui", number: 1, word: "상담", name: "지도에 한 곳만 서는 경우", label: "견본 1", star: false }, point: { lat: 37.2926, lon: 126.8752 } },
-            ]}
-          />
-          <RemoteRow
-            heading="전화·온라인으로 만나는 곳"
-            buildings={[
-              { key: "d", href: "/dev/ui", number: 2, word: "전화", name: "전화로 쓰는 곳", label: "견본 4", star: false },
-              { key: "e", href: "/dev/ui", number: 3, word: "온라인", name: "온라인으로 쓰는 곳 (별)", label: "견본 5", star: true },
+            places={[
+              { key: "a", href: "/dev/ui", number: 1, word: "일", name: "안산시 일자리센터", work: "구직 상담", note: "일", label: "견본 1", star: false, near: false, point: { lat: 37.32137, lon: 126.8309 } },
+              { key: "b", href: "/dev/ui", number: 2, word: "상담", name: "같은 자리의 기관", work: "같은 건물", note: "상담", label: "견본 2", star: false, near: false, point: { lat: 37.32137, lon: 126.8309 } },
+              { key: "c", href: "/dev/ui", number: 3, word: "전화", name: "전화로 쓰는 곳", work: "전화 상담", note: "전화·온라인으로", label: "견본 3", star: false, near: false, point: null },
             ]}
           />
         </Group>

@@ -89,7 +89,6 @@ function ResultBody({
         context={context}
         browse={false}
         dong={dong}
-        gender={characterGender(answers[GENDER_Q])}
         ai={ai}
         asking={asking}
       />

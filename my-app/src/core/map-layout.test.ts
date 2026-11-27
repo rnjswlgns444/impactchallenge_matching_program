@@ -5,7 +5,7 @@ import { appData } from "@/data";
 import { mapData } from "@/data/map";
 
 import { fitFrame, overlaps, project, ringsPath, spreadBoxes, type Box } from "./geo";
-import { CANVAS, INSET, PIN_H, layoutMap, place } from "./map-layout";
+import { DOT, LABEL, MAP, framesOf, labelWidth, layoutPins, place, sideLabels } from "./map-layout";
 
 const inside = (box: Box, outer: Box) =>
   box.x >= outer.x - 1e-6 &&
@@ -86,7 +86,7 @@ describe("spreadBoxes", () => {
   });
 });
 
-describe("layoutMap (실제 자료)", () => {
+describe("지도의 핀과 이름표 (실제 자료)", () => {
   const venues = [
     ...new Map(
       Object.values(appData.venues)
@@ -94,60 +94,73 @@ describe("layoutMap (실제 자료)", () => {
         .map((venue) => [`${venue.lon},${venue.lat}`, venue])
     ).values(),
   ];
+  const { canvas, inset } = MAP;
 
   it("본토의 동은 지도 안에, 대부동의 큰 섬은 작은 상자 안에 그려진다", () => {
-    const layout = layoutMap(mapData.dongs, []);
+    const frames = framesOf(mapData.dongs);
     const within = (ring: [number, number][], where: Box) => {
       for (const [lon, lat] of ring) {
-        const at = place(layout, { lon, lat });
+        const at = place(frames, { lon, lat });
         expect(at.x).toBeGreaterThanOrEqual(where.x);
         expect(at.x).toBeLessThanOrEqual(where.x + where.w);
         expect(at.y).toBeGreaterThanOrEqual(where.y);
         expect(at.y).toBeLessThanOrEqual(where.y + where.h);
       }
     };
-    for (const dong of mapData.dongs.filter((one) => one.name !== "대부동")) dong.rings.forEach((ring) => within(ring, CANVAS));
+    for (const dong of mapData.dongs.filter((one) => one.name !== "대부동")) dong.rings.forEach((ring) => within(ring, canvas));
     // 멀리 떨어진 작은 섬은 상자 밖으로 나가며, 화면이 잘라 낸다
     const daebu = mapData.dongs.find((one) => one.name === "대부동")!;
     within(
       daebu.rings.reduce((best, ring) => (ring.length > best.length ? ring : best)),
-      INSET
+      inset
     );
   });
 
   it("본토의 동은 대부동 상자와 겹치지 않는다", () => {
-    const layout = layoutMap(mapData.dongs, []);
+    const frames = framesOf(mapData.dongs);
     for (const dong of mapData.dongs.filter((one) => one.name !== "대부동")) {
       for (const [lon, lat] of dong.rings.flat()) {
-        const at = place(layout, { lon, lat });
-        expect(at.x > INSET.x && at.x < INSET.x + INSET.w && at.y > INSET.y && at.y < INSET.y + INSET.h).toBe(false);
+        const at = place(frames, { lon, lat });
+        expect(at.x > inset.x && at.x < inset.x + inset.w && at.y > inset.y && at.y < inset.y + inset.h).toBe(false);
       }
     }
   });
 
-  it("기관 좌표 가운데 어느 셋을 골라도 건물이 겹치지 않고 그림 안에 선다", () => {
+  it("기관 좌표 가운데 어느 셋을 골라도 핀이 서로 겹치지 않고, 핀과 이름표가 그림 안에 있다", () => {
     expect(venues.length).toBeGreaterThanOrEqual(19);
     let checked = 0;
+    let farthest = 0;
     for (let a = 0; a < venues.length; a += 1) {
       for (let b = a; b < venues.length; b += 1) {
         for (let c = b; c < venues.length; c += 1) {
-          const { units } = layoutMap(mapData.dongs, [venues[a], venues[b], venues[c]]);
+          const { pins } = layoutPins(mapData.dongs, [venues[a], venues[b], venues[c]]);
+          const labels = sideLabels(pins, [LABEL.max, LABEL.max, LABEL.max]);
           for (let i = 0; i < 3; i += 1) {
-            expect(inside(units[i].box, CANVAS)).toBe(true);
-            expect(overlaps(units[i].box, INSET)).toBe(false);
-            for (let j = i + 1; j < 3; j += 1) expect(overlaps(units[i].box, units[j].box)).toBe(false);
+            expect(inside(pins[i].box, canvas)).toBe(true);
+            expect(inside(labels[i], canvas)).toBe(true);
+            for (let j = i + 1; j < 3; j += 1) expect(overlaps(pins[i].box, pins[j].box)).toBe(false);
+            farthest = Math.max(farthest, Math.hypot(pins[i].tip.x - pins[i].anchor.x, pins[i].tip.y - pins[i].anchor.y));
           }
           checked += 1;
         }
       }
     }
     expect(checked).toBeGreaterThan(1000);
+    // 비켜 놓아도 실제 자리에서 핀 두 개 폭을 넘지 않는다
+    expect(farthest).toBeLessThanOrEqual(2 * DOT.w);
   });
 
-  it("하나뿐이고 자리가 넉넉하면 문 앞이 실제 위치에 온다", () => {
-    const cityHall = venues.find((venue) => venue.name.includes("일자리센터")) ?? venues[0];
-    const { units } = layoutMap(mapData.dongs, [cityHall]);
-    expect(units[0].moved).toBe(false);
-    expect(units[0].door.y).toBeCloseTo(units[0].box.y + PIN_H, 6);
+  it("하나뿐이면 핀의 끝이 실제 자리에 온다", () => {
+    const { pins } = layoutPins(mapData.dongs, [venues[0]]);
+    expect(pins[0].moved).toBe(false);
+    expect(pins[0].tip).toEqual(pins[0].anchor);
+  });
+
+  it("이름표는 다른 핀을 덮지 않는 쪽에 붙는다", () => {
+    const { pins } = layoutPins(mapData.dongs, [venues[0]]);
+    const [label] = sideLabels(pins, [20]);
+    expect(overlaps(label, pins[0].box)).toBe(false);
+    expect(labelWidth("가")).toBeLessThan(labelWidth("가나다라마"));
+    expect(labelWidth("가".repeat(40))).toBe(LABEL.max);
   });
 });

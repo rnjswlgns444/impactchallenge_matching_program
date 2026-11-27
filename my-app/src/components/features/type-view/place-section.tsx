@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { StarIcon } from "lucide-react";
 
-import type { CharacterGender } from "@/components/common/character";
 import { LinkButton } from "@/components/common/link-button";
 import { Notice } from "@/components/common/notice";
 import { Spinner } from "@/components/ui/spinner";
@@ -16,16 +15,14 @@ import type { Dong, TypeInfo } from "@/data/types";
 import { placeHref, placesHref } from "@/lib/routes";
 import type { AiState } from "@/stores/survey-store";
 
-import { AnsanMap, MAP_READY, type MapItem } from "./ansan-map";
-import type { Building } from "./building";
 import { DetailQuestion } from "./detail-question";
 import { FallbackCard } from "./fallback-card";
-import { RemoteRow } from "./remote-row";
+import { PlaceMap, type MapPlace } from "./place-map";
 
-// '○○형에 맞는 기관' 구역. 안산 지도 그림 위에 추천 기관 3곳을 건물로 세운다(ansan-map.tsx).
-// 자리(좌표)가 없는 곳은 지도 아래 줄에 같은 건물 그림으로 놓는다(remote-row.tsx).
-// 건물을 누르면 그 기관의 안내 화면으로 간다. 그 아래의 단추 '목록으로 보기'를 누르면
-// 추천 3곳과 나머지 곳이 함께 나오는 목록 화면으로 간다.
+// '○○형에 맞는 기관' 구역. 안산 지도 그림 위에 추천 기관 3곳을 작은 핀과 이름표로 꽂는다(place-map.tsx).
+// 핀이나 번호를 누르면 지도 아래 카드가 그 기관으로 바뀌고, 카드의 '자세히 보기'가 기관 화면으로 간다.
+// 자리(좌표)가 없는 곳은 지도에 핀이 없고 번호와 카드로만 나온다.
+// 그 아래의 단추 '목록으로 보기'를 누르면 추천 3곳과 나머지 곳이 함께 나오는 목록 화면으로 간다.
 //
 // 보여 줄 곳과 순서는 이미 정해진 것(context.places)을 그대로 쓴다. 여기서 거르거나 순서를 바꾸지 않는다.
 // 사는 동은 순서를 바꾸지 않는다. 추천 3곳 중 가장 가까운 한 곳에 딱지를 붙일 뿐이다.
@@ -50,7 +47,6 @@ export function PlaceSection({
   context,
   browse,
   dong,
-  gender,
   ai = null,
   asking = false,
 }: {
@@ -58,7 +54,6 @@ export function PlaceSection({
   context: PlaceContext;
   browse: boolean;
   dong: Dong | null; // 우리 동네. 고르지 않았으면 null
-  gender: CharacterGender | null; // 지도 구석에 세울 캐릭터의 성별
   ai?: AiState | null; // AI 추가 추천 결과(설문 결과에서만)
   asking?: boolean; // AI의 답을 기다리는 중
 }) {
@@ -69,7 +64,7 @@ export function PlaceSection({
   const { stops, others } = routeStops(places, appData.venues, dong, SHOWN_PLACES);
   const near = nearStop(stops, NEAR_KM);
 
-  const buildingOf = (stop: Stop): Building => {
+  const mapPlaces = stops.map((stop): MapPlace => {
     const star = stop.program.id in reasons;
     const isNear = stop === near;
     const name = placeName(stop.program);
@@ -79,6 +74,8 @@ export function PlaceSection({
       number: stop.number ?? 0,
       word: stop.program["핀그림"],
       name,
+      work: stop.program["프로그램명"],
+      note: stopNote(stop),
       label: [
         fill(text.placeOpen, { number: stop.number ?? "", kind: stop.program["핀그림"] ?? "", name }),
         star ? text.aiStarLabel : "",
@@ -88,16 +85,10 @@ export function PlaceSection({
         .join(", "),
       star,
       near: isNear,
+      point: stop.venue ? { lat: stop.venue.lat, lon: stop.venue.lon } : null,
     };
-  };
-  // 자리(좌표)가 있는 곳은 지도에, 없는 곳은 지도 아래 줄에 놓는다. 둘 다 추천 순서를 지킨다
-  const onMap: MapItem[] = [];
-  const offMap: Stop[] = [];
-  for (const stop of stops) {
-    if (MAP_READY && stop.venue) onMap.push({ building: buildingOf(stop), point: stop.venue });
-    else offMap.push(stop);
-  }
-  const allRemote = offMap.every((stop) => noVisit(stop.program["장소"] || stop.program["진행방식"]));
+  });
+  const hasMap = mapPlaces.some((item) => item.point);
   const hasPlaces = !result.needsChoice && places.length > 0;
 
   return (
@@ -162,22 +153,17 @@ export function PlaceSection({
             </p>
           ) : null}
 
-          {onMap.length > 0 ? (
-            <AnsanMap
-              items={onMap}
-              dots={others.flatMap((stop) => (stop.venue ? [stop.venue] : []))}
-              homeName={dong?.name ?? null}
-              typeId={type.id}
-              gender={gender}
-            />
+          {hasMap && mapPlaces.length > 1 ? (
+            <p className="text-[0.8rem] leading-[1.5] text-muted-foreground">{text.mapHint}</p>
           ) : null}
-          <RemoteRow
-            buildings={offMap.map(buildingOf)}
-            heading={onMap.length === 0 ? undefined : allRemote ? text.remoteHeading : text.offMapHeading}
+          {/* 후보가 바뀌면(답을 고치거나 AI가 답했을 때) 고른 핀을 처음으로 되돌린다 */}
+          <PlaceMap
+            key={mapPlaces.map((item) => item.key).join("|")}
+            places={mapPlaces}
+            dots={others.flatMap((stop) => (stop.venue ? [stop.venue] : []))}
+            homeName={dong?.name ?? null}
           />
-          {onMap.length > 0 ? (
-            <p className="text-[0.7rem] leading-[1.5] text-muted-foreground">{text.mapNote}</p>
-          ) : null}
+          {hasMap ? <p className="text-[0.7rem] leading-[1.5] text-muted-foreground">{text.mapNote}</p> : null}
 
           <LinkButton href={placesHref(browseType)} variant="outline" className="font-bold text-teal hover:text-teal">
             {fill(text.seeList, { count: places.length })}
