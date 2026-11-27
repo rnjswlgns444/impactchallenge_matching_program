@@ -165,6 +165,16 @@ export const text = {
   ageUnconfirmed: "55~64세도 이용할 수 있는지 기관에 물어봐 주세요.",
   detailButton: "공식 사이트 보기", // 안내할 곳이 하나도 없을 때의 기본 창구 카드
 
+  // ── 집에서 먼저 체험하기 (새로 씀) ── 체험 내용은 core/taste.ts가 정한다
+  tasteLabel: "집에서 먼저 체험하기",
+  tasteTitle: "가기 전에 미리 해 보세요", // 체험에 따로 제목이 없을 때
+  tasteBody: "집에서 휴대폰으로 미리 살펴볼 수 있어요.", // 체험에 따로 설명이 없을 때
+  tasteButton: "체험해 보기",
+  tasteVideos: "영상으로 둘러보기",
+  tasteVideoBy: "{by} 영상", // 영상을 올린 곳
+  tasteWaiting: "체험을 준비하고 있어요. 조금만 기다려 주세요.",
+  tasteBack: "← 기관 안내로 돌아가기",
+
   // ── 둘러보기 (옮김) ──
   browseHeading: "어떤 도움이 있는지 둘러보기",
   browseHelp: "궁금한 유형을 누르면 그 유형에 맞는 기관을 볼 수 있어요.",
@@ -190,6 +200,7 @@ export const text = {
     places: "다른 곳",
     browse: "둘러보기",
     place: "기관 안내",
+    taste: "집에서 먼저 체험하기",
     type: "유형 소개",
   },
 } as const;

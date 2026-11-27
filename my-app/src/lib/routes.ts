@@ -19,6 +19,11 @@ export function placeHref(programId: string, browseType: string | null, fromList
   return withQuery(`/place/${programId}`, { type: browseType, from: fromList ? "places" : null });
 }
 
+// 기관의 '집에서 먼저 체험하기' 화면. 꼬리는 기관 화면과 같다(돌아갈 때 그대로 넘긴다)
+export function tasteHref(programId: string, browseType: string | null, fromList = false): string {
+  return withQuery(`/place/${programId}/taste`, { type: browseType, from: fromList ? "places" : null });
+}
+
 export function placesHref(browseType: string | null): string {
   return withQuery("/places", { type: browseType });
 }
