@@ -16,7 +16,7 @@ export const tasteSimulations = {
       { mode: "pick", title: "어떤 일자리를 찾고 있나요?", instruction: "상담할 때 맨 먼저 전하고 싶은 말을 고르세요.", caption: "찾는 일자리",
         options: [
           { label: "짧은 기간 일하고 싶어요", note: "계약이 언제 끝나는지 물어볼 수 있어요." },
-          { label: "공공 일자리를 알아보고 싶어요", note: "관심 있는 사업의 모집 시기와 조건을 물어볼 수 있어요." },
+          { label: "공공 일자리는 어디서 알아보는지 묻고 싶어요", note: "센터에서 안내하는지, 다른 곳을 알려 주는지 물어볼 수 있어요." },
           { label: "오래 일할 곳에 다시 취업하고 싶어요", note: "오래 이어 가고 싶은 일을 다음 칸에 담아 보세요." },
           { label: "어떤 일이 맞을지 함께 찾고 싶어요", note: "아직 직종을 정하지 않아도 해 본 일부터 정리할 수 있어요." },
         ] },
@@ -128,7 +128,7 @@ export const tasteSimulations = {
   },
   JOB08: {
     id: "JOB08", kind: "field", title: "김장 나눔 포장대 맡아 보기",
-    intro: "안산시자원봉사센터의 김장 나눔에서는 포장과 배부도 봉사예요. 연습용 포장대에서 무엇을 챙기고 몇 통을 나눌지 정해 보세요.",
+    intro: "안산시자원봉사센터의 지난 김장 나눔에서는 포장과 배부도 봉사였어요. 연습용 포장대에서 무엇을 챙기고 몇 통을 나눌지 정해 보세요. 지금 참여할 수 있는 활동은 센터에 물어보세요.",
     artifact: "김장 나눔 작업 메모", sourceLabel: "안산센터의 김장 나눔 활동 사례 보기",
     sourceUrl: "https://www.ansan1365.or.kr/sub.php?id=notice&idx=2255&menukey=24&mode=view&page=1",
     steps: [
@@ -154,7 +154,7 @@ export const tasteSimulations = {
   },
   JOB11: {
     id: "JOB11", kind: "kiosk", title: "소상공인24에서 필요한 창구 찾기",
-    intro: "소상공인24의 실제 메뉴 이름을 이용해 연습해요. 가게에 필요한 공고를 찾고 신청 전에 볼 부분을 표시해 보세요.",
+    intro: "소상공인24의 실제 메뉴를 줄여 쓴 이름으로 연습해요. 가게에 필요한 공고를 찾고 신청 전에 볼 부분을 표시해 보세요.",
     artifact: "가게 지원사업 확인 메모", sourceLabel: "공식 소상공인24 열기",
     sourceUrl: "https://www.sbiz24.kr/",
     steps: [
@@ -183,11 +183,11 @@ export const tasteSimulations = {
   L06_PIUM_DIRECTORY: {
     id: "L06_PIUM_DIRECTORY",
     title: "찻잔에 붙일 짧은 시",
-    intro: "피움과정의 디카시 수업에서는 사물을 바라보고 짧은 시를 씁니다. 찻잔 하나를 떠올리며 나만의 시 한 편을 엮어 보세요.",
+    intro: "평생학습관 피움과정에는 2026년에 디카시 창작 강좌가 있었어요(지금은 끝났어요). 그 강의계획을 본떠, 찻잔 하나를 떠올리며 나만의 시 한 편을 엮어 보세요. 지금 여는 강좌는 강좌 목록에서 확인하세요.",
     kind: "workshop",
     artifact: "내 찻잔에 붙일 시",
-    sourceLabel: "평생학습관 디카시 강좌 살펴보기",
-    sourceUrl: "https://lll.ansan.go.kr/web/cop/regEduDetail.do?mId=EDUMNG_0000000001578",
+    sourceLabel: "평생학습관 강좌 목록 보기",
+    sourceUrl: "https://lll.ansan.go.kr/web/cop/regEduList.do",
     steps: [
       { mode: "pick", title: "첫 줄에 무엇을 담을까요?", instruction: "찻잔을 가까이 들여다보듯, 눈이 머무는 부분을 한 줄 골라 보세요.", caption: "첫 줄", options: [
         { label: "둥근 손잡이 안에", note: "손잡이 사이의 빈 곳에서 시작해요." },
@@ -209,7 +209,7 @@ export const tasteSimulations = {
   L15: {
     id: "L15",
     title: "독서모임에서 꺼낼 첫 질문",
-    intro: "작은도서관의 북세통에서는 같은 책을 읽고 의견을 나눕니다. ANTI가 쓴 짧은 글로 작은 토론을 준비해 보세요.",
+    intro: "작은도서관에는 북세통(40~60대 주부)·한뉘·옹달샘(시니어) 같은 독서토론 동아리가 있어요. ANTI가 쓴 짧은 글로 작은 토론을 준비해 보세요. 새 회원을 받는지는 도서관에 물어보세요.",
     kind: "desk",
     artifact: "내 독서모임 질문지",
     sourceLabel: "작은도서관 독서모임 소개",
@@ -235,10 +235,10 @@ export const tasteSimulations = {
   L16: {
     id: "L16",
     title: "네 박짜리 합주 악보 맞추기",
-    intro: "평생비전센터 동아리 목록에는 사물놀이 장비통이 있어요. ANTI가 만든 네 박 손장단으로 함께 소리를 맞추는 감각을 익혀 보세요.",
+    intro: "안산 학습동아리 등록현황에는 사물놀이·장구·민요 동아리가 있어요(예: 2026년 9월에 등록한 사물놀이 장비통). ANTI가 만든 네 박 손장단으로 함께 소리를 맞추는 감각을 익혀 보세요. 가입할 수 있는지는 평생학습과(031-481-3449)에 물어보세요.",
     kind: "workshop",
     artifact: "내 손장단 연습 악보",
-    sourceLabel: "평생비전센터 동아리 활동 보기",
+    sourceLabel: "학습동아리 등록현황 보기",
     sourceUrl: "https://wm.ansan.go.kr/operation/eduClub/selectEduClubPageList.do",
     steps: [
       { mode: "sort", title: "무엇이 울리는 악기일까요?", instruction: "사물놀이 악기 네 가지를 소리가 나는 재료에 맞춰 놓으세요.", caption: "악기 묶음", groups: ["가죽이 울려요", "쇠가 울려요"], items: [
@@ -314,7 +314,7 @@ export const tasteSimulations = {
     kind: "desk",
     artifact: "첫 상담 문의 메모",
     sourceLabel: "안산시정신건강복지센터 이용 안내",
-    sourceUrl: "https://wmind.org/sub.php?menukey=12",
+    sourceUrl: "https://ansanmind.or.kr/sub.php?menukey=18",
     steps: [
       {
         mode: "sort", title: "메모에 남길 내용 가리기",
@@ -354,7 +354,7 @@ export const tasteSimulations = {
     intro: "집안일 분담을 예로 들어, 있었던 일과 바라는 변화를 두 칸에 정리해요. 가족상담에서 다뤄 보고 싶은 주제를 고르는 연습이에요.",
     kind: "workshop",
     artifact: "가족 대화 준비 카드",
-    sourceLabel: "안산시건강가정지원센터 가족상담 문의",
+    sourceLabel: "안산시건강가정지원센터 오시는 길·전화",
     sourceUrl: "https://ansan.familynet.or.kr/center/lay1/program/S295T315C321/center_info/view.do",
     steps: [
       {
@@ -549,7 +549,7 @@ export const tasteSimulations = {
   },
   H23: {
     id: "H23", title: "식품 포장지 두 장 비교하기", kind: "workshop",
-    intro: "안산 등록교육센터는 식습관 상담과 영양실습을 운영해요. 연습용 영양표시를 같은 양으로 맞춰 읽어 보세요.",
+    intro: "식약처 영양표시 자료로 만든 일반 연습이에요. 연습용 영양표시를 같은 양으로 맞춰 읽어 보세요. 고당센터 영양교육에서 영양표시 읽기를 다루는지는 센터에 물어보세요.",
     artifact: "영양표시 비교 메모",
     sourceLabel: "안산 등록교육센터 영양교육·실습 안내",
     sourceUrl: "https://www.ansan.ac.kr/www/content/135",
@@ -767,7 +767,7 @@ export const fieldNavigation = {
   edit: "현장 실습 다시 보기",
   instruments: {
     JOB01: "내 경력으로 전화 문의 카드 만들기",
-    L06_PIUM_DIRECTORY: "찻잔을 찍고 내 디카시 쓰기",
+    L06_PIUM_DIRECTORY: "찻잔 그림으로 내 디카시 쓰기",
     L16: "네 박을 짜고 직접 연주하기",
     C_ECO: "하천의 흔적에 자를 대고 기록하기",
     JOB11: "내가 정한 분량으로 한 접시 원가 계산하기",
@@ -874,7 +874,7 @@ export const jobPracticeText = {
   goalLabel: "어떤 일자리를 먼저 알아볼까요?",
   goals: [
     { key: "short", name: "단기 일자리", detail: "기간을 정해 일하고 싶어요.", sentence: "기간을 정해 일하는 자리를 알아보고 있습니다." },
-    { key: "public", name: "공공 일자리", detail: "공공기관이 모집하는 일을 알고 싶어요.", sentence: "공공 일자리의 모집 정보를 알아보고 있습니다." },
+    { key: "public", name: "공공 일자리", detail: "어디서 알아보는지 묻고 싶어요.", sentence: "공공 일자리는 어디서 알아보면 되는지 여쭤보고 싶습니다." },
     { key: "long", name: "장기 재취업", detail: "오래 일할 직장을 찾고 있어요.", sentence: "오랫동안 일할 수 있는 직장을 알아보고 있습니다." },
   ],
   next: "다음",
@@ -882,7 +882,7 @@ export const jobPracticeText = {
   roleLabel: "어떤 업무를 하고 싶으세요?",
   pickRole: "희망 업무 선택",
   roles: [
-    { key: "vehicles", name: "차량 이동·입출고 관리", source: "안산 일자리센터 행사 참여기업의 지난 고용24 공고", url: "https://www.work24.go.kr/wk/a/b/1500/empDetailAuthView.do?infoTypeCd=VALIDATION&infoTypeGroup=tb_workinfoworknet&wantedAuthNo=KJKP002609300010" },
+    { key: "vehicles", name: "차량 이동·입출고 관리", source: "채용행사 무렵 고용24에 올라온 공고", url: "https://www.work24.go.kr/wk/a/b/1500/empDetailAuthView.do?infoTypeCd=VALIDATION&infoTypeGroup=tb_workinfoworknet&wantedAuthNo=KJKP002609300010" },
     { key: "pack", name: "식품 용기 포장", source: "안산 채용박람회 참여업체의 방송 인터뷰", url: "https://news.sbs.co.kr/news/endPage.do?news_id=N1008804163" },
     { key: "forklift", name: "지게차 물류 작업", source: "안산시의 지난 지게차 실무교육과 취업 연계 결과", url: "https://www.ansan.go.kr/www/common/bbs/selectBbsDetail.do?bbs_code=B0238&bbs_seq=1678485" },
   ],
@@ -1026,11 +1026,11 @@ export const fieldContent = {
         "use": "채용 담당자의 희망과 계약 형태를 구분하는 실제 비교 자료로 썼다."
       },
       {
-        "title": "목요일에 희망 잡고, 새해 첫 채용행사",
+        "title": "안산시, 올해‘목요일에 희망잡(JOB) 고(GO)’채용 행사 가동",
         "publisher": "안산시",
         "url": "https://www.ansan.go.kr/www/common/bbs/selectBbsDetail.do?bbs_code=B0238&bbs_seq=1659900",
         "kind": "채용행사 운영 결과",
-        "observation": "센터가 기업과 구직자를 미리 연결한 뒤 개별 면접을 진행한 사례다.",
+        "observation": "직업상담사가 고용24로 기업과 구직자를 미리 연결했고, 60여 명이 면접에 참여해 15명이 현장에서 채용됐다.",
         "use": "취업 행사와 단순한 공고 열람의 차이를 설명하는 자료로 썼다."
       },
       {
@@ -1050,10 +1050,10 @@ export const fieldContent = {
         "use": "행사 참여와 채용 확정을 분리해 설명한다."
       },
       {
-        "title": "자동차 야드 입/출하 담당 모집 · 목요일에 희망 잡고 참여업체",
+        "title": "자동차 야드 입/출하 담당 모집",
         "publisher": "대경티엘에스㈜ · 고용24",
         "url": "https://www.work24.go.kr/wk/a/b/1500/empDetailAuthView.do?infoTypeCd=VALIDATION&infoTypeGroup=tb_workinfoworknet&wantedAuthNo=KJKP002609300010",
-        "kind": "실제 지난 채용공고",
+        "kind": "채용행사 무렵 고용24에 올라온 공고",
         "observation": "출고 전 차량 이동과 입출고 관리, 2종 보통 이상 필수, 기간의 정함이 없는 근로계약을 명시했다.",
         "use": "원문에서 업무·면허·계약을 꺼내 읽는 핵심 자료다."
       },
@@ -1106,7 +1106,7 @@ export const fieldContent = {
         {
           "mode": "inspect",
           "title": "포장, 차량 이동, 지게차. 무엇을 모집했을까요?",
-          "instruction": "자료를 펼쳐 보고, 예시 조건을 모두 확인할 수 있는 것만 담아 보세요. 모두 지난 자료예요.",
+          "instruction": "자료를 펼쳐 보고, 예시 조건을 모두 확인할 수 있는 것만 담아 보세요. 공고는 채용행사 무렵 고용24에 올라온 것이에요. 지금 모집하는지는 고용24나 센터에서 확인해요.",
           "why": "업체가 ‘오래 일할 분’을 원해도 실제 계약 기간은 공고를 봐야 알 수 있어요.",
           "sourceRefs": [
             1,
@@ -1135,7 +1135,7 @@ export const fieldContent = {
                 }
               ],
               "fit": true,
-              "feedback": "차량 이동, 필수 면허, 계약 형태가 모두 지난 고용24 공고에 적혀 있어요."
+              "feedback": "차량 이동, 필수 면허, 계약 형태가 모두 고용24 공고에 적혀 있어요."
             },
             {
               "label": "포장업체 박람회 인터뷰",
@@ -1180,8 +1180,8 @@ export const fieldContent = {
         {
           "mode": "assemble",
           "title": "센터에 연락할 때 볼 메모 만들기",
-          "instruction": "지난 차량 입출고 공고를 보며 문장을 알맞은 칸에 놓으세요. 확정할 수 없는 문장은 남겨 두세요.",
-          "why": "업무명을 정확히 말하고 현재 모집 여부를 따로 물으면 오래된 공고를 들고도 문의를 시작할 수 있어요.",
+          "instruction": "차량 입출고 공고 예시를 보며 문장을 알맞은 칸에 놓으세요. 확정할 수 없는 문장은 남겨 두세요.",
+          "why": "업무명을 정확히 말하고 현재 모집 여부를 따로 물으면 예전에 본 공고를 들고도 문의를 시작할 수 있어요.",
           "sourceRefs": [
             2,
             5,
@@ -1196,7 +1196,7 @@ export const fieldContent = {
               "hint": "회사에서 맡게 되는 일을 한 줄로 적어요."
             },
             {
-              "label": "지난 공고에서 확인",
+              "label": "공고에서 확인",
               "hint": "지원 전에 확인할 면허와 계약 내용을 적어요."
             },
             {
@@ -1315,7 +1315,7 @@ export const fieldContent = {
     ],
     "lab": {
       "title": "중장년 경력 전환 자료실",
-      "brief": "안산상공회의소에서 실제 운영한 일 경험, 재직자 교육, 기업탐방을 비교해요. 단계에 맞는 지원을 찾고 일 경험 준비표를 완성해 보세요.",
+      "brief": "안산상공회의소가 안내한 일 경험, 재직자 교육, 기업탐방을 비교해요. 단계에 맞는 지원을 찾고 일 경험 준비표를 완성해 보세요.",
       "artifact": "훈련 뒤 일 경험 준비표",
       "rounds": [
         {
@@ -2035,7 +2035,7 @@ export const fieldContent = {
     ],
     "lab": {
       "title": "나눔 작업대에서 내 역할 찾아보기",
-      "brief": "안산의 김치 나눔과 이동밥차 일을 작은 작업대로 옮겼어요. 봉사 공고를 읽고 물품을 배분한 뒤 내게 맞는 역할을 찾아요. 수량은 연습용이에요.",
+      "brief": "안산의 지난 김장 나눔과 이동밥차 기록을 작은 작업대로 옮겼어요. 지금 참여할 수 있는 활동은 센터(031-411-1365)에 물어보세요. 봉사 공고를 읽고 물품을 배분한 뒤 내게 맞는 역할을 찾아요. 수량은 연습용이에요.",
       "artifact": "나에게 맞는 봉사 역할과 물품 인계표",
       "rounds": [
         {
@@ -2076,7 +2076,7 @@ export const fieldContent = {
               "fields": [
                 {
                   "label": "맡을 일",
-                  "value": "재료를 손질하고 가열해 식사를 완성해요."
+                  "value": "조리를 도와 식사를 준비해요."
                 },
                 {
                   "label": "배식",
@@ -2084,7 +2084,7 @@ export const fieldContent = {
                 }
               ],
               "fit": false,
-              "feedback": "여기서는 직접 음식을 조리해요."
+              "feedback": "여기서는 음식 조리를 도와요."
             },
             {
               "label": "선부광장 배식대",
@@ -2102,7 +2102,7 @@ export const fieldContent = {
               "feedback": "준비된 식사를 나누는 역할이에요."
             },
             {
-              "label": "시화방조제 정화",
+              "label": "시화조력발전소 주변 정화",
               "fields": [
                 {
                   "label": "맡을 일",
@@ -2114,7 +2114,7 @@ export const fieldContent = {
                 }
               ],
               "fit": false,
-              "feedback": "센터의 실제 봉사 분야예요. 이번에 해 보고 싶은 식품 포장·배식과는 활동 내용이 달라요."
+              "feedback": "센터가 지난 1월에 모집한 활동이에요. 이번에 해 보고 싶은 식품 포장·배식과는 활동 내용이 달라요."
             }
           ]
         },
@@ -2296,7 +2296,7 @@ export const fieldContent = {
     ],
     "lab": {
       "title": "작은 가게 손익 작업대",
-      "brief": "연습 가게의 판매표와 영수증을 펼쳐 보세요. 어떤 메뉴가 비용을 얼마나 채우는지 직접 계산하고 상담에 가져갈 질문을 골라요. 금액은 연습용이에요.",
+      "brief": "소상공인시장진흥공단의 무료 온라인 강의(소상공인 지식배움터)에서 배우는 손익·원가 계산을 본떴어요. 연습 가게의 판매표와 영수증을 펼쳐 보세요. 어떤 메뉴가 비용을 얼마나 채우는지 직접 계산하고 상담에 가져갈 질문을 골라요. 금액은 연습용이에요.",
       "artifact": "판매표와 비용을 함께 읽는 가게 상담 메모",
       "rounds": [
         {
@@ -2393,9 +2393,9 @@ export const fieldContent = {
         },
         {
           "mode": "inspect",
-          "title": "상담에 가져갈 질문을 골라요",
-          "instruction": "연습 가게에서 준비한 자료와 바로 맞춰 볼 수 있는 질문을 골라요.",
-          "why": "한 장의 기록이 무엇을 설명해 주는지 알면 전문가와 이야기할 때 필요한 다음 자료도 찾기 쉬워요.",
+          "title": "전화로 물어볼 질문을 골라요",
+          "instruction": "연습 가게의 자료를 보고, 소상공인 콜센터에 전화로 물어볼 수 있는 질문을 골라요.",
+          "why": "전화로 물어볼 때는 내 자료를 들고 어떤 교육·컨설팅을 신청할 수 있는지 물으면 답을 듣기 쉬워요.",
           "sourceRefs": [
             4,
             5,
@@ -2404,7 +2404,7 @@ export const fieldContent = {
             9,
             10
           ],
-          "target": "준비한 자료로 이야기할 수 있는 상담 질문",
+          "target": "콜센터가 전화로 답할 수 있는 질문",
           "cases": [
             {
               "label": "상권 보고서",
@@ -2415,11 +2415,11 @@ export const fieldContent = {
                 },
                 {
                   "label": "질문",
-                  "value": "우리 가게와 비교할 때 어느 업종과 기간을 보는 게 적절할까요?"
+                  "value": "상권 자료를 읽는 법을 배울 교육이나 컨설팅은 어떻게 신청하나요?"
                 }
               ],
               "fit": true,
-              "feedback": "업종과 기간이 같은지 상담에서 함께 확인할 수 있어요."
+              "feedback": "자료를 어떻게 읽는지 배울 길을 물을 수 있어요."
             },
             {
               "label": "계산대의 판매 합계",
@@ -2430,11 +2430,11 @@ export const fieldContent = {
                 },
                 {
                   "label": "질문",
-                  "value": "이 판매 합계가 그대로 이번 달 이익인가요? 이 금액을 이익으로 확정하고 싶어요."
+                  "value": "이 판매 합계가 그대로 이번 달 이익이라고 전화로 확인해 주세요."
                 }
               ],
               "fit": false,
-              "feedback": "이익을 살피려면 비용 자료도 함께 필요해요."
+              "feedback": "이익을 살피려면 비용 자료도 함께 필요해요. 전화로 확정해 줄 수 있는 내용도 아니에요."
             },
             {
               "label": "메뉴별 원가표",
@@ -2445,11 +2445,11 @@ export const fieldContent = {
                 },
                 {
                   "label": "질문",
-                  "value": "판매 수량이 바뀔 때 매달 내는 비용을 채우는 금액은 얼마나 달라질까요?"
+                  "value": "손익이나 원가를 봐 주는 경영 컨설팅·교육은 어떻게 신청하나요?"
                 }
               ],
               "fit": true,
-              "feedback": "메뉴별로 남는 돈을 먼저 비교한 뒤 고정비 자료를 더해 볼 수 있어요."
+              "feedback": "원가표를 들고 신청할 수 있는 교육·컨설팅을 물을 수 있어요."
             }
           ]
         }
@@ -2541,7 +2541,7 @@ export const fieldContent = {
     ],
     "lab": {
       "title": "빈 찻잔으로 디카시 한 편 편집하기",
-      "brief": "피움학교 디카시 강좌에서는 일상의 사물을 보고, 장면과 글을 함께 고쳐요. ANTI가 준비한 빈 찻잔 장면 메모로 작품 한 편을 편집해 보세요.",
+      "brief": "평생학습관 피움과정의 디카시 강좌(2026년, 지금은 끝남)에서는 일상의 사물을 보고, 장면과 글을 함께 고쳤어요. ANTI가 준비한 빈 찻잔 장면 메모로 작품 한 편을 편집해 보세요.",
       "artifact": "제목과 두 줄을 붙인 디카시 편집본",
       "rounds": [
         {
@@ -2657,7 +2657,7 @@ export const fieldContent = {
           "mode": "inspect",
           "title": "낭독할 판본 골라내기",
           "instruction": "서로 다른 편집본을 읽어 보세요. 제목을 본 뒤 두 줄을 소리 내어 이어 읽을 만한 판본을 골라요.",
-          "why": "실제 강좌는 완성작을 낭독하고 전시해요. 편집본마다 사물의 단서 하나가 남았는지, 마지막 줄이 새 의미를 주는지 확인해 보세요.",
+          "why": "그 강좌의 마지막 주는 완성작 낭독과 전시였어요. 편집본마다 사물의 단서 하나가 남았는지, 마지막 줄이 새 의미를 주는지 확인해 보세요.",
           "sourceRefs": [
             1,
             2,
@@ -2726,7 +2726,7 @@ export const fieldContent = {
         "url": "https://lll.ansan.go.kr/web/content.do?proFn=9314000",
         "kind": "해당 기관 동아리 소개",
         "observation": "북세통은 문학, 역사, 과학 등 다양한 분야의 책을 읽고 이야기를 나눈다.",
-        "use": "한 장면으로 서로 다른 해석을 열 수 있는 발제 쪽지를 만들었다."
+        "use": "한 장면으로 서로 다른 해석을 열 수 있는 질문 쪽지를 만들었다."
       },
       {
         "title": "작은도서관 프로그램과 독후 활동",
@@ -2802,9 +2802,9 @@ export const fieldContent = {
       }
     ],
     "lab": {
-      "title": "북세통에서 꺼낼 발제 쪽지 만들기",
-      "brief": "안산 북세통은 함께 책을 읽고 생각을 나눠요. 종이 한 장을 접었다 펴 보세요. 그 동작을 쓴 ANTI의 짧은 글로 모임에서 꺼낼 질문을 만들어요.",
-      "artifact": "본문 한 대목과 열린 질문을 담은 발제 쪽지",
+      "title": "독서 모임에서 꺼낼 질문 쪽지 만들기",
+      "brief": "작은도서관에는 북세통(40~60대 주부)·한뉘·옹달샘(시니어) 독서토론 동아리가 있어요. 새 회원을 받는지는 도서관에 물어보세요. 쪽지 양식은 독서토론 자료를 참고해 팀이 만든 연습용이에요. 종이 한 장을 접었다 펴 보세요. 그 동작을 쓴 ANTI의 짧은 글로 모임에서 꺼낼 질문을 만들어요.",
+      "artifact": "본문 한 대목과 열린 질문을 담은 질문 쪽지",
       "rounds": [
         {
           "mode": "inspect",
@@ -2869,7 +2869,7 @@ export const fieldContent = {
         },
         {
           "mode": "assemble",
-          "title": "근거와 생각을 나눠 발제하기",
+          "title": "근거와 생각을 나눠 질문 쪽지 쓰기",
           "instruction": "쪽지에 원문 한 대목, 가능한 해석, 다른 해석을 초대하는 질문을 놓아요.",
           "why": "해석을 말한 뒤 다른 사람에게도 원문을 읽어 달라고 청하면, 먼저 발표할 때의 부담이 줄어요.",
           "sourceRefs": [
@@ -2984,12 +2984,12 @@ export const fieldContent = {
   "L16": {
     "sources": [
       {
-        "title": "평생비전센터 동아리 현황과 주요 활동",
-        "publisher": "안산시 평생비전센터",
-        "url": "https://wm.ansan.go.kr/wmvision/selectWmClub.do",
-        "kind": "해당 기관 실제 동아리",
-        "observation": "한소리가 민요와 장고 작품을 연습하고 봉사활동을 한다. 다른 음악 동아리도 각각의 활동을 운영한다.",
-        "use": "한소리를 출발점으로 장구 반주의 기초에 초점을 맞췄다."
+        "title": "안산시 학습동아리 등록현황",
+        "publisher": "안산시 평생학습과",
+        "url": "https://wm.ansan.go.kr/operation/eduClub/selectEduClubPageList.do",
+        "kind": "해당 목록의 실제 동아리",
+        "observation": "사물놀이·장구·민요 동아리가 여럿 등록돼 있다. 예: 사물놀이 장비통(2026년 9월 등록, 주 1회 사물놀이 악기를 배우고 연 1회 이상 공연).",
+        "use": "그런 동아리에서 처음 익히는 장구 장단을 무릎으로 옮겼다."
       },
       {
         "title": "스트레스 타파 트롯 장구 강의계획",
@@ -3065,8 +3065,8 @@ export const fieldContent = {
       }
     ],
     "lab": {
-      "title": "무릎으로 쳐 보는 민요 반주 한 마디",
-      "brief": "평생비전센터 ‘한소리’는 민요와 장고 작품을 연습해요. 장구 없이 무릎으로 칠 수 있는 연습 악보를 만들어 봐요. ANTI가 만든 한 마디로, 동아리의 공연 곡과는 구별해요.",
+      "title": "무릎으로 쳐 보는 장구 장단 한 마디",
+      "brief": "안산 학습동아리 등록현황에는 사물놀이·장구·민요 동아리가 여럿 있어요. 그런 모임에서 처음 익히는 장단을 장구 없이 무릎으로 쳐 봐요. ANTI가 만든 연습 한 마디예요.",
       "artifact": "집에서도 따라 칠 수 있는 무릎장단 악보",
       "rounds": [
         {
@@ -3169,50 +3169,48 @@ export const fieldContent = {
         },
         {
           "mode": "assemble",
-          "title": "반주할 자리를 합주표에 표시하기",
-          "instruction": "민요를 함께 부를 때의 역할을 펼쳤어요. 앞소리, 후렴, 장구 반주에 각자 할 일을 놓고 반주 자리를 찾아 보세요.",
-          "why": "함께할 때 모든 사람이 처음부터 모든 가사를 외울 필요는 없어요. 경기민요에 나타나는 선창과 후렴, 민요와 어우러지는 장구 역할을 구분해 봐요.",
+          "title": "사물놀이에서 악기마다 맡는 일 찾기",
+          "instruction": "사물놀이는 꽹과리, 장구, 북, 징이 함께 쳐요. 악기마다 하는 일을 알맞은 칸에 놓아 보세요.",
+          "why": "악기마다 맡는 일이 달라요. 방금 무릎으로 친 덩·쿵·덕이 어느 악기의 일인지 찾아봐요.",
           "sourceRefs": [
             1,
-            3,
-            4,
             5,
-            10
+            8
           ],
           "slots": [
             {
-              "label": "앞소리",
-              "hint": "본절의 가락을 이끌어요."
+              "label": "꽹과리",
+              "hint": "가락을 이끌고 신호를 줘요."
             },
             {
-              "label": "후렴",
-              "hint": "반복되는 대목을 함께 불러요."
+              "label": "장구",
+              "hint": "양편을 오가며 장단을 채워요."
             },
             {
-              "label": "장구 반주",
-              "hint": "노래가 이어지도록 박을 받쳐요."
+              "label": "북·징",
+              "hint": "큰박을 크게 받쳐요."
             }
           ],
           "pieces": [
             {
-              "label": "한 사람이 본절을 먼저 부르기",
+              "label": "앞에서 가락을 이끌고 바뀔 때 신호 주기",
               "slot": 0,
-              "feedback": "앞소리 담당은 본절을 독창으로 이끌어요."
+              "feedback": "꽹과리가 사물놀이를 이끌어요."
             },
             {
-              "label": "되풀이되는 가사를 여럿이 함께 부르기",
+              "label": "방금 친 덩·쿵·덕으로 장단 채우기",
               "slot": 1,
-              "feedback": "같은 가락을 나눌 수 있는 후렴 자리예요."
+              "feedback": "무릎으로 친 연습이 바로 장구의 일이에요."
             },
             {
-              "label": "노랫말을 따라가며 큰박 짚기",
+              "label": "큰박마다 크게 울려 박 받치기",
               "slot": 2,
-              "feedback": "방금 손으로 친 연습을 쓰는 자리예요. 가사를 부르지 않아도 박을 함께해요."
+              "feedback": "북과 징은 큰박을 짚어 모두가 박을 맞추게 해요."
             },
             {
-              "label": "가장 빠른 속도로 처음부터 끝까지 치기",
+              "label": "가장 빠른 속도로 혼자 앞서 치기",
               "slot": -1,
-              "feedback": "소리의 빠르기를 독주처럼 마음대로 정하면 노래와 맞추기 어려워요."
+              "feedback": "여럿이 칠 때 혼자 빠르기를 정하면 소리를 맞추기 어려워요."
             }
           ]
         }
@@ -3224,7 +3222,7 @@ export const fieldContent = {
       {
         "title": "성인 정신건강상담 이용 안내",
         "publisher": "안산시정신건강복지센터",
-        "url": "https://wmind.org/sub.php?menukey=18",
+        "url": "https://ansanmind.or.kr/sub.php?menukey=18",
         "kind": "지역 사업 안내",
         "observation": "성인 상담 절차에 상담 예약 신청이 있으며 상담에서 필요한 서비스를 살펴본다.",
         "use": "전문가와 이야기할 약속을 잡는 선택지를 구성했다."
@@ -3232,9 +3230,9 @@ export const fieldContent = {
       {
         "title": "참여공간의 상담예약 신청 화면",
         "publisher": "안산시정신건강복지센터",
-        "url": "https://wmind.org/sub.php?menukey=33",
+        "url": "https://ansanmind.or.kr/sub.php?menukey=33",
         "kind": "공식 접수 화면",
-        "observation": "성인·아동을 구분하고 동의 사항과 신청 항목을 제시한다.",
+        "observation": "이름·출생연도·연락처 같은 신청 항목과 동의 사항을 제시한다.",
         "use": "체험에서 입력란을 복제하지 않고 실제 신청은 별도라는 점을 표시했다."
       },
       {
@@ -3312,13 +3310,11 @@ export const fieldContent = {
           "title": "글로 답장을 받으려면 어디로 갈까요?",
           "instruction": "안내 카드마다 무엇을 보내고 무엇을 받는지 열어 보세요. 집에서 글을 남기고 전문가의 문자 답장을 받을 수 있는 경로를 골라요.",
           "target": "집에서 고민을 남길 수 있고 개별 문자 답장이 오는 경로",
-          "why": "예약 접수와 정보 열람, 고민에 대한 문자 답변은 서로 다른 일입니다. 안산의 마음벤치 QR도 같은 로켓처방으로 연결돼요.",
+          "why": "상담 약속을 잡는 일과 고민에 대한 문자 답변은 서로 다른 일이에요. 직접 만나 상담하려면 상담예약(전화·홈페이지)으로 가면 돼요. 안산의 마음벤치 QR도 같은 로켓처방으로 연결돼요.",
           "sourceRefs": [
             1,
             2,
-            3,
             4,
-            5,
             6,
             10
           ],
@@ -3336,7 +3332,7 @@ export const fieldContent = {
                 }
               ],
               "fit": false,
-              "feedback": "상담 약속을 원할 때 맞아요. 예약 접수만으로 고민에 대한 문자 답변을 신청한 것은 아니에요."
+              "feedback": "직접 만나 상담하려면 이 길이 맞아요. 다만 예약만으로 고민에 대한 문자 답변을 받지는 않아요."
             },
             {
               "label": "마음건강 로켓처방",
@@ -3352,40 +3348,14 @@ export const fieldContent = {
                 {
                   "label": "받는 것",
                   "value": "전문가가 보내는 개별 문자 답변"
+                },
+                {
+                  "label": "이용 조건",
+                  "value": "안산시민, 주말·공휴일을 빼고 24시간 안에 답변"
                 }
               ],
               "fit": true,
               "feedback": "원하는 방식이에요. 누리집에서 바로 시작할 수 있어 마음벤치를 찾아갈 필요가 없어요."
-            },
-            {
-              "label": "마음건강 무인기기",
-              "fields": [
-                {
-                  "label": "시작하는 곳",
-                  "value": "도서관 등 공공장소"
-                },
-                {
-                  "label": "할 수 있는 일",
-                  "value": "마음건강 정보 읽기, 상담 예약 경로 확인"
-                }
-              ],
-              "fit": false,
-              "feedback": "기기를 사용하려면 설치 장소에 가야 해요. 지금 원하는 문자 답변과 이용 방식이 달라요."
-            },
-            {
-              "label": "찾아가는 마음쏙카",
-              "fields": [
-                {
-                  "label": "시작하는 곳",
-                  "value": "이동 차량이 나가는 지역 행사나 기관"
-                },
-                {
-                  "label": "참여 방식",
-                  "value": "현장에서 마음건강 안내를 받음"
-                }
-              ],
-              "fit": false,
-              "feedback": "생활 가까이에서 참여하는 현장 프로그램이에요. 집에서 개별 문자 답장을 받는 방식은 로켓처방이에요."
             }
           ]
         },
@@ -3526,8 +3496,8 @@ export const fieldContent = {
     ],
     "lab": {
       "title": "같은 일을 다르게 기억할 때",
-      "brief": "가족 일정이 바뀐 예시를 보고, 들은 사실과 짐작을 나눠요. 상담에서 함께 다룰 부탁도 한 문장으로 정리해요.",
-      "artifact": "가족 대화에 꺼낼 사실·느낌·부탁 카드",
+      "brief": "가족 상담을 신청하기 전에, 무슨 일이 있었고 무엇을 바라는지 한 장에 정리해 보는 연습이에요. 공개 교육 자료를 참고해 팀이 만들었고, 실제 상담은 상담사와 함께 진행돼요.",
+      "artifact": "가족 상담에 가져갈 이야기 한 장",
       "rounds": [
         {
           "mode": "inspect",
@@ -3595,7 +3565,7 @@ export const fieldContent = {
           "mode": "assemble",
           "title": "막연한 불만을 바꿔 말할 카드 만들기",
           "instruction": "같은 예시에서 일어난 일, 내가 받은 영향, 다음에 함께 해 볼 행동을 한 칸씩 채워요. 상대의 성격을 평가하는 조각은 빼세요.",
-          "why": "상대가 참여할 수 있는 작은 부탁까지 적으면 가족이나 상담 담당자와 무엇을 의논하고 싶은지 또렷해져요. 혼자 이야기하고 싶다면 개인상담도 문의할 수 있어요.",
+          "why": "상대가 참여할 수 있는 작은 부탁까지 적으면 가족이나 상담 담당자와 무엇을 의논하고 싶은지 또렷해져요. 혼자 신청해도 되는지는 센터에 전화로 물어보세요.",
           "sourceRefs": [
             1,
             4,
@@ -4030,7 +4000,7 @@ export const fieldContent = {
     ],
     "lab": {
       "title": "오늘 먹을 국 한 그릇, 포장지부터 조리까지",
-      "brief": "서부센터의 건강요리 활동을 바탕으로 만든 예시 조리대예요. 포장지의 작은 글씨를 읽고 국과 반찬을 담아 보세요.",
+      "brief": "서부센터는 원스톱건강상담실과 따로, 기간을 정해 모집하는 건강요리 수업을 올해도 열었어요. 그 수업을 본뜬 예시 조리대예요. 포장지 읽기는 일반 영양표시 연습이에요. 지금 모집하는지는 센터에 확인해요.",
       "artifact": "국 한 그릇의 포장지 비교표와 조리 메모",
       "rounds": [
         {
@@ -4252,9 +4222,9 @@ export const fieldContent = {
         {
           "mode": "inspect",
           "title": "도시락이 도착한 뒤를 살펴보기",
-          "instruction": "세 메모를 열어 보세요. 이미 만든 식사를 배달받는 것만으로, 메모에 적힌 어려움을 해결할 수 있는 경우를 모두 남겨요.",
+          "instruction": "세 메모를 열어 보세요. 이미 만든 식사를 받는 것만으로, 메모에 적힌 어려움을 해결할 수 있는 경우를 모두 남겨요.",
           "target": "조리된 식사를 받으면 다른 사람의 도움 없이 식사를 마칠 수 있는 예시",
-          "why": "식사 배달, 집 안에서 하는 일, 이동 동행은 도움의 내용이 달라요. 원하는 일을 나눠 전하면 담당자가 무엇을 더 확인할지 알 수 있어요.",
+          "why": "도시락 받기, 집 안에서 하는 일, 이동 동행은 도움의 내용이 달라요. 원하는 일을 나눠 전하면 담당자가 무엇을 더 확인할지 알 수 있어요.",
           "sourceRefs": [
             2,
             3,
@@ -4344,14 +4314,14 @@ export const fieldContent = {
           ],
           "pieces": [
             {
-              "label": "직접 조리하기 어려워 완성된 식사 배달이 필요함",
+              "label": "직접 조리하기 어려워 완성된 식사를 받아야 함",
               "slot": 0,
               "feedback": "장보기와 조리가 어렵다는 설명을 덧붙일 수 있어요."
             },
             {
               "label": "식후 설거지를 혼자 하기 어려워 도움이 필요함",
               "slot": 1,
-              "feedback": "도시락 배달과는 다른 요청이에요. 집 안의 어떤 일이 어려운지 알 수 있어요."
+              "feedback": "도시락 받기와는 다른 요청이에요. 집 안의 어떤 일이 어려운지 알 수 있어요."
             },
             {
               "label": "받을 수 있는 식사 형태와 두 가지 도움을 함께 의논할 곳 확인",
@@ -4361,7 +4331,7 @@ export const fieldContent = {
             {
               "label": "도시락을 요청하면 집안일 지원도 이미 확정",
               "slot": -1,
-              "feedback": "식사 배달과 집안일 도움은 별도 항목이에요. 함께 필요한 일을 밝히고 안내를 받아요."
+              "feedback": "도시락과 집안일 도움은 별도 항목이에요. 함께 필요한 일을 밝히고 안내를 받아요."
             }
           ]
         }
@@ -4731,7 +4701,7 @@ export const fieldContent = {
     ],
     "lab": {
       "title": "밥을 달고 식품 포장을 비교해요",
-      "brief": "안산 식사체험교실에서는 밥을 직접 달아 봐요. 팀이 만든 계량 주문표와 식품 모형으로 양과 표시 단위를 맞춰 보세요. 수치는 연습용이에요.",
+      "brief": "2024년 안산 식사체험교실에서는 밥량을 직접 재 봤어요. 올해 일정은 센터에 확인해요. 포장지 비교는 식약처 자료로 만든 일반 연습이에요. 팀이 만든 계량 주문표와 식품 모형으로 양과 표시 단위를 맞춰 보세요. 수치는 모두 연습용이에요.",
       "artifact": "밥 계량 기록과 한 봉지 영양표 비교표",
       "rounds": [
         {
@@ -4802,7 +4772,7 @@ export const fieldContent = {
         {
           "mode": "inspect",
           "title": "장보기 메모에 맞는 국을 고르세요",
-          "instruction": "이 연습의 장보기 메모에는 한 봉지 나트륨 300mg 이하라고 쓰여 있어요. 한 봉지를 기준으로 계산해요.",
+          "instruction": "이 연습의 장보기 메모에는 한 봉지 나트륨 300mg 이하라고 쓰여 있어요(권고 기준이 아니라 연습용 조건이에요). 한 봉지를 기준으로 계산해요.",
           "target": "한 봉지 전체가 300mg 이하인 예시 국",
           "why": "메모 속 숫자는 예시 제품을 비교하기 위한 값이에요. 표시 한 단위가 봉지에 몇 개 들어 있는지 보고 mg끼리 비교해요.",
           "sourceRefs": [
@@ -4909,7 +4879,7 @@ export const fieldContent = {
       {
         "title": "흡연자를 위한 금연교육 자료의 흡연 일기",
         "publisher": "금연길라잡이",
-        "url": "https://www.nosmokeguide.go.kr/download.do?uuid=bab9c6ff-925e-4aad-9fda-21a79ba3d46d.pdf",
+        "url": "https://www.nosmokeguide.go.kr/",
         "kind": "공식 활동지",
         "observation": "장소, 상황, 함께한 사람, 욕구를 기록하고 가장 갈망이 컸던 때를 찾아 대응을 준비한다.",
         "use": "이미 채운 가상 일기에서 조건이 겹치는 기록을 직접 찾는다."
@@ -4948,9 +4918,9 @@ export const fieldContent = {
       }
     ],
     "lab": {
-      "title": "금연 상담에서 쓰는 생활 일기 펼치기",
-      "brief": "공식 흡연 일기 양식을 바탕으로 팀이 만든 예시예요. 기록에서 반복되는 계기를 찾고 다음에 해 볼 행동 하나를 붙여 보세요.",
-      "artifact": "흡연 계기·대응 카드와 집에서 상담하는 방법",
+      "title": "담배가 생각나는 순간 찾아보기",
+      "brief": "금연길라잡이의 흡연 일기 양식을 바탕으로 팀이 만든 예시예요(보건소가 이 일기를 쓴다는 뜻은 아니에요). 기록에서 반복되는 계기를 찾고 다음에 해 볼 행동 하나를 붙여 보세요.",
+      "artifact": "흡연 계기·대응 카드와 금연클리닉에 닿는 방법",
       "rounds": [
         {
           "mode": "inspect",
@@ -5073,22 +5043,20 @@ export const fieldContent = {
         },
         {
           "mode": "inspect",
-          "title": "집에서 상담사와 통화할 방법을 고르세요",
-          "instruction": "조건은 집에서 시작하고 전문상담사와 통화하는 것이에요. 두 조건을 만족하는 방법을 모두 찾아요.",
-          "target": "외출 없이 시작 + 전문상담사와 통화",
-          "why": "보건소 현장 프로그램은 상담과 지원을 함께 제공해요. 국가 금연상담전화는 직접 걸거나 상담 전화를 받도록 예약할 수 있어요.",
+          "title": "집에서 금연클리닉에 닿는 방법을 고르세요",
+          "instruction": "조건은 집에서 시작하고 상록수보건소 금연클리닉에 바로 닿는 것이에요. 두 조건을 만족하는 방법을 모두 찾아요.",
+          "target": "외출 없이 시작 + 상록수보건소 금연클리닉에 연락",
+          "why": "상록수보건소 공식 안내에는 전화 상담과 카카오톡 문의가 있어요. 보건소 말고도 국가 금연상담전화로 집에서 상담받는 길이 있어요.",
           "sourceRefs": [
             1,
             2,
             3,
             4,
-            8,
-            9,
-            10
+            8
           ],
           "cases": [
             {
-              "label": "국가 금연상담전화로 걸기",
+              "label": "금연클리닉에 전화하기",
               "fields": [
                 {
                   "label": "시작 장소",
@@ -5096,26 +5064,26 @@ export const fieldContent = {
                 },
                 {
                   "label": "이용 방식",
-                  "value": "전문상담사와 전화"
+                  "value": "전화로 상담 가능 여부와 이용 방법 묻기"
                 }
               ],
               "fit": true,
-              "feedback": "집에서 직접 전화해 상담을 시작할 수 있어요."
+              "feedback": "집에서 바로 금연클리닉에 물어볼 수 있어요."
             },
             {
-              "label": "상담 전화받기 예약",
+              "label": "카카오톡으로 묻기",
               "fields": [
                 {
                   "label": "시작 장소",
-                  "value": "집에서 온라인 신청"
+                  "value": "집"
                 },
                 {
                   "label": "이용 방식",
-                  "value": "예약한 상담 전화를 받음"
+                  "value": "보건소 카카오톡 채널로 이용 방법 묻기"
                 }
               ],
               "fit": true,
-              "feedback": "온라인으로 신청하고 전문상담사와 통화해요."
+              "feedback": "글로 먼저 물어보고 싶을 때 쓸 수 있어요."
             },
             {
               "label": "찾아가는 사업장 상담",
@@ -5130,7 +5098,7 @@ export const fieldContent = {
                 }
               ],
               "fit": false,
-              "feedback": "전문상담을 받을 수 있지만 집에서 시작하는 방법에는 맞지 않아요."
+              "feedback": "상담을 받을 수 있지만 집에서 시작하는 방법에는 맞지 않아요."
             },
             {
               "label": "금연 안내문 읽기",
@@ -5145,7 +5113,7 @@ export const fieldContent = {
                 }
               ],
               "fit": false,
-              "feedback": "집에서 정보를 읽을 수 있지만 상담사와 통화하지 않아요."
+              "feedback": "집에서 정보를 읽을 수 있지만 금연클리닉에 연락하지는 않아요."
             }
           ]
         }
