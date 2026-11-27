@@ -5,7 +5,7 @@
 // 거리는 동 행정복지센터 한 점에서 잰 직선거리다. 실제 가는 길과 다르므로 화면에 숫자로 보여 주지 않고,
 // '가까워요' 딱지를 붙일 곳을 고르는 데만 쓴다.
 
-import type { Program, Venue } from "@/data/types";
+import type { Program, Ring, Venue } from "@/data/types";
 
 export type Point = { lat: number; lon: number };
 
@@ -72,4 +72,116 @@ export function nearStop(stops: Stop[], limitKm: number): Stop | null {
     if (best === null || stop.km < (best.km as number)) best = stop;
   }
   return best && (best.km as number) <= limitKm ? best : null;
+}
+
+// ── 지도 그림 ──
+// 안산의 동을 색칠한 그림 지도 위에 건물을 세우는 계산이다. 지도 서비스가 아니라 도형을 그리는 그림이라
+// 길 안내만큼 정확하지 않다. '안산의 어느 쪽에 있는지'를 보여 주는 것이 목적이다.
+
+// 그림 위의 네모. x·y는 왼쪽 위다
+export type Box = { x: number; y: number; w: number; h: number };
+
+// 좌표를 그림 자리로 바꾸는 틀
+export type Frame = {
+  minLon: number;
+  maxLat: number;
+  scale: number; // 위도 1도가 그림에서 차지하는 길이
+  squeeze: number; // 경도를 줄이는 비율(위도에 따라 다르다)
+  left: number; // 범위의 왼쪽 위가 놓이는 자리
+  top: number;
+};
+
+// 이 경도보다 서쪽은 대부동(섬)이다. 본토 지도에 함께 그리면 본토가 너무 작아져서 작은 상자에 따로 그린다
+export const DAEBU_LON = 126.69;
+export const isDaebu = (lon: number) => lon < DAEBU_LON;
+
+// 점들([경도, 위도])이 box 안에 꼭 맞게, 가운데에 오도록 틀을 만든다.
+// 경도 1도는 위도 1도보다 짧으므로(안산에서 약 0.8배) 그만큼 가로를 줄여 모양이 찌그러지지 않게 한다.
+export function fitFrame(points: [number, number][], box: Box): Frame {
+  let minLon = Infinity;
+  let maxLon = -Infinity;
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  for (const [lon, lat] of points) {
+    minLon = Math.min(minLon, lon);
+    maxLon = Math.max(maxLon, lon);
+    minLat = Math.min(minLat, lat);
+    maxLat = Math.max(maxLat, lat);
+  }
+  const squeeze = Math.cos(rad((minLat + maxLat) / 2));
+  const spanX = Math.max((maxLon - minLon) * squeeze, 1e-9);
+  const spanY = Math.max(maxLat - minLat, 1e-9);
+  const scale = Math.min(box.w / spanX, box.h / spanY);
+  return {
+    minLon,
+    maxLat,
+    scale,
+    squeeze,
+    left: box.x + (box.w - spanX * scale) / 2,
+    top: box.y + (box.h - spanY * scale) / 2,
+  };
+}
+
+// 위도·경도를 그림 자리로 바꾼다(왼쪽 위가 0,0)
+export function project(frame: Frame, lon: number, lat: number): { x: number; y: number } {
+  return {
+    x: frame.left + (lon - frame.minLon) * frame.squeeze * frame.scale,
+    y: frame.top + (frame.maxLat - lat) * frame.scale,
+  };
+}
+
+// 경계 선들을 SVG 길(path)로 만든다
+export function ringsPath(frame: Frame, rings: Ring[]): string {
+  return rings
+    .map(
+      (ring) =>
+        ring
+          .map(([lon, lat], index) => {
+            const { x, y } = project(frame, lon, lat);
+            return `${index === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
+          })
+          .join("") + "Z"
+    )
+    .join("");
+}
+
+export const overlaps = (a: Box, b: Box, gap = 0) =>
+  a.x < b.x + b.w + gap && b.x < a.x + a.w + gap && a.y < b.y + b.h + gap && b.y < a.y + a.h + gap;
+
+// 가까이 붙은 네모(건물 + 이름표)가 서로 겹치지 않게 자리를 잡는다.
+// - boxes는 바라는 자리(실제 위치에 맞춘 자리)이고, 앞에 있는 것부터 차례로 놓는다(추천 순서가 앞선 곳이 제자리에 가깝다).
+// - 바라는 자리가 막혀 있으면 거기서 가장 가까운 빈자리를 찾는다(step 간격으로 둘레를 훑는다).
+// - blocked는 비켜 가야 하는 자리(대부동 상자)다. 그림(canvas) 밖으로도 나가지 않는다.
+// 빈자리가 끝내 없으면 그림 안으로만 들여 둔다. 실제 위치에서 어긋난 만큼은 화면이 선으로 이어 보여 준다.
+export function spreadBoxes(boxes: Box[], canvas: Box, blocked: Box[] = [], gap = 1, step = 2): Box[] {
+  const reach = Math.ceil(Math.max(canvas.w, canvas.h) / step);
+  const offsets: [number, number][] = [];
+  for (let dx = -reach; dx <= reach; dx += 1) {
+    for (let dy = -reach; dy <= reach; dy += 1) offsets.push([dx * step, dy * step]);
+  }
+  // 가까운 자리부터. 거리가 같으면 늘 같은 순서가 되게 가로·세로 값으로 한 번 더 가른다
+  offsets.sort((a, b) => Math.hypot(a[0], a[1]) - Math.hypot(b[0], b[1]) || a[1] - b[1] || a[0] - b[0]);
+
+  const within = (box: Box) =>
+    box.x >= canvas.x && box.y >= canvas.y && box.x + box.w <= canvas.x + canvas.w && box.y + box.h <= canvas.y + canvas.h;
+  const placed: Box[] = [];
+  for (const wanted of boxes) {
+    // 그림 밖에서 시작하면 먼저 안으로 들인다
+    const start = {
+      ...wanted,
+      x: Math.min(Math.max(wanted.x, canvas.x), canvas.x + canvas.w - wanted.w),
+      y: Math.min(Math.max(wanted.y, canvas.y), canvas.y + canvas.h - wanted.h),
+    };
+    let found = start;
+    for (const [dx, dy] of offsets) {
+      const candidate = { ...start, x: start.x + dx, y: start.y + dy };
+      if (!within(candidate)) continue;
+      if (blocked.some((wall) => overlaps(candidate, wall, gap))) continue;
+      if (placed.some((other) => overlaps(candidate, other, gap))) continue;
+      found = candidate;
+      break;
+    }
+    placed.push(found);
+  }
+  return placed;
 }
