@@ -47,6 +47,10 @@ npm run test:e2e
   - 개발 서버가 켜져 있으면 그것을 쓰고, 없으면 켠다.
   - 실제 AI는 부르지 않는다(`e2e/fixtures.ts`가 가짜 답으로 막는다).
   - 처음 한 번은 `npx playwright install chromium`으로 브라우저를 받는다.
+- `npm run eval:ai`: 정답표(`app/tests/matching_cases.yaml`)로 **실제 AI**의 추천을 잰다(4분쯤, AI를 16번쯤 부른다).
+  - 평소 검사에는 넣지 않는다. 정보표·AI 지시문·모델을 바꿨을 때만 돌린다.
+  - `npm run eval:ai -- --check`는 AI를 부르지 않고 정답표가 지금 정보표와 맞는지만 본다.
+  - 키는 `.env.local`의 `GEMINI_API_KEY`를 읽는다.
 
 ## 배포
 
