@@ -146,7 +146,8 @@ export function PlaceSection({
           {noPlace(result) ? <Notice>{text.noProgram}</Notice> : null}
           {result.widened ? <Notice kind="info">{text.widenedNote}</Notice> : null}
 
-          {starred ? (
+          {/* 별의 뜻. 지도가 있으면 지도 안 왼쪽 위에 적는다 */}
+          {starred && !hasMap ? (
             <p className="flex items-start gap-[0.3rem] text-[0.8rem] leading-[1.5] font-semibold text-foreground">
               <StarIcon aria-hidden="true" className="mt-[0.2rem] size-[0.9rem] shrink-0 fill-cta text-cta-border" />
               {text.aiStarNote}
@@ -162,9 +163,14 @@ export function PlaceSection({
             places={mapPlaces}
             dots={others.flatMap((stop) => (stop.venue ? [stop.venue] : []))}
             homeName={dong?.name ?? null}
+            more={hasMap && others.length > 0 ? text.mapMore : undefined}
+            starNote={mapPlaces.some((item) => item.star) ? text.aiStarNote : undefined}
           />
           {hasMap ? <p className="text-[0.7rem] leading-[1.5] text-muted-foreground">{text.mapNote}</p> : null}
 
+          {!hasMap && others.length > 0 ? (
+            <p className="text-[0.7rem] leading-[1.5] text-muted-foreground">{text.mapMoreNoMap}</p>
+          ) : null}
           <LinkButton href={placesHref(browseType)} variant="outline" className="font-bold text-teal hover:text-teal">
             {fill(text.seeList, { count: places.length })}
           </LinkButton>

@@ -164,6 +164,8 @@ export default function DevUiPage() {
         <Group title="기관 지도 (핀 + 이름표, 누르면 아래 카드 / 한데 몰린 경우 / 지도에 없는 곳)">
           <PlaceMap
             homeName="고잔동"
+            more="가장 추천하는 3곳을 표시했어요. 더 많은 기관은 아래 '목록으로 보기'를 눌러 주세요."
+            starNote="별 표시는 주관식에 적어 주신 내용에 맞춰 고른 곳이에요."
             dots={[{ lat: 37.3013, lon: 126.8682 }]}
             places={[
               { key: "a", href: "/dev/ui", number: 1, word: "문화", name: "별이 붙은 기관", work: "AI가 고른 곳의 하는 일", note: "문화", label: "견본 1", star: true, near: false, point: { lat: 37.3003, lon: 126.8451 } },

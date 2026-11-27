@@ -8,7 +8,7 @@ import { kindLook, type KindTone } from "@/components/common/kind-icon";
 import { buttonVariants } from "@/components/ui/button";
 import { fill, text } from "@/content/text";
 import { isDaebu, overlaps, ringsPath, type Box, type Point } from "@/core/geo";
-import { MAP, labelWidth, layoutPins, place, sideLabels } from "@/core/map-layout";
+import { MAP, MAP_STAR, labelWidth, layoutPins, moreNoteBox, place, sideLabels, starNoteBox } from "@/core/map-layout";
 import { mapData } from "@/data/map";
 import type { Ring } from "@/data/types";
 import { cn } from "@/lib/utils";
@@ -46,7 +46,6 @@ const PAINT: Record<KindTone, { wall: string; roof: string; ink: string }> = {
   remote: { wall: "#EFE9E1", roof: "#A08B77", ink: "#6B5646" },
 };
 
-const { canvas, inset } = MAP;
 const pct = (value: number, whole: number) => `${(value / whole) * 100}%`;
 const split = (rings: Ring[]) => ({
   main: rings.filter((ring) => !isDaebu(ring[0][0])),
@@ -70,6 +69,9 @@ function Pin({ item, big }: { item: MapPlace; big: boolean }) {
           {item.number}
         </text>
       </svg>
+      {item.star ? (
+        <StarIcon aria-hidden="true" className="absolute -top-[16%] -right-[24%] size-[55%] fill-cta text-cta-border" />
+      ) : null}
       {item.near ? (
         <span
           aria-hidden="true"
@@ -86,28 +88,39 @@ export function PlaceMap({
   places,
   dots = [],
   homeName,
+  more,
+  starNote,
 }: {
   places: MapPlace[]; // 추천 순서
   dots?: Point[]; // 핀 없이 점으로만 찍을 다른 곳
   homeName: string | null; // 우리 동네(고른 동의 이름)
+  more?: string; // 지도 오른쪽 아래의 안내 글(추천 3곳만 표시했다는 말). 후보가 더 있을 때만 준다
+  starNote?: string; // 지도 왼쪽 위의 안내 글(별의 뜻). 별이 붙은 곳이 있을 때만 준다
 }) {
   const [chosen, setChosen] = useState(places[0]?.key ?? "");
   const current = places.find((item) => item.key === chosen) ?? places[0];
   if (!current) return null;
 
   const onMap = MAP_READY ? places.filter((item) => item.point) : [];
+  // 별의 뜻을 적을 때는 위쪽에 띠만큼 여백이 더 있는 모양을 쓴다
+  const shape = starNote ? MAP_STAR : MAP;
+  const { canvas, inset } = shape;
+  const notes: Box[] = [...(starNote ? [starNoteBox(shape)] : []), ...(more ? [moreNoteBox(shape)] : [])];
   const layout = layoutPins(
     mapData.dongs,
-    onMap.map((item) => item.point as Point)
+    onMap.map((item) => item.point as Point),
+    shape
   );
   const labels = sideLabels(
     layout.pins,
-    onMap.map((item) => labelWidth(item.name))
+    onMap.map((item) => labelWidth(item.name)),
+    shape,
+    notes
   );
   const home = mapData.dongs.find((dong) => dong.name === homeName) ?? null;
 
   // 동 이름을 적을 자리. 핀·이름표, 먼저 적은 동 이름과 겹치면 적지 않는다
-  const taken: Box[] = [...layout.pins.map((pin) => pin.box), ...labels];
+  const taken: Box[] = [...layout.pins.map((pin) => pin.box), ...labels, ...notes];
   const names: { text: string; x: number; y: number }[] = [];
   for (const dong of mapData.dongs) {
     const daebu = isDaebu(dong.label[0]);
@@ -208,6 +221,25 @@ export function PlaceMap({
             )}
           </svg>
 
+          {/* 지도 안의 안내 글. 핀 누르기를 막지 않는다 */}
+          {starNote ? (
+            <p
+              style={{ left: pct(starNoteBox(shape).x, canvas.w), top: pct(starNoteBox(shape).y, canvas.h), width: pct(starNoteBox(shape).w, canvas.w) }}
+              className="pointer-events-none absolute flex items-start gap-[0.2rem] text-[0.6rem] leading-[1.45] font-semibold text-foreground"
+            >
+              <StarIcon aria-hidden="true" className="mt-[0.1rem] size-[0.7rem] shrink-0 fill-cta text-cta-border" />
+              {starNote}
+            </p>
+          ) : null}
+          {more ? (
+            <p
+              style={{ left: pct(moreNoteBox(shape).x, canvas.w), bottom: "2.5%", width: pct(moreNoteBox(shape).w, canvas.w) }}
+              className="pointer-events-none absolute text-right text-[0.6rem] leading-[1.45] text-muted-foreground"
+            >
+              {more}
+            </p>
+          ) : null}
+
           {/* 핀과 이름표. 누르면 아래 카드가 바뀐다. 읽어 주는 것은 아래의 번호 단추가 맡는다 */}
           {onMap.map((item, index) => {
             const pin = layout.pins[index].box;
@@ -268,11 +300,14 @@ export function PlaceMap({
               aria-label={item.label}
               onClick={() => setChosen(item.key)}
               className={cn(
-                "grid h-[2.4rem] min-w-[3.4rem] cursor-pointer place-items-center rounded-full border-2 text-[0.95rem] font-extrabold transition-colors",
+                "relative grid h-[2.4rem] min-w-[3.4rem] cursor-pointer place-items-center rounded-full border-2 text-[0.95rem] font-extrabold transition-colors",
                 item.key === current.key ? "border-ink bg-ink text-white" : "border-edge bg-card text-ink"
               )}
             >
               {item.number}
+              {item.star ? (
+                <StarIcon aria-hidden="true" className="absolute -top-[0.35rem] -right-[0.2rem] size-[0.95rem] fill-cta text-cta-border" />
+              ) : null}
             </button>
           ))}
         </div>

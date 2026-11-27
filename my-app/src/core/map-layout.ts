@@ -15,6 +15,19 @@ export const MAP: MapShape = {
   main: { x: 3, y: 4, w: 94, h: 60 },
   inset: { x: 2, y: 62, w: 22, h: 20 },
 };
+// 별의 뜻을 지도 왼쪽 위에 적을 때 쓰는 모양. 위쪽에 글이 들어갈 띠(STAR_BAND)만큼 그림이 길고, 나머지는 그만큼 내려간다
+const STAR_BAND = 10;
+export const MAP_STAR: MapShape = {
+  canvas: { ...MAP.canvas, h: MAP.canvas.h + STAR_BAND },
+  main: { ...MAP.main, y: MAP.main.y + STAR_BAND },
+  inset: { ...MAP.inset, y: MAP.inset.y + STAR_BAND },
+};
+// 지도 안에 적는 안내 글의 자리. 별의 뜻은 위쪽 띠에, '추천 3곳' 안내는 아래쪽 오른편(대부동 상자의 옆, 땅이 없는 곳)에 둔다
+export const starNoteBox = (shape: MapShape): Box => ({ x: 2, y: 1.5, w: shape.canvas.w - 4, h: STAR_BAND });
+export function moreNoteBox(shape: MapShape): Box {
+  const x = shape.inset.x + shape.inset.w + 6;
+  return { x, y: shape.canvas.h - 15, w: shape.canvas.w - x - 2.5, h: 13.5 };
+}
 const INSET_PAD = 2.5;
 
 // 핀의 크기(가로 100 기준). 아래쪽 가운데의 뾰족한 끝이 기관의 자리다
@@ -73,8 +86,9 @@ export function layoutPins(dongs: MapDong[], points: Point[], shape: MapShape = 
 export const labelWidth = (name: string) => Math.min(name.length * LABEL.letter + LABEL.pad, LABEL.max);
 
 // 핀 옆의 작은 이름표 자리. 오른쪽 → 왼쪽 → 아래 → 위 가운데, 그림 안에 들어가고 다른 핀·이름표와 겹치지 않는 첫 자리.
+// blocked는 비켜 가야 하는 자리(지도 안의 안내 글)다.
 // 끝내 자리가 없으면 오른쪽에 두되 그림 안으로 들인다(이때는 다른 것과 겹칠 수 있다).
-export function sideLabels(pins: MapPinSpot[], widths: number[], shape: MapShape = MAP): Box[] {
+export function sideLabels(pins: MapPinSpot[], widths: number[], shape: MapShape = MAP, blocked: Box[] = []): Box[] {
   const { canvas } = shape;
   const within = (box: Box) =>
     box.x >= canvas.x && box.y >= canvas.y && box.x + box.w <= canvas.x + canvas.w && box.y + box.h <= canvas.y + canvas.h;
@@ -91,7 +105,7 @@ export function sideLabels(pins: MapPinSpot[], widths: number[], shape: MapShape
     ];
     const others = pins.filter((_, other) => other !== index).map((other) => other.box);
     const free = options.find(
-      (box) => within(box) && ![...others, ...placed].some((taken) => overlaps(box, taken, 0.3))
+      (box) => within(box) && ![...others, ...placed, ...blocked].some((taken) => overlaps(box, taken, 0.3))
     );
     const chosen = free ?? {
       ...options[0],

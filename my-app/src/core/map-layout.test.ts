@@ -5,7 +5,19 @@ import { appData } from "@/data";
 import { mapData } from "@/data/map";
 
 import { fitFrame, overlaps, project, ringsPath, spreadBoxes, type Box } from "./geo";
-import { DOT, LABEL, MAP, framesOf, labelWidth, layoutPins, place, sideLabels } from "./map-layout";
+import {
+  DOT,
+  LABEL,
+  MAP,
+  MAP_STAR,
+  framesOf,
+  labelWidth,
+  layoutPins,
+  moreNoteBox,
+  place,
+  sideLabels,
+  starNoteBox,
+} from "./map-layout";
 
 const inside = (box: Box, outer: Box) =>
   box.x >= outer.x - 1e-6 &&
@@ -126,18 +138,22 @@ describe("지도의 핀과 이름표 (실제 자료)", () => {
     }
   });
 
-  it("기관 좌표 가운데 어느 셋을 골라도 핀이 서로 겹치지 않고, 핀과 이름표가 그림 안에 있다", () => {
+  it.each([
+    ["보통 모양", MAP],
+    ["별의 뜻을 적는 모양", MAP_STAR],
+  ])("%s: 기관 좌표 가운데 어느 셋을 골라도 핀이 겹치지 않고, 핀과 이름표가 그림 안에 있다", (_, shape) => {
     expect(venues.length).toBeGreaterThanOrEqual(19);
+    const notes = [starNoteBox(shape), moreNoteBox(shape)];
     let checked = 0;
     let farthest = 0;
     for (let a = 0; a < venues.length; a += 1) {
       for (let b = a; b < venues.length; b += 1) {
         for (let c = b; c < venues.length; c += 1) {
-          const { pins } = layoutPins(mapData.dongs, [venues[a], venues[b], venues[c]]);
-          const labels = sideLabels(pins, [LABEL.max, LABEL.max, LABEL.max]);
+          const { pins } = layoutPins(mapData.dongs, [venues[a], venues[b], venues[c]], shape);
+          const labels = sideLabels(pins, [LABEL.max, LABEL.max, LABEL.max], shape, notes);
           for (let i = 0; i < 3; i += 1) {
-            expect(inside(pins[i].box, canvas)).toBe(true);
-            expect(inside(labels[i], canvas)).toBe(true);
+            expect(inside(pins[i].box, shape.canvas)).toBe(true);
+            expect(inside(labels[i], shape.canvas)).toBe(true);
             for (let j = i + 1; j < 3; j += 1) expect(overlaps(pins[i].box, pins[j].box)).toBe(false);
             farthest = Math.max(farthest, Math.hypot(pins[i].tip.x - pins[i].anchor.x, pins[i].tip.y - pins[i].anchor.y));
           }
@@ -148,6 +164,24 @@ describe("지도의 핀과 이름표 (실제 자료)", () => {
     expect(checked).toBeGreaterThan(1000);
     // 비켜 놓아도 실제 자리에서 핀 두 개 폭을 넘지 않는다
     expect(farthest).toBeLessThanOrEqual(2 * DOT.w);
+  });
+
+  it("안내 글 자리는 그림 안에 있고, 땅·대부동 상자·실제 기관 자리와 겹치지 않는다", () => {
+    for (const shape of [MAP, MAP_STAR]) {
+      const frames = framesOf(mapData.dongs, shape);
+      const more = moreNoteBox(shape);
+      const boxes = shape === MAP_STAR ? [starNoteBox(shape), more] : [more];
+      const hit = (box: Box, at: { x: number; y: number }) =>
+        at.x > box.x && at.x < box.x + box.w && at.y > box.y && at.y < box.y + box.h;
+      for (const box of boxes) {
+        expect(inside(box, shape.canvas)).toBe(true);
+        expect(overlaps(box, shape.inset)).toBe(false);
+        for (const dong of mapData.dongs.filter((one) => one.name !== "대부동")) {
+          for (const [lon, lat] of dong.rings.flat()) expect(hit(box, place(frames, { lon, lat }))).toBe(false);
+        }
+        for (const venue of venues) expect(hit(box, place(frames, venue))).toBe(false);
+      }
+    }
   });
 
   it("하나뿐이면 핀의 끝이 실제 자리에 온다", () => {
