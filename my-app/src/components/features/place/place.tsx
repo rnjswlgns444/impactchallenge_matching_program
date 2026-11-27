@@ -91,6 +91,7 @@ function PlaceBody({ programId, type, browse }: { programId: string; type: TypeI
   const links = placeLinks(program, appData.venues[program.id] ?? []);
   const facts = placeFacts(program);
   const reason = context.reasons[program.id];
+  const taste = tasteOf(program);
 
   // 가장 눈에 띄게 둘 단추 하나: 전화가 있으면 첫 전화, 없으면 첫 단추(공식 안내나 목록)
   const main = links.find((link) => link.kind === "phone") ?? links[0];
@@ -167,7 +168,8 @@ function PlaceBody({ programId, type, browse }: { programId: string; type: TypeI
         </div>
       ) : null}
 
-      <TasteCard taste={tasteOf(program)} href={tasteHref(program.id, browseType, fromList)} />
+      {/* 해 볼 것이나 영상이 있는 기관에만 나온다 */}
+      {taste.ready ? <TasteCard taste={taste} href={tasteHref(program.id, browseType, fromList)} /> : null}
 
       <div className="rounded-xl border border-edge bg-card px-[0.9rem] shadow-card">
         <FoldGroup look="line">
