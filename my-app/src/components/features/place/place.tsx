@@ -5,6 +5,7 @@ import { ExternalLinkIcon, MapPinIcon, PhoneIcon } from "lucide-react";
 
 import { BackLink } from "@/components/common/back-link";
 import { Character, characterGender } from "@/components/common/character";
+import { KindIcon } from "@/components/common/kind-icon";
 import { Fold, FoldGroup } from "@/components/common/fold";
 import { LinkButton } from "@/components/common/link-button";
 import { Notice } from "@/components/common/notice";
@@ -100,6 +101,7 @@ function PlaceBody({ programId, type, browse }: { programId: string; type: TypeI
       >
         <div className="flex items-center gap-[0.5rem]">
           <BackLink href={back} />
+          <KindIcon word={program["핀그림"]} className="size-[2.3rem] ring-white" />
           {own ? (
             <p className="rounded-full bg-(--area-ink) px-[0.7rem] py-[0.12rem] text-[0.8rem] leading-[1.5] font-bold text-white">
               {fill(text.placeForType, { name: type.name })}

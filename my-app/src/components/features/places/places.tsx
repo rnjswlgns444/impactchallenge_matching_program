@@ -9,7 +9,11 @@ import { SHOWN_PLACES, placeName } from "@/core/places";
 import type { TypeInfo } from "@/data/types";
 import { usePlaceContext } from "@/hooks/use-place-context";
 import { useViewedType } from "@/hooks/use-viewed-type";
-import { kindLabel } from "@/components/features/type-view/place-section";
+import { KindIcon } from "@/components/common/kind-icon";
+import { stopNote } from "@/components/features/type-view/place-section";
+import { routeStops } from "@/core/geo";
+import { appData } from "@/data";
+import { useDong } from "@/hooks/use-dong";
 import { placeHref, typeHomeHref } from "@/lib/routes";
 
 // '다른 곳 n곳'을 눌러서 온 화면: 앞의 3곳 말고 나머지 곳의 줄. 줄을 누르면 그 기관의 안내 화면으로 간다.
@@ -25,7 +29,8 @@ function PlacesBody({ type, browse }: { type: TypeInfo; browse: boolean }) {
   const context = usePlaceContext(type.id, browse);
   const browseType = browse ? type.id : null;
   const home = typeHomeHref(browseType);
-  const rest = context.places.slice(SHOWN_PLACES);
+  const dong = useDong();
+  const rest = routeStops(context.places, appData.venues, dong, SHOWN_PLACES).others;
   if (rest.length === 0) return <Redirect to={home} />;
 
   return (
@@ -36,17 +41,15 @@ function PlacesBody({ type, browse }: { type: TypeInfo; browse: boolean }) {
           {fill(text.morePlacesHeading, { type: type.name })}
         </h1>
       </div>
-      {rest.map((program) => (
-        <div key={program.id} className="flex flex-col gap-[0.2rem]">
-          <PlaceRow
-            href={placeHref(program.id, browseType, true)}
-            badge={kindLabel(program)}
-            star={program.id in context.reasons ? text.aiStarLabel : undefined}
-            title={placeName(program)}
-            sub={program["프로그램명"]}
-          />
-          <p className="px-[0.24rem] text-sm text-muted-foreground">{program["한줄설명"]}</p>
-        </div>
+      {rest.map((stop) => (
+        <PlaceRow
+          key={stop.program.id}
+          href={placeHref(stop.program.id, browseType, true)}
+          lead={<KindIcon word={stop.program["핀그림"]} />}
+          star={stop.program.id in context.reasons ? text.aiStarLabel : undefined}
+          title={placeName(stop.program)}
+          sub={stopNote(stop)}
+        />
       ))}
       <LinkButton href={home} variant="outline" className="font-bold text-teal hover:text-teal">
         {text.backBottom}

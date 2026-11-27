@@ -1,51 +1,60 @@
 "use client";
 
 import Link from "next/link";
-
 import { StarIcon } from "lucide-react";
 
+import { KindIcon } from "@/components/common/kind-icon";
 import { Notice } from "@/components/common/notice";
 import { PlaceRow } from "@/components/common/place-row";
-import { fill, text } from "@/content/text";
-import { SHOWN_PLACES, noPlace, placeName, type PlaceContext } from "@/core/places";
-import { detailOf } from "@/core/selection";
-import { KIND_ALWAYS, KIND_LIST, KIND_PERIOD, NATIONWIDE } from "@/core/table";
-import { appData } from "@/data";
-import type { Program, TypeInfo } from "@/data/types";
-import { placeHref, placesHref } from "@/lib/routes";
-
-import { DetailQuestion } from "./detail-question";
 import { Spinner } from "@/components/ui/spinner";
+import { fill, text } from "@/content/text";
+import { routeStops, type Stop } from "@/core/geo";
+import { SHOWN_PLACES, noPlace, noVisit, placeName, type PlaceContext } from "@/core/places";
+import { detailOf } from "@/core/selection";
+import { appData } from "@/data";
+import type { Dong, TypeInfo } from "@/data/types";
+import { placeHref, placesHref } from "@/lib/routes";
 import type { AiState } from "@/stores/survey-store";
 
+import { DetailQuestion } from "./detail-question";
 import { FallbackCard } from "./fallback-card";
+import { RouteMap } from "./route-map";
 
-// 유형에 맞는 기관 구역. 기관을 3곳까지 카드로 보여 주고, 더 있으면 '다른 곳 n곳'으로 묶는다.
-// 카드를 누르면 그 기관의 안내 화면으로 간다. 보여 줄 곳은 이미 걸러진 것(context.places)뿐이다.
+// '○○형의 첫걸음 길' 구역. 안산 지도 그림 위에 우리 동네에서 추천 기관 3곳까지 길을 긋고,
+// 그 아래에 번호가 붙은 기관 줄을 둔다. 줄이나 핀을 누르면 그 기관의 안내 화면으로 간다.
+// 기관이 3곳보다 많으면 나머지는 지도에 작은 점으로 찍고, '다른 곳 n곳 더 보기'로 목록에 간다.
 //
-// 전화로 문의할 곳이 없을 수도 있으므로(목록만 있는 유형) 제목에 '문의할 수 있는 곳'이라고 쓰지 않는다.
+// 보여 줄 곳과 순서는 이미 정해진 것(context.places)을 그대로 쓴다. 여기서 거르거나 순서를 바꾸지 않는다.
+// 전화로 문의할 곳이 없을 수도 있으므로(목록만 있는 유형) '문의할 수 있는 곳'이라고 쓰지 않는다.
 
-const KIND_TEXT: Record<string, string> = {
-  [KIND_ALWAYS]: text.kindAlways,
-  [KIND_PERIOD]: text.kindPeriod,
-  [KIND_LIST]: text.kindList,
-};
+const REMOTE_WORDS = new Set(["전화", "온라인"]);
 
-// 기관 카드의 딱지: 전국 창구면 그 사실을, 아니면 종류를 알린다(정보표의 칸 그대로)
-export function kindLabel(program: Program): string | undefined {
-  return program["범위"] === NATIONWIDE ? text.nationwide : KIND_TEXT[program["종류"]];
+// 기관 줄의 작은 글: 종류 낱말과 거리. 예) "문화 · 약 2.4km", "상담 · 전화·온라인으로"
+export function stopNote(stop: Stop): string {
+  const program = stop.program;
+  const parts = [program["핀그림"]];
+  if (stop.km !== null) {
+    parts.push(stop.km < 1 ? text.distanceNear : fill(text.distance, { km: stop.km.toFixed(1) }));
+  } else if (!stop.venue && noVisit(program["장소"] || program["진행방식"])) {
+    // 찾아가지 않고 쓰는 곳. 종류 낱말이 이미 '전화'·'온라인'이면 낱말 대신 이 말을 쓴다
+    if (REMOTE_WORDS.has(program["핀그림"])) parts.pop();
+    parts.push(text.remotePlace);
+  }
+  return parts.filter(Boolean).join(" · ");
 }
 
 export function PlaceSection({
   type,
   context,
   browse,
+  dong,
   ai = null,
   asking = false,
 }: {
   type: TypeInfo;
   context: PlaceContext;
   browse: boolean;
+  dong: Dong | null; // 우리 동네. 고르지 않았으면 null
   ai?: AiState | null; // AI 추가 추천 결과(설문 결과에서만)
   asking?: boolean; // AI의 답을 기다리는 중
 }) {
@@ -53,16 +62,26 @@ export function PlaceSection({
   const starred = Object.keys(reasons).length > 0;
   const browseType = browse ? type.id : null;
   const detail = detailOf(type);
-  const rest = places.length - SHOWN_PLACES;
+  const { stops, others } = routeStops(places, appData.venues, dong, SHOWN_PLACES);
+  const hasPlaces = !result.needsChoice && places.length > 0;
 
   return (
     <section className="flex flex-col gap-[0.5rem]">
-      <div>
+      <div className="flex flex-col gap-[0.15rem]">
         <h2 className="text-[1.15rem] leading-[1.4] font-extrabold tracking-[-0.02em]">
-          {fill(text.placesHeading, { name: type.name })}
+          {fill(text.routeHeading, { name: type.name })}
         </h2>
-        {!result.needsChoice && places.length > 0 ? (
-          <p className="text-[0.8rem] leading-[1.5] text-muted-foreground">{text.placesHint}</p>
+        {/* 우리 동네. 설문 결과에서는 고르거나 바꾸러 갈 수 있다(둘러보기에는 맞춰 보기 화면이 없다) */}
+        {hasPlaces && (dong || !browse) ? (
+          <p className="text-[0.8rem] leading-[1.5] text-muted-foreground">
+            {dong ? fill(text.myDong, { dong: dong.name }) : null}
+            {dong && !browse ? " · " : null}
+            {browse ? null : (
+              <Link href="/tune" className="font-bold text-teal underline underline-offset-4">
+                {dong ? text.dongChange : text.dongPick}
+              </Link>
+            )}
+          </p>
         ) : null}
       </div>
 
@@ -100,29 +119,44 @@ export function PlaceSection({
           {/* 이 유형의 곳은 없어 일반 창구를 놓았다 */}
           {noPlace(result) ? <Notice>{text.noProgram}</Notice> : null}
           {result.widened ? <Notice kind="info">{text.widenedNote}</Notice> : null}
+
+          <RouteMap
+            dongs={appData.dongs}
+            home={dong}
+            stops={stops}
+            others={others}
+            hrefOf={(stop) => placeHref(stop.program.id, browseType)}
+            labelOf={(stop) => `${stop.number}. ${placeName(stop.program)}`}
+            homeLabel={dong ? fill(text.myDong, { dong: dong.name }) : ""}
+          />
+
           {starred ? (
             <p className="flex items-start gap-[0.3rem] text-[0.8rem] leading-[1.5] font-semibold text-foreground">
               <StarIcon aria-hidden="true" className="mt-[0.2rem] size-[0.9rem] shrink-0 fill-cta text-cta-border" />
               {text.aiStarNote}
             </p>
           ) : null}
-          {places.slice(0, SHOWN_PLACES).map((program) => (
+          {stops.map((stop) => (
             <PlaceRow
-              key={program.id}
-              href={placeHref(program.id, browseType)}
-              badge={kindLabel(program)}
-              star={program.id in reasons ? text.aiStarLabel : undefined}
-              title={placeName(program)}
-              sub={program["프로그램명"]}
+              key={stop.program.id}
+              href={placeHref(stop.program.id, browseType)}
+              lead={<KindIcon word={stop.program["핀그림"]} />}
+              number={stop.number}
+              star={stop.program.id in reasons ? text.aiStarLabel : undefined}
+              title={placeName(stop.program)}
+              sub={stopNote(stop)}
             />
           ))}
-          {rest > 0 ? (
+          {others.length > 0 ? (
             <Link
               href={placesHref(browseType)}
               className="self-center rounded-full px-[0.9rem] py-[0.5rem] text-[0.9rem] font-bold text-teal underline underline-offset-4"
             >
-              {fill(text.moreCount, { count: rest })}
+              {fill(text.moreCount, { count: others.length })}
             </Link>
+          ) : null}
+          {dong && stops.some((stop) => stop.km !== null) ? (
+            <p className="text-[0.5rem] leading-[1.6] text-muted-foreground">{text.distanceNote}</p>
           ) : null}
         </>
       )}

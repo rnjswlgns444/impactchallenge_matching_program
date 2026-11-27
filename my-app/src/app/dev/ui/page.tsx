@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { PhoneIcon } from "lucide-react";
 
 import { FinePrint } from "@/components/common/fine-print";
+import { KindIcon } from "@/components/common/kind-icon";
 import { Fold, FoldGroup } from "@/components/common/fold";
 import { LinkButton } from "@/components/common/link-button";
 import { Notice } from "@/components/common/notice";
@@ -134,6 +135,26 @@ export default function DevUiPage() {
               <p>기관 세부 화면에서 써요.</p>
             </Fold>
           </FoldGroup>
+        </Group>
+
+        <Group title="기관 종류 그림">
+          <div className="flex flex-wrap gap-[0.6rem]">
+            {["일", "가게", "봉사", "배움", "문화", "운동", "모임", "상담", "건강", "돌봄", "돈", "혜택", "전화", "온라인", ""].map(
+              (word) => (
+                <span key={word} className="flex flex-col items-center gap-[0.2rem] text-[0.7rem]">
+                  <KindIcon word={word} />
+                  {word || "(기본)"}
+                </span>
+              )
+            )}
+          </div>
+          <PlaceRow
+            href="/dev/ui"
+            lead={<KindIcon word="문화" />}
+            number={1}
+            title="그림과 번호가 붙은 기관 줄"
+            sub="문화 · 약 2.4km"
+          />
         </Group>
 
         <Group title="유형 머리와 특징">

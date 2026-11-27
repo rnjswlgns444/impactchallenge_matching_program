@@ -7,6 +7,7 @@ import { TypeFeature, TypeHero } from "@/components/features/type-view/type-hero
 import { fill, koreanDate, text } from "@/content/text";
 import { SHOWN_PLACES } from "@/core/places";
 import type { TypeInfo } from "@/data/types";
+import { useDong } from "@/hooks/use-dong";
 import { usePlaceContext } from "@/hooks/use-place-context";
 import { browseGender } from "@/lib/session";
 
@@ -16,6 +17,7 @@ import { browseGender } from "@/lib/session";
 
 export function TypeIntro({ type }: { type: TypeInfo }) {
   const context = usePlaceContext(type.id, true);
+  const dong = useDong();
   const shown = context.places.slice(0, SHOWN_PLACES);
 
   const notes: string[] = [text.disclaimer];
@@ -28,7 +30,7 @@ export function TypeIntro({ type }: { type: TypeInfo }) {
     <>
       <TypeHero type={type} label={text.typeLabelBrowse} gender={browseGender(type.id)} />
       <TypeFeature type={type} />
-      <PlaceSection type={type} context={context} browse />
+      <PlaceSection type={type} context={context} browse dong={dong} />
       <div className="mt-[0.4rem] flex flex-col gap-[0.45rem]">
         <LinkButton href="/browse" variant="outline">
           {text.viewBack}

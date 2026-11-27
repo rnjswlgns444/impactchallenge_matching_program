@@ -15,6 +15,7 @@ import { GENDER_Q, PRIORITY_Q, SCALE } from "@/core/table";
 import { appData, getType } from "@/data";
 import type { Question, TypeInfo } from "@/data/types";
 import { useAiRequest } from "@/hooks/use-ai-request";
+import { useDong } from "@/hooks/use-dong";
 import { usePlaceContext } from "@/hooks/use-place-context";
 import { useSurvey } from "@/hooks/use-survey";
 import { placeHref, surveyEditHref } from "@/lib/routes";
@@ -60,6 +61,7 @@ function ResultBody({
   canRepick: boolean;
 }) {
   const context = usePlaceContext(type.id, false);
+  const dong = useDong();
   const ai = useSurvey((state) => state.ai);
   const asking = useAiRequest(type, context); // 글을 적고 온 사람은 여기서 AI에게 한 번 묻는다
   const shown = context.places.slice(0, SHOWN_PLACES);
@@ -80,7 +82,7 @@ function ResultBody({
       <TypeHero type={type} label={text.typeLabel} gender={characterGender(answers[GENDER_Q])} />
       <TypeFeature type={type} />
 
-      <PlaceSection type={type} context={context} browse={false} ai={ai} asking={asking} />
+      <PlaceSection type={type} context={context} browse={false} dong={dong} ai={ai} asking={asking} />
 
       <FoldGroup className="mt-[0.3rem]">
         <Fold value="more" title={text.moreToggle}>
