@@ -94,12 +94,14 @@ test("결과 → 기관 → 체험 → 돌아가기", async ({ page, seed }) => 
   await expect(page).toHaveURL(/\/place\/[A-Z0-9_]+$/);
   const placeUrl = page.url();
   await expect(seen(page.getByText(fill(text.placeForType, { name: typeName("T05") })))).toBeVisible();
-  await expect(seen(page.getByText(text.tasteLabel))).toBeVisible();
+  // 취미발견형의 첫 기관에는 해 볼 것이나 영상이 있다
+  const taste = seen(page.getByRole("link", { name: new RegExp(`^(${text.tasteButton}|${text.tasteVideoButton})$`) }));
+  await expect(taste).toBeVisible();
   await expectNoOverflow(page);
 
-  await seen(page.getByRole("link", { name: text.tasteButton })).click();
+  await taste.click();
   await expect(page).toHaveURL(/\/place\/[A-Z0-9_]+\/taste$/);
-  await expect(seen(page.locator('button[aria-pressed], iframe[src*="youtube-nocookie.com/embed/"]')).first()).toBeVisible();
+  await expect(seen(page.locator('a[target="_blank"], iframe[src*="youtube-nocookie.com/embed/"]')).first()).toBeVisible();
   await expectNoOverflow(page);
 
   await seen(page.getByRole("link", { name: text.tasteBack })).click();
@@ -137,7 +139,9 @@ test("질문 없이 둘러보기: 12개 유형 → 유형 소개 → 기관", as
 
   await seen(page.locator('a[href^="/place/"]')).first().click();
   await expect(page).toHaveURL(/\/place\/[A-Z0-9_]+\?type=T05$/);
-  await expect(seen(page.getByText(text.tasteLabel))).toBeVisible();
+  await expect(
+    seen(page.getByRole("link", { name: new RegExp(`^(${text.tasteButton}|${text.tasteVideoButton})$`) }))
+  ).toBeVisible();
   expect(ai.requests).toHaveLength(0);
 });
 

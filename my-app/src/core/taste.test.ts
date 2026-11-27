@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { tasteFilms, tasteTools } from "@/content/text";
 import { appData } from "@/data";
 import { tasteHref } from "@/lib/routes";
 
@@ -7,65 +8,66 @@ import { tasteOf } from "./taste";
 
 describe("집에서 먼저 체험하기", () => {
   const live = appData.programs.filter((program) => program["매칭가능"] === "Y");
+  const liveIds = new Set(live.map((program) => program.id));
 
-  it("현재 안내 중인 32개 항목은 각각 실제 콘텐츠를 연다", () => {
-    expect(live).toHaveLength(32);
+  it("해 볼 것이나 영상이 있는 기관만 체험을 연다", () => {
     for (const program of live) {
       const taste = tasteOf(program);
-      expect(taste.ready, program.id).toBe(true);
-      expect(taste.action.kind, program.id).toBe("screen");
-      expect(taste.title?.trim(), program.id).toBeTruthy();
-      expect(taste.activity !== null || taste.videos.length > 0, program.id).toBe(true);
+      const has = program.id in tasteTools || program.id in tasteFilms;
+      expect(taste.ready, program.id).toBe(has);
+      expect(taste.tools.length + taste.videos.length > 0, program.id).toBe(has);
+    }
+    // 찾지 못한 기관에는 체험 카드를 그리지 않는다(11/28)
+    for (const id of ["JOB07", "H13", "L16"]) {
+      const program = live.find((row) => row.id === id);
+      if (program) expect(tasteOf(program).ready, id).toBe(false);
     }
   });
 
-  it("영상은 해당 항목에서 확인한 공식 채널의 삽입 주소로만 연다", () => {
-    const videoIds: Record<string, string> = {
-      JOB12: "PUKIzp4S0WY", JOB13: "8iueW55vZp4", L09: "KhUG65dyeD8",
-      L10: "Jrd_NVP8e7U", L12: "gaCX5MeK60M", F01: "fzxzcd2p4MQ",
-      F02: "2Zfn0gs5JAo", F20: "lU3zRUk4WiA", F21: "4ggyIntmx-0",
-      F22: "s3QFbjhQXB4", H19: "npUkukEEtHM", H21: "C4rra31STNk", G01: "Va7WYisxmlo",
-    };
+  it("체험 자료는 안내 중인 기관에만 붙어 있다", () => {
+    for (const id of [...Object.keys(tasteTools), ...Object.keys(tasteFilms)]) {
+      expect(liveIds.has(id), id).toBe(true);
+    }
+  });
+
+  it("해 볼 것에는 무엇을 하는지, 여는 주소, 만든 곳이 있다", () => {
     for (const program of live) {
-      const { activity, videos } = tasteOf(program);
-      const id = videoIds[program.id];
-      if (!id) {
-        expect(activity, program.id).toBeTruthy();
+      const { tools } = tasteOf(program);
+      // 같은 주소로 가는 것은 하나로 합친다
+      expect(new Set(tools.map((tool) => tool.url)).size, program.id).toBe(tools.length);
+      for (const tool of tools) {
+        expect(tool.url, program.id).toMatch(/^https:\/\//);
+        for (const field of [tool.title, tool.body, tool.linkLabel, tool.by]) {
+          expect(field.trim(), program.id).not.toBe("");
+        }
+      }
+    }
+  });
+
+  it("영상은 정해 둔 영상 번호의 앱 안 재생 주소로만 연다", () => {
+    const films: Record<string, { id: string }> = tasteFilms;
+    for (const program of live) {
+      const { videos } = tasteOf(program);
+      const film = films[program.id];
+      if (!film) {
         expect(videos, program.id).toHaveLength(0);
         continue;
       }
       expect(videos, program.id).toHaveLength(1);
-      const video = videos[0];
-      const url = new URL(video.url);
+      const url = new URL(videos[0].url);
       expect(url.origin).toBe("https://www.youtube-nocookie.com");
-      expect(url.pathname).toBe(`/embed/${id}`);
+      expect(url.pathname).toBe(`/embed/${film.id}`);
       expect(url.searchParams.get("playsinline")).toBe("1");
       expect(url.searchParams.get("rel")).toBe("0");
-      expect(video.title.trim()).not.toBe("");
-      expect(video.by.trim()).not.toBe("");
+      expect(videos[0].title.trim()).not.toBe("");
+      expect(videos[0].by.trim()).not.toBe("");
     }
   });
 
-  it("비활성 기관과 등록되지 않은 기관에 다른 곳의 체험을 붙이지 않는다", () => {
-    const program = live.find((row) => row.id === "JOB01")!;
+  it("끝난 기관과 등록되지 않은 기관에 다른 곳의 체험을 붙이지 않는다", () => {
+    const program = live.find((row) => row.id === "L13")!;
     for (const row of [{ ...program, 매칭가능: "N" }, { ...program, id: "UNKNOWN" }]) {
-      expect(tasteOf(row)).toMatchObject({ ready: false, videos: [], activity: null });
-    }
-  });
-
-  it("활동마다 공식 안내와 서로 구별되는 선택지가 있다", () => {
-    for (const program of live) {
-      const { activity } = tasteOf(program);
-      if (!activity) continue;
-      expect(activity.sourceUrl, program.id).toMatch(/^https?:\/\//);
-      expect(activity.prompt.trim(), program.id).not.toBe("");
-      const labels = activity.options.map((option) => option.label);
-      expect(new Set(labels).size, program.id).toBe(labels.length);
-      expect(labels.length, program.id).toBeGreaterThan(1);
-      for (const option of activity.options) {
-        expect(option.detail.trim(), program.id).not.toBe("");
-        if (option.url) expect(option.linkLabel?.trim(), program.id).toBeTruthy();
-      }
+      expect(tasteOf(row)).toEqual({ ready: false, tools: [], videos: [] });
     }
   });
 

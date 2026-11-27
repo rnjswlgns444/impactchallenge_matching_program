@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 
-import { text } from "../src/content/text";
+import { tasteTools, text } from "../src/content/text";
 import { expect, expectNoOverflow, seen, test } from "./fixtures";
 
 function browserStorage(page: Page) {
@@ -21,7 +21,7 @@ for (const width of [320, 390]) {
     });
     const placeUrl = "/place/L09?type=T05&from=places";
     await page.goto(placeUrl);
-    const enter = seen(page.getByRole("link", { name: text.tasteButton }));
+    const enter = seen(page.getByRole("link", { name: text.tasteVideoButton }));
     await expect(enter).toBeVisible();
     expect(players).toHaveLength(0);
     await expect(page.locator('iframe[src*="youtube"]')).toHaveCount(0);
@@ -41,14 +41,10 @@ for (const width of [320, 390]) {
     await expect.poll(() => players.length).toBeGreaterThan(previousRequests);
   });
 
-  test(`${width}px에서 기관 체험 선택은 화면 안에서 끝난다`, async ({ page }) => {
+  test(`${width}px에서 해 볼 것은 공식 화면을 새 창으로 열고, 우리 쪽에는 아무것도 남기지 않는다`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
-    await page.goto("/place/JOB01/taste?type=T01");
-    const choices = seen(page.locator("button[aria-pressed]"));
-    await expect(choices.first()).toBeVisible();
-    const original = await choices.evaluateAll((buttons) => buttons.map((b) => b.getAttribute("aria-pressed")));
-    const pickIndex = original.indexOf("false");
-    expect(pickIndex).toBeGreaterThanOrEqual(0);
+    await page.goto("/place/L13?type=T06");
+    await expect(seen(page.getByText(text.tasteLabel))).toBeVisible();
     const before = await browserStorage(page);
     const writes: string[] = [];
     page.on("request", (request) => {
@@ -59,23 +55,31 @@ for (const width of [320, 390]) {
       }
     });
 
-    const option = choices.nth(pickIndex);
-    const box = await option.boundingBox();
-    expect(box?.height).toBeGreaterThanOrEqual(62);
-    await option.click();
-    await expect(option).toHaveAttribute("aria-pressed", "true");
+    await seen(page.getByRole("link", { name: text.tasteButton })).click();
+    await expect(page).toHaveURL(/\/place\/L13\/taste\?type=T06$/);
+    for (const tool of tasteTools.L13) {
+      const link = seen(page.getByRole("link", { name: tool.linkLabel }));
+      await expect(link).toHaveAttribute("href", tool.url);
+      await expect(link).toHaveAttribute("target", "_blank");
+      expect((await link.boundingBox())?.height).toBeGreaterThanOrEqual(62);
+    }
+    await expect(page.locator("iframe")).toHaveCount(0);
     await expectNoOverflow(page);
     expect(await browserStorage(page)).toEqual(before);
     expect(writes).toEqual([]);
 
     await seen(page.getByRole("link", { name: text.tasteBack })).click();
-    await expect(page).toHaveURL(/\/place\/JOB01\?type=T01$/);
-    // 캐시된 경로를 다시 열어도 지난번에 고른 항목은 남지 않는다.
-    await seen(page.getByRole("link", { name: text.tasteButton })).click();
-    await expect(page).toHaveURL(/\/place\/JOB01\/taste\?type=T01$/);
-    await expect(choices.nth(pickIndex)).toHaveAttribute("aria-pressed", "false");
-    await expect(seen(page.locator('button[aria-pressed="true"]'))).toHaveCount(0);
-    await expectNoOverflow(page);
+    await expect(page).toHaveURL(/\/place\/L13\?type=T06$/);
+  });
+
+  test(`${width}px에서 체험 자료가 없는 기관은 카드가 없고, 체험 주소를 쳐도 기관 화면으로 돌아간다`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/place/JOB07?type=T01");
+    await expect(seen(page.getByRole("link", { name: text.backBottom }))).toBeVisible();
+    await expect(page.getByText(text.tasteLabel)).toHaveCount(0);
+    await expect(page.getByText(text.tasteVideos)).toHaveCount(0);
+
+    await page.goto("/place/JOB07/taste?type=T01");
+    await expect(page).toHaveURL(/\/place\/JOB07\?type=T01$/);
   });
 }
-
