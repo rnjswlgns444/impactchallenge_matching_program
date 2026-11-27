@@ -242,6 +242,24 @@ export const tasteTools = {
       by: "AI디지털배움터(한국지능정보사회진흥원)",
     },
   ],
+  JOB02: [
+    {
+      title: "전직 준비가 얼마나 됐는지 검사해 보기",
+      body: "40세 이상을 위한 99문항 검사예요. 20분쯤 걸리고, 회원가입 없이 '비회원 검사'로 할 수 있어요. 시작할 때 생년월일 같은 정보를 적고 동의해야 해요.",
+      linkLabel: "전직준비도 검사 열기",
+      url: "https://m.work24.go.kr/wk/u/b/1100/seniorChgJobTestGuide.do",
+      by: "고용24(고용노동부)",
+    },
+  ],
+  L08_MIND_COUNSELING: [
+    {
+      title: "마음 상태 스스로 점검해 보기",
+      body: "우울, 불안, 스트레스 같은 검사 가운데 하나를 골라 질문에 답해요. 로그인은 없지만, 시작할 때 별명과 성별, 나이대, 사는 지역을 적어야 해요. 진단이 아니라 스스로 살펴보는 점검이에요.",
+      linkLabel: "자가검진 열기",
+      url: "https://www.mentalhealth.go.kr/portal/mdexmnDtl/mdexmnTypeList.do",
+      by: "국가정신건강정보포털(보건복지부 국립정신건강센터)",
+    },
+  ],
   JOB08: [
     {
       title: "자원봉사 기본 교육 영상 보기",
