@@ -81,6 +81,42 @@ describe("placeContext", () => {
   });
 });
 
+describe("placeContext: AI가 고른 곳", () => {
+  const programs = [row("A1"), row("A2"), row("A3"), row("L1", { 종류: "목록" }), row("X1", { 유형태그: "T02" })];
+
+  it("고른 곳을 맨 앞으로 옮기고 이유를 돌려준다", () => {
+    const picks = [
+      { id: "A3", reason: "셋째가 맞아요" },
+      { id: "A2", reason: "둘째도 맞아요" },
+    ];
+    const context = placeContext(programs, types, "T01", {}, today, {}, picks);
+    expect(context.places.map((p) => p.id)).toEqual(["A3", "A2", "A1", "L1"]);
+    expect(context.reasons).toEqual({ A3: "셋째가 맞아요", A2: "둘째도 맞아요" });
+  });
+
+  it("지금 AI 후보에 없는 id(다른 유형, 목록, 없는 곳)는 쓰지 않는다", () => {
+    const picks = [
+      { id: "X1", reason: "다른 유형" },
+      { id: "L1", reason: "목록" },
+      { id: "NOPE", reason: "없는 곳" },
+      { id: "A2", reason: "맞아요" },
+      { id: "A2", reason: "중복" },
+    ];
+    const context = placeContext(programs, types, "T01", {}, today, {}, picks);
+    expect(context.places.map((p) => p.id)).toEqual(["A2", "A1", "A3", "L1"]);
+    expect(context.reasons).toEqual({ A2: "맞아요" });
+  });
+
+  it("고른 것이 없거나(null) 둘러보기면 순서가 그대로다", () => {
+    const none = placeContext(programs, types, "T01", {}, today, {}, null);
+    expect(none.places.map((p) => p.id)).toEqual(["A1", "A2", "A3", "L1"]);
+    expect(none.pool.map((p) => p.id)).toEqual(["A1", "A2", "A3"]);
+    const browse = placeContext(programs, types, "T01", {}, today);
+    expect(browse.pool).toEqual([]);
+    expect(browse.reasons).toEqual({});
+  });
+});
+
 describe("기관 이름과 이용 방식", () => {
   it("괄호 풀이만 뺀다", () => {
     expect(placeName(row("A", { 기관명: "안산시 일자리센터(노동일자리과)" }))).toBe("안산시 일자리센터");

@@ -6,8 +6,9 @@
 
 import type { Program, TypeInfo, Venue, Worry } from "@/data/types";
 
-import { buildResult, firstConsult, unconfirmedColumns, type Profile, type TypeResult } from "./candidates";
+import { aiPool, buildResult, firstConsult, unconfirmedColumns, type Profile, type TypeResult } from "./candidates";
 import type { Moment } from "./clock";
+import type { AiMatch } from "./matcher";
 import type { DetailAnswer } from "./selection";
 import { KIND_LIST, UNCONFIRMED, splitMulti } from "./table";
 import { routeUrl } from "./venues";
@@ -128,7 +129,10 @@ export function noPlace(result: TypeResult): boolean {
 export type PlaceContext = {
   result: TypeResult; // 그 유형의 기본 결과
   consults: Program[]; // 무엇이 맞을지 함께 찾아 주는 곳(일반 창구)
-  places: Program[]; // 화면에 놓을 곳 전체. 문의할 곳 → 목록 순서이고, 둘 다 없으면 일반 창구다
+  // 화면에 놓을 곳 전체. AI가 고른 곳 → 문의할 곳 → 목록 순서이고, 문의할 곳과 목록이 다 없으면 일반 창구다
+  places: Program[];
+  pool: Program[]; // AI에게 보낼 수 있는 후보(둘러보기에서는 비어 있다)
+  reasons: Record<string, string>; // { AI가 고른 곳의 id: 추천 이유 }
 };
 
 // 저장해 두지 않고 화면을 그릴 때마다 답과 정보표에서 다시 만든다.
@@ -140,11 +144,25 @@ export function placeContext(
   typeId: string,
   details: Record<string, DetailAnswer>,
   when: Moment,
-  profile?: Profile
+  profile?: Profile,
+  picks?: AiMatch[] | null // AI가 고른 곳. 설문 결과에서만 넘긴다. 넘기지 않으면 AI 후보도 만들지 않는다
 ): PlaceContext {
   const [result] = buildResult(programs, types, [typeId], details, when, profile);
   const consults = firstConsult(programs, when, profile);
-  let places = [...result.contacts, ...result.lists];
-  if (places.length === 0 && !result.needsChoice) places = consults;
-  return { result, consults, places };
+  let base = [...result.contacts, ...result.lists];
+  if (base.length === 0 && !result.needsChoice) base = consults;
+
+  // AI가 준 id는 지금의 AI 후보(pool)에 있을 때만 쓴다. 고른 곳을 맨 앞으로 옮긴다
+  const pool = picks === undefined ? [] : aiPool(programs, types, [typeId], details, when, profile);
+  const reasons: Record<string, string> = {};
+  const picked: Program[] = [];
+  for (const match of picks ?? []) {
+    const program = pool.find((one) => one.id === match.id);
+    if (program && !(match.id in reasons)) {
+      reasons[match.id] = match.reason;
+      picked.push(program);
+    }
+  }
+  const places = [...picked, ...base.filter((program) => !(program.id in reasons))];
+  return { result, consults, places, pool, reasons };
 }

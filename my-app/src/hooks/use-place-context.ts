@@ -16,7 +16,10 @@ import { useSurvey } from "./use-survey";
 export function usePlaceContext(typeId: string, browse: boolean): PlaceContext {
   const answers = useSurvey((state) => state.answers);
   const details = useSurvey((state) => (browse ? state.browseDetails : state.details));
+  const ai = useSurvey((state) => state.ai);
   // 지금(한국 시각). 시각까지 넘겨야 종료시각이 지난 곳이 빠진다. 화면이 처음 그려질 때 한 번 읽는다
   const [when] = useState(now);
-  return placeContext(appData.programs, appData.types, typeId, details, when, browse ? undefined : answers);
+  if (browse) return placeContext(appData.programs, appData.types, typeId, details, when);
+  // 설문 결과: AI가 고른 곳이 있으면 맨 앞에 놓는다
+  return placeContext(appData.programs, appData.types, typeId, details, when, answers, ai?.matches ?? null);
 }
