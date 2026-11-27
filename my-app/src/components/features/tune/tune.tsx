@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 
 import { Redirect } from "@/components/common/redirect";
 import { DetailQuestion } from "@/components/features/type-view/detail-question";
+
+import { DongPicker } from "./dong-picker";
 import { StickyActions } from "@/components/layout/sticky-actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -87,6 +89,8 @@ function TuneBody({ type }: { type: TypeInfo }) {
 
       {/* 안내할 곳이 없는 유형에는 세부 질문을 묻지 않는다 */}
       {detail && !noPlace(context.result) ? <DetailQuestion typeId={type.id} detail={detail} browse={false} /> : null}
+
+      <DongPicker />
 
       <div className="flex flex-col gap-[0.4rem]">
         <label htmlFor={fieldId} className="text-base leading-[1.4] font-bold text-ink">

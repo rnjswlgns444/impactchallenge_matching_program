@@ -24,6 +24,8 @@ export type SurveyState = {
   answers: Record<string, Answer>; // { 문항 id: 답 }
   details: Record<string, DetailChoice>; // { 유형 id: 세부 질문의 답 } 설문 결과에서 고른 것
   browseDetails: Record<string, DetailChoice>; // 둘러보기에서 고른 것. 설문 결과와 섞이지 않게 따로 둔다
+  dong: string | null; // 사는 동(안 골랐으면 null). 지도 그림과 거리에만 쓰고 서버로 보내지 않는다
+  setDong: (dong: string | null) => void;
   tuned: boolean; // '조금 더 맞춰 보기' 화면을 지나왔는지. 한 번만 거친다
   wish: string; // 직접 적은 글. 기기 안에만 두고(다시 적을 때 보여 주려고) 서버에는 남기지 않는다
   ai: AiState | null; // AI 추가 추천 결과. 없으면 null
@@ -68,6 +70,8 @@ export const useSurveyStore = create<SurveyState>()(
       answers: {},
       details: {},
       browseDetails: {},
+      dong: null,
+      setDong: (dong) => set({ dong }),
       tuned: false,
       wish: "",
       ai: null,
@@ -98,16 +102,26 @@ export const useSurveyStore = create<SurveyState>()(
             : { details: { ...state.details, [typeId]: choice } }
         ),
       reset: () =>
-        set({ answers: {}, details: {}, browseDetails: {}, tuned: false, wish: "", ai: null, aiPending: false }),
+        set({
+          answers: {},
+          details: {},
+          browseDetails: {},
+          dong: null,
+          tuned: false,
+          wish: "",
+          ai: null,
+          aiPending: false,
+        }),
     }),
     {
       name: "anti-survey",
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => safeStorage),
       partialize: (state) => ({
         answers: state.answers,
         details: state.details,
         browseDetails: state.browseDetails,
+        dong: state.dong,
         tuned: state.tuned,
         wish: state.wish,
         ai: state.ai,
@@ -118,6 +132,7 @@ export const useSurveyStore = create<SurveyState>()(
         answers: {},
         details: {},
         browseDetails: {},
+        dong: null,
         tuned: false,
         wish: "",
         ai: null,
