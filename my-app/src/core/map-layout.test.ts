@@ -95,18 +95,24 @@ describe("layoutMap (실제 자료)", () => {
     ).values(),
   ];
 
-  it("본토의 동은 지도 안에, 대부동은 작은 상자 안에 그려진다", () => {
+  it("본토의 동은 지도 안에, 대부동의 큰 섬은 작은 상자 안에 그려진다", () => {
     const layout = layoutMap(mapData.dongs, []);
-    for (const dong of mapData.dongs) {
-      for (const [lon, lat] of dong.rings.flat()) {
+    const within = (ring: [number, number][], where: Box) => {
+      for (const [lon, lat] of ring) {
         const at = place(layout, { lon, lat });
-        const where = dong.name === "대부동" ? INSET : CANVAS;
         expect(at.x).toBeGreaterThanOrEqual(where.x);
         expect(at.x).toBeLessThanOrEqual(where.x + where.w);
         expect(at.y).toBeGreaterThanOrEqual(where.y);
         expect(at.y).toBeLessThanOrEqual(where.y + where.h);
       }
-    }
+    };
+    for (const dong of mapData.dongs.filter((one) => one.name !== "대부동")) dong.rings.forEach((ring) => within(ring, CANVAS));
+    // 멀리 떨어진 작은 섬은 상자 밖으로 나가며, 화면이 잘라 낸다
+    const daebu = mapData.dongs.find((one) => one.name === "대부동")!;
+    within(
+      daebu.rings.reduce((best, ring) => (ring.length > best.length ? ring : best)),
+      INSET
+    );
   });
 
   it("본토의 동은 대부동 상자와 겹치지 않는다", () => {

@@ -32,7 +32,8 @@ test("AI에는 네 칸만 보내고, 개인정보 형태는 지워서 보낸다"
   }
 
   // AI가 고른 곳의 화면에 이유가 나온다
-  await seen(page.locator('a[href^="/place/"]')).first().click();
+  // 별이 붙은 건물(지도에 있든 지도 아래 줄에 있든)을 누른다
+  await seen(page.getByRole("link", { name: new RegExp(text.aiStarLabel) })).first().click();
   await expect(seen(page.getByText("그림을 배울 수 있는 곳이에요."))).toBeVisible();
 
   // 새로고침해도 다시 묻지 않는다

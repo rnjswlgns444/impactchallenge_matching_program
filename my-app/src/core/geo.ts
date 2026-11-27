@@ -153,14 +153,25 @@ export const overlaps = (a: Box, b: Box, gap = 0) =>
 // - 바라는 자리가 막혀 있으면 거기서 가장 가까운 빈자리를 찾는다(step 간격으로 둘레를 훑는다).
 // - blocked는 비켜 가야 하는 자리(대부동 상자)다. 그림(canvas) 밖으로도 나가지 않는다.
 // 빈자리가 끝내 없으면 그림 안으로만 들여 둔다. 실제 위치에서 어긋난 만큼은 화면이 선으로 이어 보여 준다.
-export function spreadBoxes(boxes: Box[], canvas: Box, blocked: Box[] = [], gap = 1, step = 2): Box[] {
-  const reach = Math.ceil(Math.max(canvas.w, canvas.h) / step);
+const offsetsCache = new Map<string, [number, number][]>();
+
+// 둘레를 훑을 자리들(가까운 것부터). 한 번 만들어 두고 다시 쓴다
+function searchOffsets(reach: number, step: number): [number, number][] {
+  const key = `${reach}:${step}`;
+  const cached = offsetsCache.get(key);
+  if (cached) return cached;
   const offsets: [number, number][] = [];
   for (let dx = -reach; dx <= reach; dx += 1) {
     for (let dy = -reach; dy <= reach; dy += 1) offsets.push([dx * step, dy * step]);
   }
-  // 가까운 자리부터. 거리가 같으면 늘 같은 순서가 되게 가로·세로 값으로 한 번 더 가른다
+  // 거리가 같으면 늘 같은 순서가 되게 세로·가로 값으로 한 번 더 가른다
   offsets.sort((a, b) => Math.hypot(a[0], a[1]) - Math.hypot(b[0], b[1]) || a[1] - b[1] || a[0] - b[0]);
+  offsetsCache.set(key, offsets);
+  return offsets;
+}
+
+export function spreadBoxes(boxes: Box[], canvas: Box, blocked: Box[] = [], gap = 1, step = 2): Box[] {
+  const offsets = searchOffsets(Math.ceil(Math.max(canvas.w, canvas.h) / step), step);
 
   const within = (box: Box) =>
     box.x >= canvas.x && box.y >= canvas.y && box.x + box.w <= canvas.x + canvas.w && box.y + box.h <= canvas.y + canvas.h;

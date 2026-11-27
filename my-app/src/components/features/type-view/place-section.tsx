@@ -16,12 +16,15 @@ import type { Dong, TypeInfo } from "@/data/types";
 import { placeHref, placesHref } from "@/lib/routes";
 import type { AiState } from "@/stores/survey-store";
 
+import { AnsanMap, MAP_READY, type MapItem } from "./ansan-map";
+import type { Building } from "./building";
 import { DetailQuestion } from "./detail-question";
 import { FallbackCard } from "./fallback-card";
-import { WalkScene } from "./walk-scene";
+import { RemoteRow } from "./remote-row";
 
-// '○○형의 첫걸음 길' 구역. 산책길 그림 한 장에 추천 기관 3곳을 건물로 세운다(walk-scene.tsx).
-// 건물을 누르면 그 기관의 안내 화면으로 간다. 그림 아래의 단추 '목록으로 보기'를 누르면
+// '○○형에 맞는 기관' 구역. 안산 지도 그림 위에 추천 기관 3곳을 건물로 세운다(ansan-map.tsx).
+// 자리(좌표)가 없는 곳은 지도 아래 줄에 같은 건물 그림으로 놓는다(remote-row.tsx).
+// 건물을 누르면 그 기관의 안내 화면으로 간다. 그 아래의 단추 '목록으로 보기'를 누르면
 // 추천 3곳과 나머지 곳이 함께 나오는 목록 화면으로 간다.
 //
 // 보여 줄 곳과 순서는 이미 정해진 것(context.places)을 그대로 쓴다. 여기서 거르거나 순서를 바꾸지 않는다.
@@ -55,7 +58,7 @@ export function PlaceSection({
   context: PlaceContext;
   browse: boolean;
   dong: Dong | null; // 우리 동네. 고르지 않았으면 null
-  gender: CharacterGender | null; // 그림 속 길의 시작에 세울 캐릭터의 성별
+  gender: CharacterGender | null; // 지도 구석에 세울 캐릭터의 성별
   ai?: AiState | null; // AI 추가 추천 결과(설문 결과에서만)
   asking?: boolean; // AI의 답을 기다리는 중
 }) {
@@ -63,15 +66,45 @@ export function PlaceSection({
   const starred = Object.keys(reasons).length > 0;
   const browseType = browse ? type.id : null;
   const detail = detailOf(type);
-  const { stops } = routeStops(places, appData.venues, dong, SHOWN_PLACES);
+  const { stops, others } = routeStops(places, appData.venues, dong, SHOWN_PLACES);
   const near = nearStop(stops, NEAR_KM);
+
+  const buildingOf = (stop: Stop): Building => {
+    const star = stop.program.id in reasons;
+    const isNear = stop === near;
+    const name = placeName(stop.program);
+    return {
+      key: stop.program.id,
+      href: placeHref(stop.program.id, browseType),
+      number: stop.number ?? 0,
+      word: stop.program["핀그림"],
+      name,
+      label: [
+        fill(text.placeOpen, { number: stop.number ?? "", kind: stop.program["핀그림"] ?? "", name }),
+        star ? text.aiStarLabel : "",
+        isNear ? text.nearTag : "",
+      ]
+        .filter(Boolean)
+        .join(", "),
+      star,
+      near: isNear,
+    };
+  };
+  // 자리(좌표)가 있는 곳은 지도에, 없는 곳은 지도 아래 줄에 놓는다. 둘 다 추천 순서를 지킨다
+  const onMap: MapItem[] = [];
+  const offMap: Stop[] = [];
+  for (const stop of stops) {
+    if (MAP_READY && stop.venue) onMap.push({ building: buildingOf(stop), point: stop.venue });
+    else offMap.push(stop);
+  }
+  const allRemote = offMap.every((stop) => noVisit(stop.program["장소"] || stop.program["진행방식"]));
   const hasPlaces = !result.needsChoice && places.length > 0;
 
   return (
     <section className="flex flex-col gap-[0.5rem]">
       <div className="flex flex-col gap-[0.15rem]">
         <h2 className="text-[1.15rem] leading-[1.4] font-extrabold tracking-[-0.02em]">
-          {fill(text.routeHeading, { name: type.name })}
+          {fill(text.placesHeading, { name: type.name })}
         </h2>
         {/* 우리 동네. 설문 결과에서는 고르거나 바꾸러 갈 수 있다(둘러보기에는 맞춰 보기 화면이 없다) */}
         {hasPlaces && (dong || !browse) ? (
@@ -129,31 +162,22 @@ export function PlaceSection({
             </p>
           ) : null}
 
-          <WalkScene
-            typeId={type.id}
-            gender={gender}
-            buildings={stops.map((stop) => {
-              const star = stop.program.id in reasons;
-              const tag = stop === near ? text.nearTag : undefined;
-              const name = placeName(stop.program);
-              return {
-                key: stop.program.id,
-                href: placeHref(stop.program.id, browseType),
-                number: stop.number ?? 0,
-                word: stop.program["핀그림"],
-                name,
-                label: [
-                  fill(text.placeOpen, { number: stop.number ?? "", kind: stop.program["핀그림"] ?? "", name }),
-                  star ? text.aiStarLabel : "",
-                  tag ?? "",
-                ]
-                  .filter(Boolean)
-                  .join(", "),
-                star,
-                tag,
-              };
-            })}
+          {onMap.length > 0 ? (
+            <AnsanMap
+              items={onMap}
+              dots={others.flatMap((stop) => (stop.venue ? [stop.venue] : []))}
+              homeName={dong?.name ?? null}
+              typeId={type.id}
+              gender={gender}
+            />
+          ) : null}
+          <RemoteRow
+            buildings={offMap.map(buildingOf)}
+            heading={onMap.length === 0 ? undefined : allRemote ? text.remoteHeading : text.offMapHeading}
           />
+          {onMap.length > 0 ? (
+            <p className="text-[0.7rem] leading-[1.5] text-muted-foreground">{text.mapNote}</p>
+          ) : null}
 
           <LinkButton href={placesHref(browseType)} variant="outline" className="font-bold text-teal hover:text-teal">
             {fill(text.seeList, { count: places.length })}
