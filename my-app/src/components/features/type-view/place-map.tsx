@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { HouseIcon, StarIcon } from "lucide-react";
+import { HouseIcon, PhoneIcon, StarIcon } from "lucide-react";
 
 import { kindLook, type KindTone } from "@/components/common/kind-icon";
 import { buttonVariants } from "@/components/ui/button";
@@ -291,25 +291,37 @@ export function PlaceMap({
 
       {/* 번호 단추. 핀이 작아 누르기 어려울 때와, 지도에 핀이 없는 곳을 고를 때 쓴다 */}
       {places.length > 1 ? (
-        <div role="group" aria-label={text.mapPick} className="flex justify-center gap-[0.5rem]">
-          {places.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              aria-pressed={item.key === current.key}
-              aria-label={item.label}
-              onClick={() => setChosen(item.key)}
-              className={cn(
-                "relative grid h-[2.4rem] min-w-[3.4rem] cursor-pointer place-items-center rounded-full border-2 text-[0.95rem] font-extrabold transition-colors",
-                item.key === current.key ? "border-ink bg-ink text-white" : "border-edge bg-card text-ink"
-              )}
-            >
-              {item.number}
-              {item.star ? (
-                <StarIcon aria-hidden="true" className="absolute -top-[0.35rem] -right-[0.2rem] size-[0.95rem] fill-cta text-cta-border" />
-              ) : null}
-            </button>
-          ))}
+        <div role="group" aria-label={text.mapPick} className="flex flex-wrap justify-center gap-[0.5rem]">
+          {places.map((item) => {
+            // 지도에 핀이 없는 곳은 번호만으로는 있는지 알 수 없어, 전화 그림과 이름을 함께 적는다.
+            // 지도가 아예 없을 때는 모두 번호만 둔다(견줄 핀이 없다)
+            const off = onMap.length > 0 && !onMap.includes(item);
+            return (
+              <button
+                key={item.key}
+                type="button"
+                aria-pressed={item.key === current.key}
+                aria-label={item.label}
+                onClick={() => setChosen(item.key)}
+                className={cn(
+                  "relative flex h-[2.4rem] max-w-full min-w-[3.4rem] cursor-pointer items-center justify-center gap-[0.3rem] rounded-full border-2 text-[0.95rem] font-extrabold transition-colors",
+                  off ? "px-[0.8rem]" : "",
+                  item.key === current.key ? "border-ink bg-ink text-white" : "border-edge bg-card text-ink"
+                )}
+              >
+                {item.number}
+                {off ? (
+                  <>
+                    <PhoneIcon aria-hidden="true" className="size-[0.8rem] shrink-0" strokeWidth={2.4} />
+                    <span className="truncate text-[0.75rem] font-bold">{item.name}</span>
+                  </>
+                ) : null}
+                {item.star ? (
+                  <StarIcon aria-hidden="true" className="absolute -top-[0.35rem] -right-[0.2rem] size-[0.95rem] fill-cta text-cta-border" />
+                ) : null}
+              </button>
+            );
+          })}
         </div>
       ) : null}
 
