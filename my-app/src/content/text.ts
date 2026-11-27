@@ -14,6 +14,9 @@ export const text = {
   restartAskBody:
     "처음으로 가면 답이 지워져요. 결과를 남기려면 먼저 '내 결과 저장하기'를 눌러 주세요.",
   restartKeep: "계속 보기",
+  // 결과가 나오기 전(설문·동점 고르기·맞춰 보기)에 띠의 ANTI를 눌렀을 때
+  restartAskSurveyBody: "처음으로 가면 지금까지 한 답이 지워져요.",
+  restartKeepSurvey: "설문 계속하기",
   restartGo: "처음으로 가기",
 
   // ── 시작 화면 ──

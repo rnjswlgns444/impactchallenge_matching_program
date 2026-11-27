@@ -131,6 +131,29 @@ test("띠의 ANTI도 되묻는 창을 거친다", async ({ page, seed }) => {
   await expect(page).toHaveURL(/\/result$/);
 });
 
+test("설문 중에도 띠의 ANTI로 처음 화면에 갈 수 있고, 먼저 되묻는다", async ({ page, seed }) => {
+  await seed({ answers: answersFor("T05") });
+  await page.goto("/survey?q=3");
+  const anti = seen(page.getByRole("link", { name: text.toStart }));
+  await anti.click();
+  await expect(page.getByText(text.restartAskSurveyBody)).toBeVisible();
+  await page.getByRole("button", { name: text.restartKeepSurvey }).click();
+  await expect(page.getByText(text.restartAskSurveyBody)).toHaveCount(0);
+  await expect(page).toHaveURL(/\/survey\?q=3$/);
+  expect((await storedState(page)).answers.Q02).toBe(5);
+
+  await anti.click();
+  await page.getByRole("button", { name: text.restartGo }).click();
+  await expect(page).toHaveURL(/localhost:3000\/$/);
+  await expect(seen(page.getByRole("heading", { name: text.startHeading }))).toBeVisible();
+  expect((await storedState(page)).answers).toEqual({});
+
+  // 처음 화면에서 누르면 창 없이 그대로 있다
+  await seen(page.getByRole("link", { name: text.toStart })).click();
+  await expect(page.getByText(text.restartAskSurveyBody)).toHaveCount(0);
+  await expect(page).toHaveURL(/localhost:3000\/$/);
+});
+
 test("열리면 안 되는 화면은 열리지 않는다", async ({ page, seed }) => {
   await seed({ answers: answersFor("T05") });
   // 이 사람의 후보에 없는 기관: 결과로 돌려보낸다

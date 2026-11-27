@@ -2,8 +2,8 @@ import { text } from "@/content/text";
 
 // 맨 위 노란 띠. 앱 이름과 작은 풀이를 한 줄에 둔다.
 // 앱 이름 자리(brand)에 무엇을 둘지는 화면 묶음이 정한다.
-// - 시작·설문: 아무것도 넘기지 않는다(글자뿐인 ANTI)
-// - 그 밖: 누르면 처음으로 가는 부품을 넘긴다
+// - 앱 화면: 누르면 처음으로 가는 부품(HomeLink)을 넘긴다
+// - 없는 주소·부품 모아 보기: 아무것도 넘기지 않는다(글자뿐인 ANTI)
 // 이 파일은 답 저장소를 보지 않는다.
 
 export function AppHeader({ brand }: { brand?: React.ReactNode }) {

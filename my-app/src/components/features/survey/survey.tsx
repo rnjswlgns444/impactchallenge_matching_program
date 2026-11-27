@@ -48,8 +48,11 @@ export function Survey() {
   const valid =
     Number.isInteger(wanted) && wanted >= 1 && wanted <= Math.min(open + 1, SURVEY.length);
   if (!valid) {
-    // 다 답하고 주소 없이 왔으면(시작 화면에서 다시 누름) 결과로, 아니면 이어서 답할 문항으로 보낸다
-    return <Redirect to={done ? "/result" : `/survey?q=${open + 1}`} />;
+    // 다 답하고 주소 없이 왔으면(시작 화면에서 다시 누름) 결과로, 아니면 이어서 답할 문항으로 보낸다.
+    // 답이 하나도 없는데 뒤 문항 주소이면 처음 화면으로 보낸다. 설문 중 띠의 ANTI로 답을 지우고
+    // 처음으로 갈 때 이 화면이 1번 문항으로 먼저 보내 버리지 않게 하려는 것이다.
+    const restarted = open === 0 && wanted > 1;
+    return <Redirect to={done ? "/result" : restarted ? "/" : `/survey?q=${open + 1}`} />;
   }
   const question = SURVEY[wanted - 1];
   return (
