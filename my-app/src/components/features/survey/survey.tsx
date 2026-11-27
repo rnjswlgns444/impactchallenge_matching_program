@@ -129,7 +129,12 @@ function QuestionView({
         // 답 하나만 고치는 중: '질문 5 / 27'을 보여 주면 뒤의 문항을 다시 해야 하는 것으로 읽힌다
         <Notice kind="info">{text.editNotice}</Notice>
       ) : (
-        <Progress value={(position / total) * 100} className="gap-[0.3rem]">
+        <Progress
+          value={(position / total) * 100}
+          // 화면 읽기 도구에도 퍼센트 대신 같은 진행 글자를 읽어 준다
+          getAriaValueText={() => fill(text.progress, { number: position, total })}
+          className="gap-[0.3rem]"
+        >
           <div className="flex w-full items-baseline justify-between gap-[0.48rem]">
             <ProgressLabel className="font-bold text-teal tabular-nums">
               {fill(text.progress, { number: position, total })}

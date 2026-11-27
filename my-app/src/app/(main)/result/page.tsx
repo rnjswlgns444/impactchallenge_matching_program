@@ -1,16 +1,20 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 
 import { ScreenSkeleton } from "@/components/common/screen-skeleton";
+import { Result } from "@/components/features/result/result";
 import { Screen } from "@/components/layout/screen";
 import { text } from "@/content/text";
 
 export const metadata: Metadata = { title: text.screens.result };
 
-// 아직 내용을 넣지 않은 화면이다. 틀만 있다.
+// 결과 화면. 답은 브라우저에만 있어서, 유형 판정과 후보 거르기도 브라우저에서 한다.
 export default function ResultPage() {
   return (
-    <Screen title={text.screens.result}>
-      <ScreenSkeleton />
+    <Screen>
+      <Suspense fallback={<ScreenSkeleton />}>
+        <Result />
+      </Suspense>
     </Screen>
   );
 }
