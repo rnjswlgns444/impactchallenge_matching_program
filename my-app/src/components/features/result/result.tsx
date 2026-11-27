@@ -22,7 +22,7 @@ import { usePlaceContext } from "@/hooks/use-place-context";
 import { useSurvey } from "@/hooks/use-survey";
 import { placeHref, surveyEditHref } from "@/lib/routes";
 import { SURVEY, isComplete, judge, resumeHref } from "@/lib/session";
-import type { Answer } from "@/stores/survey-store";
+import { useSurveyStore, type Answer } from "@/stores/survey-store";
 
 // 결과 화면: 유형 머리 → 이 유형의 특징 → 유형에 맞는 기관 → 내 결과 저장하기 → 친구에게 공유하기 → 더 보기 → 처음부터 다시 하기 → 작은 글.
 // 대표 유형 하나만 보여 준다. 점수는 보여 주지 않는다. 결과는 저장해 두지 않고 답에서 다시 판정한다.
@@ -31,13 +31,19 @@ import type { Answer } from "@/stores/survey-store";
 export function Result() {
   const answers = useSurvey((state) => state.answers);
   const tuned = useSurvey((state) => state.tuned);
-  if (!isComplete(answers)) return <Redirect to={resumeHref(answers)} />;
+  // 숨겨 둔 결과 화면이 다시 열리면 이전 답으로 결정한 이동 효과도 재개될 수 있다.
+  // 지금 저장소의 답과 일치하는 화면만 이동한다. 바뀐 답은 다음 렌더에서 판정한다.
+  const isCurrent = () => {
+    const state = useSurveyStore.getState();
+    return state.answers === answers && state.tuned === tuned;
+  };
+  if (!isComplete(answers)) return <Redirect to={resumeHref(answers)} isCurrent={isCurrent} />;
 
   const judged = judge(answers);
   const type = judged.primary ? getType(judged.primary) : undefined;
-  if (judged.state === CHOOSE || !type) return <Redirect to="/pick" />;
+  if (judged.state === CHOOSE || !type) return <Redirect to="/pick" isCurrent={isCurrent} />;
   // 유형이 정해진 뒤 한 번만 '조금 더 맞춰 보기'를 거친다
-  if (!tuned) return <Redirect to="/tune" />;
+  if (!tuned) return <Redirect to="/tune" isCurrent={isCurrent} />;
 
   // 가장 높은 유형이 여럿이어서 본인이 골랐던 사람에게만 '다시 고르기'를 보여 준다
   const canRepick = judged.candidates.length > 1 && PRIORITY_Q in answers;
