@@ -23,6 +23,8 @@ export const text = {
   startIntro: "질문에 답하면 내 유형과, 안산에서 가 볼 곳을 알려 드려요.", // 옮김
   startButton: "유형 찾기 시작하기", // 옮김
   startBrowse: "질문 없이 먼저 둘러보기", // 옮김
+  // 새로 씀: 제목 아래 알약 세 개. 무엇을 하는지 한눈에 보여 준다
+  startPills: ["27문항", "12가지 유형", "안산 기관 안내"],
   startNotesTitle: "유의사항", // 옮김
   // 새로 씀: 새 앱은 답을 기기 안(sessionStorage)에 두므로 '저장하지 않아요'를 실제에 맞게 고쳤다
   startPrivacy:
@@ -74,6 +76,12 @@ export const text = {
   repickButton: "먼저 볼 분야 다시 고르기", // 옮김
   restartButton: "처음부터 다시 하기", // 옮김
   placesChecked: "곳의 정보는 {date}에 확인했어요. 신청 전에 기관에 꼭 확인해 주세요.", // 옮김
+
+  // 기관 카드의 딱지 (옮김)
+  kindAlways: "언제든 문의할 수 있어요",
+  kindPeriod: "기간이 정해져 있어요",
+  kindList: "목록이에요",
+  nationwide: "전국 어디서나 전화·온라인으로",
 
   // ── 기관 세부 화면, 다른 곳 목록 (옮김) ──
   backLabel: "뒤로", // 화살표 단추를 읽어 주는 이름

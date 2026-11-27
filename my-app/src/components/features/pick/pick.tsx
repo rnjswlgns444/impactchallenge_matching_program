@@ -69,7 +69,7 @@ function PickBody({
 
   return (
     <form
-      className="flex flex-1 flex-col gap-[0.6rem]"
+      className="rise flex flex-1 flex-col gap-[0.8rem]"
       onSubmit={(event) => {
         event.preventDefault();
         if (!draft) return;
@@ -77,8 +77,10 @@ function PickBody({
         router.push("/result");
       }}
     >
-      <p>{candidates.length === 2 ? text.tieTwo : text.tieMany}</p>
-      <h1 className="text-[clamp(1.24rem,4.5vw,1.6rem)] leading-[1.4] font-bold">{ask.text}</h1>
+      <div>
+        <p className="text-[0.9rem] font-semibold text-teal">{candidates.length === 2 ? text.tieTwo : text.tieMany}</p>
+        <h1 className="mt-[0.2rem] text-[clamp(1.4rem,6vw,1.8rem)] leading-[1.35] font-extrabold tracking-[-0.03em]">{ask.text}</h1>
+      </div>
       <ChoiceGroup value={draft || null} onValueChange={setDraft} label={ask.text}>
         {options.map((option) => {
           const example = examples.get(option.id);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { ChoiceCard, ChoiceGroup } from "@/components/common/choice-card";
@@ -118,7 +119,7 @@ function QuestionView({
 
   return (
     <form
-      className="flex flex-1 flex-col gap-[0.6rem]"
+      className="rise flex flex-1 flex-col gap-[0.9rem]"
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
@@ -133,54 +134,64 @@ function QuestionView({
           value={(position / total) * 100}
           // 화면 읽기 도구에도 퍼센트 대신 같은 진행 글자를 읽어 준다
           getAriaValueText={() => fill(text.progress, { number: position, total })}
-          className="gap-[0.3rem]"
+          className="gap-[0.35rem]"
         >
-          <div className="flex w-full items-baseline justify-between gap-[0.48rem]">
-            <ProgressLabel className="font-bold text-teal tabular-nums">
-              {fill(text.progress, { number: position, total })}
-            </ProgressLabel>
-            {cheer ? <span className="text-sm font-bold text-clay">{cheer}</span> : null}
+          <div className="flex w-full items-center justify-between gap-[0.5rem]">
+            {/* 앞 문항으로. 첫 문항에서는 시작 화면으로 돌아간다(답은 지워지지 않는다) */}
+            <Link
+              href={position > 1 ? `/survey?q=${position - 1}` : "/"}
+              className="-ml-[0.2rem] rounded-md px-[0.2rem] py-[0.3rem] text-[0.85rem] font-semibold text-muted-foreground hover:text-teal"
+            >
+              {text.back}
+            </Link>
+            <span className="flex items-baseline gap-[0.5rem]">
+              {cheer ? <span className="text-[0.8rem] font-bold text-clay">{cheer}</span> : null}
+              <ProgressLabel className="text-[0.85rem] font-bold text-teal tabular-nums">
+                {fill(text.progress, { number: position, total })}
+              </ProgressLabel>
+            </span>
           </div>
         </Progress>
       )}
 
-      <div className="flex flex-col gap-[0.6rem] rounded-xl border bg-card p-[clamp(0.76rem,3vw,1.3rem)] shadow-[0_3px_14px_rgba(48,55,37,0.045)]">
-        <div>
-          <h1 aria-live="polite" className="text-[clamp(1.24rem,4.5vw,1.6rem)] leading-[1.4] font-bold">
-            {question.text}
-          </h1>
-          {help ? (
-            <p className="mt-[0.26rem] text-[0.95rem] leading-[1.6] text-muted-foreground">{help}</p>
-          ) : null}
-        </div>
-
-        {isNumber ? (
-          <>
-            <Input
-              inputMode="numeric"
-              autoComplete="off"
-              placeholder={text.numberPlaceholder}
-              aria-label={question.text}
-              aria-invalid={refused || undefined}
-              value={draft}
-              onChange={(event) => {
-                setDraft(event.target.value.replace(/\D/g, "").slice(0, 4));
-                setRefused(false);
-              }}
-              className="h-[2.6rem] bg-card text-base md:text-base"
-            />
-            {refused ? <Notice live>{text.numberRequired}</Notice> : null}
-          </>
-        ) : (
-          <ChoiceGroup value={picked ? draft : null} onValueChange={setDraft} label={question.text}>
-            {options.map((option) => (
-              <ChoiceCard key={option.id} value={option.id} icon={optionIcon(option.icon)}>
-                {option.label}
-              </ChoiceCard>
-            ))}
-          </ChoiceGroup>
-        )}
+      <div className="mt-[0.3rem]">
+        <h1
+          aria-live="polite"
+          className="text-[clamp(1.4rem,6vw,1.8rem)] leading-[1.35] font-extrabold tracking-[-0.03em] text-pretty"
+        >
+          {question.text}
+        </h1>
+        {help ? (
+          <p className="mt-[0.4rem] text-[0.9rem] leading-[1.55] text-muted-foreground">{help}</p>
+        ) : null}
       </div>
+
+      {isNumber ? (
+        <>
+          <Input
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder={text.numberPlaceholder}
+            aria-label={question.text}
+            aria-invalid={refused || undefined}
+            value={draft}
+            onChange={(event) => {
+              setDraft(event.target.value.replace(/\D/g, "").slice(0, 4));
+              setRefused(false);
+            }}
+            className="h-[3.3rem] rounded-xl border-edge bg-card px-[0.9rem] text-[1.2rem] font-semibold shadow-card md:text-[1.2rem]"
+          />
+          {refused ? <Notice live>{text.numberRequired}</Notice> : null}
+        </>
+      ) : (
+        <ChoiceGroup value={picked ? draft : null} onValueChange={setDraft} label={question.text}>
+          {options.map((option) => (
+            <ChoiceCard key={option.id} value={option.id} icon={optionIcon(option.icon)}>
+              {option.label}
+            </ChoiceCard>
+          ))}
+        </ChoiceGroup>
+      )}
 
       <StickyActions>
         <Button type="submit" variant="cta" size="touch" disabled={!isNumber && !picked}>
@@ -189,19 +200,10 @@ function QuestionView({
       </StickyActions>
 
       {editing ? (
-        <LinkButton href="/result" variant="link" className="w-auto self-start">
+        <LinkButton href="/result" variant="link" className="w-auto self-center">
           {text.editCancel}
         </LinkButton>
-      ) : (
-        // 첫 문항에서는 시작 화면으로 돌아간다. 답은 지워지지 않는다
-        <LinkButton
-          href={position > 1 ? `/survey?q=${position - 1}` : "/"}
-          variant="link"
-          className="w-auto self-start"
-        >
-          {text.back}
-        </LinkButton>
-      )}
+      ) : null}
     </form>
   );
 }
