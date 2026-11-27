@@ -99,7 +99,7 @@ test("결과 → 기관 → 체험 → 돌아가기", async ({ page, seed }) => 
 
   await seen(page.getByRole("link", { name: text.tasteButton })).click();
   await expect(page).toHaveURL(/\/place\/[A-Z0-9_]+\/taste$/);
-  await expect(seen(page.getByText(text.tasteWaiting))).toBeVisible();
+  await expect(seen(page.locator('button[aria-pressed], iframe[src*="youtube-nocookie.com/embed/"]')).first()).toBeVisible();
   await expectNoOverflow(page);
 
   await seen(page.getByRole("link", { name: text.tasteBack })).click();
