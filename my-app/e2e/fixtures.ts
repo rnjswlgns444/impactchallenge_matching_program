@@ -1,0 +1,120 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
+import { test as base, expect, type Locator, type Page } from "@playwright/test";
+
+// 화면 흐름 테스트가 함께 쓰는 것.
+// - ai: AI 창구(/api/recommend)를 가짜 답으로 막고, 화면이 보낸 요청을 모아 둔다. 모든 테스트에 저절로 걸린다.
+//   그래서 테스트는 실제 AI를 부르지 않는다.
+// - seed: 설문을 다 끝낸 사람의 답을 기기 저장소(sessionStorage)에 미리 넣는다.
+
+const data = JSON.parse(
+  // 테스트는 my-app 폴더에서 돌린다
+  readFileSync(path.join(process.cwd(), "src/generated/data.json"), "utf-8")
+) as {
+  questions: { id: string; selection: string }[];
+  types: { id: string; name: string }[];
+};
+
+export const typeName = (id: string) => data.types.find((type) => type.id === id)!.name;
+
+// 설문 문항(걸림돌·우선순위·주관식을 뺀 27문항)의 순서
+export const SURVEY_IDS = data.questions
+  .filter((question) => ["single", "number", "scale"].includes(question.selection))
+  .map((question) => question.id)
+  .filter((id) => id.startsWith("P_") || /^Q\d+$/.test(id));
+
+// 유형마다 두 문항. high에 든 유형의 문항만 5점, 나머지는 1점으로 답한 사람
+const TYPE_QUESTIONS: Record<string, [string, string]> = {
+  T05: ["Q02", "Q16"],
+  T07: ["Q03", "Q13"],
+};
+
+export function answersFor(high: keyof typeof TYPE_QUESTIONS | "all"): Record<string, string | number> {
+  const answers: Record<string, string | number> = {
+    P_GENDER: "female",
+    P_AGE: 1966,
+    P_WORK: "not_working",
+  };
+  for (let number = 1; number <= 24; number += 1) {
+    const id = `Q${String(number).padStart(2, "0")}`;
+    answers[id] = high === "all" || TYPE_QUESTIONS[high].includes(id) ? 5 : 1;
+  }
+  return answers;
+}
+
+export type Stored = {
+  answers: Record<string, string | number>;
+  tuned?: boolean;
+  wish?: string;
+  dong?: string | null;
+};
+
+type AiReply = { status: string; matches: { id: string; reason: string }[]; unmatched: string[] };
+
+type Fixtures = {
+  ai: { requests: unknown[]; reply: (answer: AiReply | ((body: { candidates: string[] }) => AiReply)) => void };
+  seed: (stored: Stored) => Promise<void>;
+};
+
+export const test = base.extend<Fixtures>({
+  ai: [
+    async ({ page }, use) => {
+      const requests: unknown[] = [];
+      let answer: AiReply | ((body: { candidates: string[] }) => AiReply) = {
+        status: "fail",
+        matches: [],
+        unmatched: [],
+      };
+      await page.route("**/api/recommend", async (route) => {
+        const body = route.request().postDataJSON() as { candidates: string[] };
+        requests.push(body);
+        await route.fulfill({ json: typeof answer === "function" ? answer(body) : answer });
+      });
+      await use({
+        requests,
+        reply: (next) => {
+          answer = next;
+        },
+      });
+    },
+    { auto: true },
+  ],
+
+  seed: async ({ page }, use) => {
+    await use(async (stored) => {
+      const state = {
+        answers: stored.answers,
+        details: {},
+        browseDetails: {},
+        dong: stored.dong ?? null,
+        tuned: stored.tuned ?? true,
+        wish: stored.wish ?? "",
+        ai: null,
+        aiPending: false,
+      };
+      // 처음 열 때만 넣는다(새로고침하거나 다시 시작한 뒤의 값을 덮지 않게)
+      await page.addInitScript((value) => {
+        if (sessionStorage.getItem("anti-survey") === null) sessionStorage.setItem("anti-survey", value);
+      }, JSON.stringify({ state, version: 4 }));
+    });
+  },
+});
+
+export { expect };
+
+// 지나온 화면도 숨긴 채 남아 있으므로(<Activity>), 늘 보이는 것만 고른다
+export const seen = (locator: Locator) => locator.filter({ visible: true });
+
+// 가로로 넘치는지
+export async function expectNoOverflow(page: Page) {
+  const over = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+  );
+  expect(over).toBeLessThanOrEqual(0);
+}
+
+// 기기 저장소에 든 답
+export async function storedState(page: Page) {
+  return page.evaluate(() => JSON.parse(sessionStorage.getItem("anti-survey") ?? "{}").state);
+}
