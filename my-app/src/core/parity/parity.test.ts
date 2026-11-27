@@ -15,9 +15,11 @@ import { describe, expect, it } from "vitest";
 import { fill, text } from "@/content/text";
 import { appData } from "@/data";
 import type { Option, Program } from "@/data/types";
+import serverRaw from "@/generated/server.json";
 
 import { aiPool, eligible, firstConsult, forType, unconfirmedColumns, type Profile } from "../candidates";
 import type { Moment } from "../clock";
+import { buildPrompt, hasWish, parseAnswer, type AiMatch } from "../matcher";
 import { phones, placeFacts, placeLinks, placeName, worryLines, type Fact, type Phone, type PlaceLink } from "../places";
 import { scrub } from "../privacy";
 import { score } from "../scoring";
@@ -80,6 +82,14 @@ type Cases = {
     worries: Record<string, Record<string, string[]>>; // { 걱정 id: { 유형 id("" = 유형 없이): 줄 } }
   }[];
   phones: { text: string; expect: Phone[] }[];
+  wish: { text: string; expect: boolean }[];
+  prompts: { types: string[]; examples: string[]; wish: string; pool: string[]; maxN: number; expect: string }[];
+  answers: {
+    raw: string;
+    candidates: string[];
+    maxN: number;
+    expect: { matches: AiMatch[]; unmatched: string[] } | null; // null = 형식이 틀려 오류가 나야 한다
+  }[];
   checkLabels: { ageUnconfirmed: string; unconfirmed: string };
 };
 
@@ -262,6 +272,32 @@ describe("파이썬과 같은 답: 기관 한 곳 다듬기", () => {
           const type = typeId ? typeOf(typeId) : null;
           expect(worryLines(program, worry, labels, type), `${one.id} ${worry.id} ${typeId}`).toEqual(lines);
         }
+      }
+    }
+  });
+});
+
+describe("파이썬과 같은 답: AI 추가 추천의 판단", () => {
+  it(`${cases.wish.length}개 글에서 '바라는 점이 있는지'가 같다`, () => {
+    for (const one of cases.wish) {
+      expect(hasWish(one.text, settings.free_empty_words), JSON.stringify(one.text)).toBe(one.expect);
+    }
+  });
+
+  it("AI에게 보내는 지시문이 글자 하나까지 같다", () => {
+    for (const [index, one] of cases.prompts.entries()) {
+      const pool = one.pool.map((id) => programs.find((p) => p.id === id)!);
+      const made = buildPrompt(serverRaw.prompt, one.types.map(typeOf), one.examples, one.wish, pool, one.maxN);
+      expect(made, `지시문 ${index}번`).toBe(one.expect);
+    }
+  });
+
+  it("AI 답에서 후보 밖 id를 버리고, 틀린 형식은 받지 않는다", () => {
+    for (const one of cases.answers) {
+      if (one.expect === null) {
+        expect(() => parseAnswer(one.raw, one.candidates, one.maxN), one.raw).toThrow();
+      } else {
+        expect(parseAnswer(one.raw, one.candidates, one.maxN), one.raw).toEqual(one.expect);
       }
     }
   });

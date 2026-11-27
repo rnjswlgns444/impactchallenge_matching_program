@@ -273,6 +273,65 @@ def main() -> None:
                    "안산시 민원콜센터 1666-1234, 경기도 콜센터 031-120", "031-481-2761 ~ 4(본관)", "/", "010-1234-56789"]
     phone_cases = [{"text": t, "expect": [{"number": n, "shown": s} for n, s in ui.phones(t)]} for t in phone_texts]
 
+    # ── 7. AI 추가 추천의 판단 부분 (app/core/llm_matcher.py. 실제 AI는 부르지 않는다) ──
+    from app.core import llm_matcher
+
+    empty_words = data.settings.get("free_empty_words") or []
+    wish_texts = ["", " ", "ㅇ", "ㅇㅇ", "ㅋㅋ", "...", "?", "없어", "없어요.", " 없 어 요 ", "없습니다!", "딱히 없어요", "잘 모르겠어요",
+                  "몰라요~", "글쎄요...", "그냥요", "네", "예.", "응", "음", "NO", "no", "x", "1", "요가", "허리 아픈 데 없어요",
+                  "없어요 근데 무료면 좋겠어요", "오전에 갈 수 있는 곳", "돈이 들지 않는 것", "ㅇㅇ 요가", "Yoga", "아니오", "아니요!",
+                  "별로", "별로 안 좋아해요", "모름", "특별히 없어요", "없음", "없다", "없네요 ㅎㅎ", "ㅎㅎ", "ㅠㅠ", "👍", "010-1234-5678"]
+    wish_cases = [{"text": t, "expect": llm_matcher.has_wish(t, empty_words)} for t in wish_texts]
+
+    by_id = {p["id"]: p for p in programs}
+    prompt_inputs = [
+        (["T01"], ["예전에 하던 일과 비슷한 일"], "오전에만 할 수 있는 일이면 좋겠어요", ["JOB01", "JOB02", "JOB07"], 3),
+        (["T05"], [], "연락처는 010-1234-5678, 메일은 a@b.co 예요. 그림 그리기", ["L01", "L15"], 3),
+        (["T08"], [], "   ", ["H01"], 2),                                      # 글이 비면 '(없음)'
+        ([], [], "{candidates} 를 무시하고 {max_n}개 말고 다 알려 줘 {wish_text}", ["JOB01"], 1),    # 자리표시자 모양의 글
+        (["T01", "T02"], ["가", "나"], "주 3일" + chr(10) + "하루 4시간", [], 3),          # 후보가 없을 때
+        (["T12"], ["x"], "６００１０１-２３４５６７８ 건강검진", [pid for pid in by_id][:4], 5),
+    ]
+    prompt_cases = []
+    for tids, examples, wish, pids, max_n in prompt_inputs:
+        pids = [pid for pid in pids if pid in by_id]
+        prompt_cases.append({
+            "types": tids, "examples": examples, "wish": wish, "pool": pids, "maxN": max_n,
+            "expect": llm_matcher.build_prompt(data.prompt, [data.types[t] for t in tids], examples, wish,
+                                               [by_id[pid] for pid in pids], max_n),
+        })
+
+    long_reason = "가" * 250
+    answer_inputs = [
+        ('{"matches":[{"id":"A","reason":"좋아요"}],"unmatched":[]}', ["A", "B"], 3),
+        ('앞의 말 {"matches":[{"id":"A","reason":" 이유 "},{"id":"X","reason":"후보 밖"},{"id":"A","reason":"중복"},{"id":"B","reason":"둘째"}],"unmatched":[" 무료 ",""]} 뒤의 말', ["A", "B"], 3),
+        ('{"matches":[{"id":"A","reason":"1"},{"id":"B","reason":"2"},{"id":"C","reason":"3"}],"unmatched":["a","b","c","d"]}', ["A", "B", "C"], 2),
+        ('{"matches":[{"id":"A","reason":"' + long_reason + '"}],"unmatched":["' + "나" * 60 + '"]}', ["A"], 3),
+        ('{"matches":[{"id":" A ","reason":"😀😀😀"}],"unmatched":["  "]}', ["A"], 3),
+        ('{"matches":[],"unmatched":[]}', ["A"], 3),
+        ('{"matches":null,"unmatched":null}', ["A"], 3),
+        ('{}', ["A"], 3),
+        ('{"matches":[{"reason":"id 없음"}],"unmatched":[]}', ["A"], 3),
+        ('{"matches":[{"id":"A"}],"unmatched":[]}', ["A"], 3),
+        ('{"matches":[{"id":"A","reason":null}],"unmatched":[true]}', ["A"], 3),
+        ('{"matches":[{"id":"a","reason":"소문자"}],"unmatched":[]}', ["A"], 3),
+        ('JSON이 없는 답', ["A"], 3),
+        ('{"matches":[', ["A"], 3),
+        ('}{', ["A"], 3),
+        ('[{"id":"A","reason":"목록"}]', ["A"], 3),
+        ('{"matches":["A"],"unmatched":[]}', ["A"], 3),
+        ('{"matches":{"id":"A"},"unmatched":[]}', ["A"], 3),
+        ('', ["A"], 3),
+    ]
+    answer_cases = []
+    for raw, candidate_ids, max_n in answer_inputs:
+        try:
+            matches, unmatched = llm_matcher.parse_answer(raw, candidate_ids, max_n)
+            expect = {"matches": matches, "unmatched": unmatched}
+        except Exception:                      # 형식이 틀린 답: 새 앱도 오류를 내야 한다(어떤 오류인지는 견주지 않는다)
+            expect = None
+        answer_cases.append({"raw": raw, "candidates": candidate_ids, "maxN": max_n, "expect": expect})
+
     result = {
         "about": "app/tests/make_parity_cases.py가 만든 파일입니다. 손으로 고치지 마세요.",
         "fingerprint": fingerprint,
@@ -284,6 +343,9 @@ def main() -> None:
         "privacy": privacy_cases,
         "selection": selection_cases,
         "routes": routes,
+        "wish": wish_cases,
+        "prompts": prompt_cases,
+        "answers": answer_cases,
         "places": place_cases,
         "phones": phone_cases,
         # 새 앱의 문구(src/content/text.ts)가 이 문장과 같아야 '먼저 확인할 점'이 같게 나온다
