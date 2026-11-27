@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, Binoculars, Check, ClipboardList, MapPin, Minus, Plus, ReceiptText } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { LinkButton } from "@/components/common/link-button";
 import { fieldLocalUi } from "@/content/practice";
 import { fill } from "@/content/text";
 
@@ -130,7 +129,6 @@ function EcoTool() {
         {checked && <div className={box} role="status">{measured ? <><strong className="text-teal">{t.record}</strong><p>{t.recordBody}</p></> : zero !== 2 ? t.wrongStart : t.wrongEnd}</div>}
       </>}
     </>}
-    <LinkButton href="https://ansan.ekfem.or.kr/posts/0ktMwK7" variant="outline" className={touch}>{t.source}</LinkButton>
   </ToolCard>;
 }
 

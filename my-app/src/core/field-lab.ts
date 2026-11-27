@@ -1,17 +1,8 @@
-export type FieldSource = {
-  title: string;
-  publisher: string;
-  url: string;
-  kind: string;
-  observation: string;
-  use: string;
-};
-
+// 만들 때 참고한 자료는 화면에 보이지 않는다(11/28 사용자 결정). 기록은 results/programs/에 있다.
 type Task = {
   title: string;
   instruction: string;
   why: string;
-  sourceRefs: readonly number[];
 };
 
 export type FieldRound = Task & (
@@ -33,7 +24,7 @@ export type FieldRound = Task & (
 export type FieldLab = {
   title: string; brief: string; artifact: string; rounds: readonly FieldRound[];
 };
-export type FieldEntry = { sources: readonly FieldSource[]; lab: FieldLab };
+export type FieldEntry = { lab: FieldLab };
 
 // 검토한 문서 번호와 실습값은 화면 수명 동안만 유지한다.
 export type FieldAnswer = { values: number[]; viewed: number[]; checked: boolean };

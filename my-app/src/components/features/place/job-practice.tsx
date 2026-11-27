@@ -87,10 +87,6 @@ function EmploymentCard() {
         <input className={control} maxLength={80} autoComplete="off" value={roleNote} onChange={event => setRoleNote(event.target.value)} placeholder={copy.customRolePlaceholder} />
       </label>}
       <p>{copy.roleNote}</p>
-      {selectedRole && <details className="rounded-lg border border-edge">
-        <summary className="min-h-[3.1rem] cursor-pointer content-center px-[0.65rem] font-semibold text-teal">{copy.reference}</summary>
-        <div className="p-[0.5rem] pt-0"><LinkButton href={selectedRole.url}>{selectedRole.source}</LinkButton></div>
-      </details>}
       <label className={group}><strong>{copy.pastLabel}</strong>
         <select className={control} value={past} onChange={event => setPast(event.target.value)}>
           <option value="">{copy.noHistory}</option>

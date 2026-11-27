@@ -2,12 +2,11 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import {
-  ArrowLeft, ArrowRight, ArrowUpRight, Bookmark, BookmarkCheck, Check, CheckCheck,
+  ArrowLeft, ArrowRight, Bookmark, BookmarkCheck, Check, CheckCheck,
   ClipboardList, FileText, FolderOpen, Hand, ListFilter, Minus, Package, Plus,
   Scale, Undo2,
 } from "lucide-react";
 
-import { LinkButton } from "@/components/common/link-button";
 import { Button } from "@/components/ui/button";
 import { fieldUi } from "@/content/practice";
 import { fill } from "@/content/text";
@@ -21,35 +20,12 @@ const stack = "grid min-w-0 gap-[0.55rem]";
 const sectionHeading = "flex min-w-0 items-center gap-[0.4rem] font-bold text-teal";
 const icon = "size-[1.15rem] shrink-0";
 const touch = "min-h-[3.1rem] text-[1rem] leading-snug whitespace-normal";
-const detailsLabel = "min-h-[3.1rem] cursor-pointer content-center rounded-lg px-[0.6rem] py-[0.4rem] font-bold text-teal focus-visible:outline-2";
 const number = (n: number) => n.toLocaleString("ko-KR", { maximumFractionDigits: 6 });
 const units = (n: number, unit: string) => fill(fieldUi.number, { n: number(n), unit });
 type Changes = { answer: FieldAnswer; onChange: (answer: FieldAnswer) => void };
 type Inspect = Extract<FieldRound, { mode: "inspect" }>;
 type Assemble = Extract<FieldRound, { mode: "assemble" }>;
 type Allocate = Extract<FieldRound, { mode: "allocate" }>;
-
-function Sources({ entry, refs }: { entry: FieldEntry; refs?: readonly number[] }) {
-  const sources = refs ? [...new Set(refs)].map(i => entry.sources[i - 1]).filter(Boolean) : entry.sources;
-  if (!sources.length) return null;
-  return <details className="rounded-lg border border-line bg-card">
-    <summary className={detailsLabel}>
-      {refs ? fieldUi.sources : fill(fieldUi.allSources, { n: sources.length })}
-    </summary>
-    <ul className="grid gap-[0.6rem] border-t border-edge p-[0.65rem]">
-      {sources.map(source => <li key={source.url} className="grid min-w-0 gap-[0.25rem] border-l-2 border-teal pl-[0.6rem]">
-        <p className="text-muted-foreground">{source.publisher} · {source.kind}</p>
-        <strong>{source.title}</strong>
-        <p>{source.observation}</p>
-        <p><span className="font-semibold">{fieldUi.used}</span> · {source.use}</p>
-        <LinkButton href={source.url} variant="outline" className={touch}>
-          {fieldUi.readSource}<ArrowUpRight className={icon} aria-hidden="true" />
-          <span className="sr-only">{source.title}</span>
-        </LinkButton>
-      </li>)}
-    </ul>
-  </details>;
-}
 
 function Documents({ round, answer, onChange }: Changes & { round: Inspect }) {
   const [opened, setOpened] = useState<number | null>(null);
@@ -247,7 +223,7 @@ export function FieldLabPanel({ entry, initialState, onBack, onComplete }: {
       </div>
       <p className="mt-[0.3rem] text-[1.18rem] font-extrabold leading-snug">{lab.title}</p>
     </header>
-    {page === 0 && <div className={box}><p>{lab.brief}</p><p className="mt-[0.3rem] text-muted-foreground">{fieldUi.original}</p></div>}
+    {page === 0 && <div className={box}><p>{lab.brief}</p></div>}
     <div className="px-[0.15rem]">
       <h2 tabIndex={-1} ref={title} className="text-[1.2rem] leading-snug font-extrabold">{round.title}</h2>
       <p className="mt-[0.2rem]">{round.instruction}</p>
@@ -267,7 +243,6 @@ export function FieldLabPanel({ entry, initialState, onBack, onComplete }: {
       onClick={() => page === 0 ? onBack(state) : setState(old => ({ ...old, page: old.page - 1 }))}>
       <ArrowLeft aria-hidden="true"/>{fieldUi.back}
     </Button>
-    <Sources entry={entry} refs={round.sourceRefs}/>
   </section>;
 }
 
@@ -309,6 +284,5 @@ export function FieldLabResult({ entry, state }: { entry: FieldEntry; state: Fie
       <h4 className="font-bold">{round.title}</h4>
       <WorkNotes round={round} answer={state.answers[i]}/>
     </section>)}
-    <Sources entry={entry}/>
   </article>;
 }

@@ -20,8 +20,6 @@ export type Simulation = {
   intro: string;
   kind: "desk" | "kiosk" | "workshop" | "planner" | "field";
   artifact: string;
-  sourceLabel: string;
-  sourceUrl: string;
   steps: readonly SimStep[];
 };
 

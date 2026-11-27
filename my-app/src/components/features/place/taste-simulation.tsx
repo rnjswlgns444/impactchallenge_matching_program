@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  ArrowDownRight, ArrowLeft, ArrowRight, ArrowUpRight, BriefcaseBusiness, CalendarDays,
+  ArrowDownRight, ArrowLeft, ArrowRight, BriefcaseBusiness, CalendarDays,
   Check, CheckCheck, Circle, CircleDot, FileText, Hammer, Lightbulb,
   ListOrdered, MapPin, Minus, MonitorSmartphone, PackageOpen, Plus, RotateCcw,
   SlidersHorizontal, Undo2, FileBadge, Store, Sprout, HandHeart, ShoppingBag,
@@ -11,7 +11,6 @@ import {
   Volume2, type LucideIcon,
 } from "lucide-react";
 
-import { LinkButton } from "@/components/common/link-button";
 import { Button } from "@/components/ui/button";
 import { fieldContent, fieldNavigation, simUi } from "@/content/practice";
 import { fill } from "@/content/text";
@@ -423,7 +422,6 @@ function SimulationSession({ simulation }: { simulation: Simulation }) {
             {resultRows(task, answers[index]).map((row, i) => <dd key={i} className="mt-[0.12rem] break-words">{row}</dd>)}
           </div>)}</dl>
         </div></div>}
-        <LinkButton href={simulation.sourceUrl} variant="cta">{simulation.sourceLabel}<ArrowUpRight aria-hidden="true" /></LinkButton>
         {entry && fieldState && <Button size="touch" type="button" variant="outline" data-field-edit onClick={() => {
           setFieldState({ ...fieldState, page: 0 }); navigate(fieldPage);
         }}><ArrowLeft aria-hidden="true" />{fieldNavigation.edit}</Button>}

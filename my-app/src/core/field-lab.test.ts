@@ -6,7 +6,7 @@ import {
   type FieldAnswer, type FieldEntry, type FieldRound,
 } from "./field-lab";
 
-const task = { title: "자료 확인", instruction: "예시로 조작해요.", why: "모의 자료예요.", sourceRefs: [1] };
+const task = { title: "자료 확인", instruction: "예시로 조작해요.", why: "모의 자료예요." };
 const inspect: FieldRound = {
   ...task, mode: "inspect", target: "조건에 맞는 자료",
   cases: [true, false, true].map((fit, index) => ({
@@ -26,7 +26,7 @@ const allocate: FieldRound = {
   ],
 };
 const fixture: FieldEntry = {
-  sources: [], lab: { title: "연습", brief: "모의 자료예요.", artifact: "완성 메모", rounds: [inspect, assemble, allocate] },
+  lab: { title: "연습", brief: "모의 자료예요.", artifact: "완성 메모", rounds: [inspect, assemble, allocate] },
 };
 const answer = (values: number[], viewed: number[] = []): FieldAnswer => ({ values, viewed, checked: false });
 
@@ -62,27 +62,12 @@ describe("기관별 자료 체험", () => {
     expect(fitsFieldRound(allocate, answer([2, 2]))).toBe(true);
   });
 
-  it("자체 체험 20종 각각에 고유 근거 10개 이상과 유효한 단계별 근거 번호가 있다", () => {
+  it("연습마다 현장 실습이 있고, 화면에 참고 자료를 싣지 않는다", () => {
     const catalog: Readonly<Record<string, FieldEntry>> = fieldContent;
-    expect(Object.keys(catalog)).toHaveLength(20);
     expect(Object.keys(catalog).sort()).toEqual(Object.keys(tasteSimulations).sort());
-    for (const [id, { sources, lab }] of Object.entries(catalog)) {
-      const urls = sources.map(source => {
-        const url = new URL(source.url);
-        expect(["https:", "http:"].includes(url.protocol), id).toBe(true);
-        expect([source.title, source.publisher, source.kind, source.observation, source.use].every(
-          value => value.trim().length > 0,
-        ), id).toBe(true);
-        url.hash = "";
-        return url.toString();
-      });
-      expect(new Set(urls).size, id).toBeGreaterThan(9);
-      expect(new Set(urls).size, id).toBe(sources.length);
-      expect(lab.rounds.length, id).toBeGreaterThan(1);
-      for (const round of lab.rounds) {
-        expect(round.sourceRefs.length, id).toBeGreaterThan(0);
-        expect(round.sourceRefs.every(ref => Number.isInteger(ref) && ref >= 1 && ref <= sources.length), id).toBe(true);
-      }
+    for (const [id, entry] of Object.entries(catalog)) {
+      expect(Object.keys(entry), id).toEqual(["lab"]);
+      expect(entry.lab.rounds.length, id).toBeGreaterThan(1);
     }
   });
 });

@@ -129,7 +129,9 @@ for (const width of [320, 390]) {
       await expect(result.locator("[data-field-note]")).toHaveCount(entry.lab.rounds.length);
       await expect(result.getByRole("heading", { name: simulation.artifact })).toBeVisible();
       for (const line of lines) await expect(result.locator("[data-basic-result] dl")).toContainText(line);
-      await expect(result.locator("a").filter({ hasText: simulation.sourceLabel }).last()).toHaveAttribute("href", simulation.sourceUrl);
+      // 만들 때 참고한 자료는 화면에 보이지 않는다(바깥으로 가는 링크도 없다)
+      await expect(panel.getByText(/참고한/)).toHaveCount(0);
+      await expect(result.locator('a[target="_blank"]')).toHaveCount(0);
       await expectNoOverflow(page);
       await result.locator("[data-sim-edit]").click();
       for (let i = 0; i < simulation.steps.length; i++) await next.click();
