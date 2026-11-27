@@ -294,8 +294,8 @@ export function PlaceMap({
         <div role="group" aria-label={text.mapPick} className="flex flex-wrap justify-center gap-[0.5rem]">
           {places.map((item) => {
             // 지도에 핀이 없는 곳은 번호만으로는 있는지 알 수 없어, 전화 그림과 이름을 함께 적는다.
-            // 지도가 아예 없을 때는 모두 번호만 둔다(견줄 핀이 없다)
-            const off = onMap.length > 0 && !onMap.includes(item);
+            // 지도가 아예 없을 때도 같은 모양이다(모든 단추에 이름이 붙는다)
+            const off = !onMap.includes(item);
             return (
               <button
                 key={item.key}
