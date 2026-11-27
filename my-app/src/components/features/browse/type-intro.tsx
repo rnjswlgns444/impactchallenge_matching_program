@@ -2,7 +2,7 @@
 
 import { FinePrint } from "@/components/common/fine-print";
 import { LinkButton } from "@/components/common/link-button";
-import { PlaceSection } from "@/components/features/type-view/place-section";
+import { PlaceSection, hasPlaceMap } from "@/components/features/type-view/place-section";
 import { TypeFeature, TypeHero } from "@/components/features/type-view/type-hero";
 import { fill, koreanDate, text } from "@/content/text";
 import { SHOWN_PLACES } from "@/core/places";
@@ -25,6 +25,7 @@ export function TypeIntro({ type }: { type: TypeInfo }) {
     const oldest = shown.map((program) => program["확인날짜"]).sort()[0];
     notes.push(fill(text.placesChecked, { date: koreanDate(oldest) }));
   }
+  if (hasPlaceMap(context)) notes.push(text.mapNote);
 
   return (
     <>

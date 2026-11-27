@@ -30,10 +30,11 @@ export function ShareSection() {
 
   return (
     <section className="flex flex-col gap-[0.5rem]">
-      <p className="text-[0.9rem] leading-[1.55] text-pretty text-muted-foreground">{text.shareHelp}</p>
+      {/* 설명은 단추 아래 작은 글로 둔다(위에 두면 '내 결과 저장하기'와 떨어져 보인다) */}
       <Button variant="outline" size="touch" className="font-bold" onClick={share}>
         {text.shareButton}
       </Button>
+      <p className="text-center text-[0.7rem] leading-[1.5] text-pretty text-muted-foreground">{text.shareHelp}</p>
       {outcome === "copied" ? (
         <Notice kind="info" live>
           {text.shareCopied}

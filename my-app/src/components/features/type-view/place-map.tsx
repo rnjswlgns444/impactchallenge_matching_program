@@ -291,10 +291,15 @@ export function PlaceMap({
 
       {/* 번호 단추. 핀이 작아 누르기 어려울 때와, 지도에 핀이 없는 곳을 고를 때 쓴다 */}
       {places.length > 1 ? (
-        <div role="group" aria-label={text.mapPick} className="flex flex-wrap justify-center gap-[0.5rem]">
+        <div
+          role="group"
+          aria-label={text.mapPick}
+          className="mx-auto grid w-full max-w-[16rem] gap-[0.5rem]"
+          style={{ gridTemplateColumns: `repeat(${places.length}, minmax(0, 1fr))` }}
+        >
           {places.map((item) => {
-            // 지도에 핀이 없는 곳은 번호만으로는 있는지 알 수 없어, 전화 그림과 이름을 함께 적는다.
-            // 지도가 아예 없을 때도 같은 모양이다(모든 단추에 이름이 붙는다)
+            // 지도에 핀이 없는 곳은 번호만으로는 있는지 알 수 없어, 번호 옆에 전화 그림을 붙인다.
+            // 이름은 아래 카드에만 적는다(단추에 적으면 길이가 제각각이라 지저분하다). 지도가 없을 때도 같은 모양이다
             const off = !onMap.includes(item);
             return (
               <button
@@ -304,18 +309,12 @@ export function PlaceMap({
                 aria-label={item.label}
                 onClick={() => setChosen(item.key)}
                 className={cn(
-                  "relative flex h-[2.4rem] max-w-full min-w-[3.4rem] cursor-pointer items-center justify-center gap-[0.3rem] rounded-full border-2 text-[0.95rem] font-extrabold transition-colors",
-                  off ? "px-[0.8rem]" : "",
+                  "relative flex h-[2.4rem] cursor-pointer items-center justify-center gap-[0.3rem] rounded-full border-2 text-[0.95rem] font-extrabold transition-colors",
                   item.key === current.key ? "border-ink bg-ink text-white" : "border-edge bg-card text-ink"
                 )}
               >
                 {item.number}
-                {off ? (
-                  <>
-                    <PhoneIcon aria-hidden="true" className="size-[0.8rem] shrink-0" strokeWidth={2.4} />
-                    <span className="truncate text-[0.75rem] font-bold">{item.name}</span>
-                  </>
-                ) : null}
+                {off ? <PhoneIcon aria-hidden="true" className="size-[0.85rem] shrink-0" strokeWidth={2.4} /> : null}
                 {item.star ? (
                   <StarIcon aria-hidden="true" className="absolute -top-[0.35rem] -right-[0.2rem] size-[0.95rem] fill-cta text-cta-border" />
                 ) : null}

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { StarIcon } from "lucide-react";
 
-import { LinkButton } from "@/components/common/link-button";
 import { Notice } from "@/components/common/notice";
 import { Spinner } from "@/components/ui/spinner";
 import { fill, text } from "@/content/text";
@@ -40,6 +39,12 @@ export function stopNote(stop: Stop): string {
     parts.push(text.remotePlace);
   }
   return parts.filter(Boolean).join(" · ");
+}
+
+// 이 구역에 지도가 그려지는지. 화면 맨 아래의 작은 글("핀은 대략적인 위치예요")을 넣을지 정할 때 쓴다
+export function hasPlaceMap(context: PlaceContext): boolean {
+  if (context.result.needsChoice) return false;
+  return routeStops(context.places, appData.venues, null, SHOWN_PLACES).stops.some((stop) => stop.venue);
 }
 
 export function PlaceSection({
@@ -154,9 +159,6 @@ export function PlaceSection({
             </p>
           ) : null}
 
-          {hasMap && mapPlaces.length > 1 ? (
-            <p className="text-[0.8rem] leading-[1.5] text-muted-foreground">{text.mapHint}</p>
-          ) : null}
           {/* 후보가 바뀌면(답을 고치거나 AI가 답했을 때) 고른 핀을 처음으로 되돌린다 */}
           <PlaceMap
             key={mapPlaces.map((item) => item.key).join("|")}
@@ -166,14 +168,13 @@ export function PlaceSection({
             more={hasMap && others.length > 0 ? text.mapMore : undefined}
             starNote={mapPlaces.some((item) => item.star) ? text.aiStarNote : undefined}
           />
-          {hasMap ? <p className="text-[0.7rem] leading-[1.5] text-muted-foreground">{text.mapNote}</p> : null}
-
-          {!hasMap && others.length > 0 ? (
-            <p className="text-[0.7rem] leading-[1.5] text-muted-foreground">{text.mapMoreNoMap}</p>
-          ) : null}
-          <LinkButton href={placesHref(browseType)} variant="outline" className="font-bold text-teal hover:text-teal">
+          {/* 큰 단추가 잇달아 놓이지 않게 글 단추로 둔다. "핀은 대략적인 위치예요"는 화면 맨 아래 작은 글에 있다 */}
+          <Link
+            href={placesHref(browseType)}
+            className="mx-auto flex min-h-[2.4rem] items-center px-[0.6rem] text-[0.9rem] font-bold text-teal underline underline-offset-4"
+          >
             {fill(text.seeList, { count: places.length })}
-          </LinkButton>
+          </Link>
         </>
       )}
     </section>

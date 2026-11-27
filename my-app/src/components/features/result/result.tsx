@@ -8,7 +8,7 @@ import { Redirect } from "@/components/common/redirect";
 import { RestartButton } from "@/components/features/session/restart-button";
 import { SaveSection } from "@/components/features/result/save-section";
 import { ShareSection } from "@/components/features/result/share-section";
-import { PlaceSection } from "@/components/features/type-view/place-section";
+import { PlaceSection, hasPlaceMap } from "@/components/features/type-view/place-section";
 import { TypeFeature, TypeHero } from "@/components/features/type-view/type-hero";
 import { fill, koreanDate, text } from "@/content/text";
 import { SHOWN_PLACES, noPlace, placeName } from "@/core/places";
@@ -77,6 +77,7 @@ function ResultBody({
     const oldest = shown.map((program) => program["확인날짜"]).sort()[0];
     notes.push(fill(text.placesChecked, { date: koreanDate(oldest) }));
   }
+  if (hasPlaceMap(context)) notes.push(text.mapNote);
 
   return (
     <>
