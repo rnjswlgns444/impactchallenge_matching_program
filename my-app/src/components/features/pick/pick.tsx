@@ -74,7 +74,8 @@ function PickBody({
         event.preventDefault();
         if (!draft) return;
         useSurveyStore.getState().setAnswer(PRIORITY_Q, draft);
-        router.push("/result");
+        // 아직 '조금 더 맞춰 보기'를 거치지 않았으면 그 화면으로 바로 간다(결과 화면을 거쳐 되돌아오지 않게)
+        router.push(useSurveyStore.getState().tuned ? "/result" : "/tune");
       }}
     >
       <div>
