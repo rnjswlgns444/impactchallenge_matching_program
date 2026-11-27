@@ -21,13 +21,16 @@ import {
   type PlaceLink,
 } from "@/core/places";
 import { GENDER_Q, KIND_LIST, splitMulti } from "@/core/table";
+import { tasteOf } from "@/core/taste";
 import { appData } from "@/data";
 import type { TypeInfo } from "@/data/types";
 import { usePlaceContext } from "@/hooks/use-place-context";
 import { useSurvey } from "@/hooks/use-survey";
 import { useViewedType } from "@/hooks/use-viewed-type";
 import { browseGender } from "@/lib/session";
-import { placesHref, typeHomeHref } from "@/lib/routes";
+import { placesHref, tasteHref, typeHomeHref } from "@/lib/routes";
+
+import { TasteCard } from "./taste-card";
 
 // 기관 세부 화면:
 // 분야 색 머리('←' + '○○형에 추천!' + 기관 이름 + 하는 일 + 그림) → 한 줄 설명 → 단추(전화 문의를 가장 크게)
@@ -163,6 +166,8 @@ function PlaceBody({ programId, type, browse }: { programId: string; type: TypeI
           ) : null}
         </div>
       ) : null}
+
+      <TasteCard taste={tasteOf(program)} href={tasteHref(program.id, browseType, fromList)} />
 
       <div className="rounded-xl border border-edge bg-card px-[0.9rem] shadow-card">
         <FoldGroup look="line">
