@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils";
 // 열 때마다 읽어 주지 않게 role="note"로 둔다. 방금 생긴 일을 알릴 때만 live를 켠다.
 
 const KINDS = {
-  warn: "border-0 border-l-[0.2rem] border-l-clay bg-[#FBEEDE]",
-  fail: "border-0 border-l-[0.2rem] border-l-destructive bg-[#F9E8E2]",
-  info: "border-[#B8D0C2] bg-aqua",
+  warn: "border-[#EFD9C0] bg-[#FDF3E6]",
+  fail: "border-[#EBCFC8] bg-[#FBEDE8]",
+  info: "border-[#C9E3D9] bg-[#EAF7F2]",
 };
 
 export function Notice({
@@ -24,7 +24,7 @@ export function Notice({
   return (
     <Alert
       role={live ? "status" : "note"}
-      className={cn("px-[0.8rem] py-[0.68rem]", KINDS[kind], className)}
+      className={cn("rounded-xl px-[0.9rem] py-[0.7rem]", KINDS[kind], className)}
     >
       <AlertDescription className="text-[0.95rem] leading-[1.6] text-pretty text-foreground">
         {children}

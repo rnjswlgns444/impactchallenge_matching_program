@@ -24,7 +24,7 @@ export function ChoiceGroup({
       value={value}
       onValueChange={(next) => onValueChange(String(next))}
       aria-label={label}
-      className="gap-[0.45rem]"
+      className="gap-[0.5rem]"
     >
       {children}
     </RadioGroup>
@@ -43,14 +43,14 @@ export function ChoiceCard({
   children: React.ReactNode;
 }) {
   return (
-    <FieldLabel className="group/choice cursor-pointer rounded-lg border-[1.5px] border-line bg-card text-base font-semibold text-ink has-data-checked:border-teal has-data-checked:bg-aqua has-data-checked:ring-1 has-data-checked:ring-teal has-[>[data-slot=field]]:border-[1.5px]">
+    <FieldLabel className="group/choice cursor-pointer rounded-xl border-[1.5px] border-edge bg-card text-base font-semibold text-ink shadow-card transition-all hover:border-teal active:translate-y-px has-data-checked:border-teal has-data-checked:bg-aqua has-data-checked:shadow-none has-data-checked:ring-2 has-data-checked:ring-teal has-[>[data-slot=field]]:rounded-xl has-[>[data-slot=field]]:border-[1.5px]">
       <Field
         orientation="horizontal"
-        className="min-h-[3.1rem] items-center gap-[0.6rem] px-[0.8rem]! py-[0.45rem]!"
+        className="min-h-[3.3rem] items-center gap-[0.7rem] px-[0.9rem]! py-[0.5rem]!"
       >
         <RadioGroupItem
           value={value}
-          className={cn("size-[1.08rem] border-[1.5px] border-line bg-card", icon ? "sr-only" : "")}
+          className={cn("size-[1.15rem] border-[1.5px] border-line bg-card", icon ? "sr-only" : "")}
         />
         {icon ? (
           <span

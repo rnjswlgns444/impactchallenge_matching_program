@@ -9,9 +9,9 @@ const buttonVariants = cva(
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-primary/80",
         // 노란 주 단추. 화면마다 가장 중요한 단추 하나에 쓴다
-        cta: "border-cta-border bg-cta font-bold text-cta-foreground hover:bg-cta-hover",
+        cta: "border-cta-border bg-cta font-bold text-cta-foreground shadow-float hover:bg-cta-hover active:shadow-none disabled:shadow-none",
         outline:
-          "border-line bg-card text-ink hover:border-teal hover:bg-muted hover:text-ink aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          "border-edge bg-card text-ink shadow-card hover:border-teal hover:bg-muted hover:text-ink disabled:shadow-none aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:

@@ -12,7 +12,7 @@ export function BackLink({ href, className }: { href: string; className?: string
       href={href}
       aria-label={text.backLabel}
       className={cn(
-        "grid size-[2.3rem] shrink-0 place-items-center rounded-lg border border-[#A6BFB1] bg-card text-[#174E43] hover:border-teal",
+        "grid size-[2.3rem] shrink-0 place-items-center rounded-full border border-edge bg-card text-teal shadow-card hover:border-teal active:translate-y-px",
         className
       )}
     >

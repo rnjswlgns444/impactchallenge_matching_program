@@ -9,7 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 
 // 접힌 줄. 누르면 아래로 펼쳐진다. 여러 줄을 함께 펼쳐 둘 수 있다.
-// - box(기본): 줄마다 흰 상자 (결과 화면의 '이 유형의 특징', '더 보기')
+// - box(기본): 줄마다 흰 카드 (결과 화면의 '더 보기')
 // - line: 상자 없이 위쪽 가는 줄 (기관 세부 화면)
 
 export function FoldGroup({
@@ -25,7 +25,7 @@ export function FoldGroup({
     <Accordion
       multiple
       data-look={look}
-      className={cn("group/fold", look === "box" ? "gap-[0.45rem]" : "", className)}
+      className={cn("group/fold", look === "box" ? "gap-[0.5rem]" : "", className)}
     >
       {children}
     </Accordion>
@@ -44,12 +44,12 @@ export function Fold({
   return (
     <AccordionItem
       value={value}
-      className="group-data-[look=box]/fold:rounded-lg group-data-[look=box]/fold:border group-data-[look=box]/fold:bg-card group-data-[look=box]/fold:not-last:border-b group-data-[look=line]/fold:border-t group-data-[look=line]/fold:border-[#DBE4DC] group-data-[look=line]/fold:not-last:border-b-0"
+      className="group-data-[look=box]/fold:rounded-xl group-data-[look=box]/fold:border group-data-[look=box]/fold:border-edge group-data-[look=box]/fold:bg-card group-data-[look=box]/fold:shadow-card group-data-[look=box]/fold:not-last:border-b group-data-[look=line]/fold:border-t group-data-[look=line]/fold:border-border group-data-[look=line]/fold:not-last:border-b-0"
     >
-      <AccordionTrigger className="min-h-[2.6rem] items-center gap-[0.4rem] py-[0.4rem] text-[0.95rem] leading-snug font-semibold text-ink hover:no-underline group-data-[look=box]/fold:px-[0.7rem] group-data-[look=line]/fold:rounded-none group-data-[look=line]/fold:font-bold **:data-[slot=accordion-trigger-icon]:size-[1.1rem] **:data-[slot=accordion-trigger-icon]:text-teal">
+      <AccordionTrigger className="min-h-[2.9rem] items-center gap-[0.4rem] py-[0.5rem] text-[0.95rem] leading-snug font-bold text-ink hover:no-underline group-data-[look=box]/fold:px-[0.9rem] group-data-[look=line]/fold:rounded-none **:data-[slot=accordion-trigger-icon]:size-[1.15rem] **:data-[slot=accordion-trigger-icon]:text-teal">
         {title}
       </AccordionTrigger>
-      <AccordionContent className="flex flex-col gap-[0.45rem] pb-[0.6rem] [&_a]:no-underline [&_p:not(:last-child)]:mb-0 text-[0.95rem] leading-[1.6] text-foreground group-data-[look=box]/fold:px-[0.7rem]">
+      <AccordionContent className="flex flex-col gap-[0.5rem] pb-[0.8rem] text-[0.95rem] leading-[1.6] text-foreground group-data-[look=box]/fold:px-[0.9rem] [&_a]:no-underline [&_p:not(:last-child)]:mb-0">
         {children}
       </AccordionContent>
     </AccordionItem>
