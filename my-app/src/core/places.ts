@@ -55,6 +55,13 @@ export function phones(contact: string): Phone[] {
   return found;
 }
 
+// 전화 단추에 붙일 곳 이름: 연락처에 괄호로 적어 둔 글의 첫 쉼표 앞. 없으면 빈 글.
+// '031-481-5899 (상록수)' → '상록수'
+export function phoneLabel(shown: string): string {
+  const inside = /\(([^)]*)\)/.exec(shown)?.[1] ?? "";
+  return inside.split(",")[0].trim();
+}
+
 // 본인이 먼저 확인할 점에 쓰는 문장
 export type CheckLabels = {
   ageUnconfirmed: string; // 55~64세 참여가 미확인일 때
