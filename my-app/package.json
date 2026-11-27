@@ -6,6 +6,8 @@
     "data": "tsx scripts/build-data.ts",
     "predev": "npm run data",
     "dev": "next dev",
+    "predev:phone": "npm run data",
+    "dev:phone": "next dev -H 0.0.0.0",
     "prebuild": "npm run data",
     "build": "next build",
     "start": "next start",
