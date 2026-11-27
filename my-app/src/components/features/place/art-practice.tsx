@@ -118,7 +118,7 @@ function RhythmDesk() {
   const timer = useRef<number | null>(null);
   const mounted = useRef(false);
   const enabled = useRef(false);
-  const soundAttempt = useRef(0);
+  const soundAttempt = useRef<symbol | null>(null);
   const playing = cursor >= 0;
   useEffect(() => {
     mounted.current = true;
@@ -132,7 +132,7 @@ function RhythmDesk() {
     return () => {
       mounted.current = false;
       enabled.current = false;
-      soundAttempt.current++;
+      soundAttempt.current = null;
       document.removeEventListener("visibilitychange", pauseInBackground);
       if (timer.current !== null) window.clearTimeout(timer.current);
       if (audio.current) void audio.current.close().catch(() => {});
@@ -140,7 +140,8 @@ function RhythmDesk() {
     };
   }, []);
   async function toggleSound() {
-    const attempt = ++soundAttempt.current;
+    const attempt = Symbol();
+    soundAttempt.current = attempt;
     if (enabled.current) {
       enabled.current = false;
       setSound(false);

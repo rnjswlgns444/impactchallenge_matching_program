@@ -62,27 +62,33 @@ export function SceneHand({ children }: { children: ReactNode }) {
   return container ? createPortal(children, container) : <>{children}</>;
 }
 
-function itemIcon(label: string): LucideIcon | undefined {
-  if (/간식|과일/.test(label)) return Apple;
-  if (/채소|채식|배추/.test(label)) return Salad;
-  if (/국물|^국$|밥/.test(label)) return Soup;
-  if (/두부|조리|식사/.test(label)) return CookingPot;
-  if (/박자|악보|연주/.test(label)) return Music2;
-  if (/장구|북소리/.test(label)) return Drum;
-  if (/서가|책방|책장|독서/.test(label)) return BookOpen;
-  if (/손잡이|찻잔|온기/.test(label)) return Coffee;
-  if (/꽃|모종/.test(label)) return Flower2;
-  if (/풀잎|잎사귀|새싹/.test(label)) return Sprout;
-  if (/발자국|흔적/.test(label)) return Footprints;
-  if (/수면|물결/.test(label)) return Waves;
-  if (/가격|메뉴|식품 표시/.test(label)) return Tag;
-  if (/서류|이력서/.test(label)) return FileText;
+const itemIcons = {
+  Apple, Salad, Soup, CookingPot, Music2, Drum, BookOpen,
+  Coffee, Flower2, Sprout, Footprints, Waves, Tag, FileText,
+};
+
+function itemIconKey(label: string): keyof typeof itemIcons | undefined {
+  if (/간식|과일/.test(label)) return "Apple";
+  if (/채소|채식|배추/.test(label)) return "Salad";
+  if (/국물|^국$|밥/.test(label)) return "Soup";
+  if (/두부|조리|식사/.test(label)) return "CookingPot";
+  if (/박자|악보|연주/.test(label)) return "Music2";
+  if (/장구|북소리/.test(label)) return "Drum";
+  if (/서가|책방|책장|독서/.test(label)) return "BookOpen";
+  if (/손잡이|찻잔|온기/.test(label)) return "Coffee";
+  if (/꽃|모종/.test(label)) return "Flower2";
+  if (/풀잎|잎사귀|새싹/.test(label)) return "Sprout";
+  if (/발자국|흔적/.test(label)) return "Footprints";
+  if (/수면|물결/.test(label)) return "Waves";
+  if (/가격|메뉴|식품 표시/.test(label)) return "Tag";
+  if (/서류|이력서/.test(label)) return "FileText";
   return undefined;
 }
 
 export function SceneObject({ label, index = 0, selected = false }: { label: string; index?: number; selected?: boolean }) {
   const station = useContext(Setting);
-  const Icon = itemIcon(label) ?? station.tools[index % station.tools.length];
+  const key = itemIconKey(label);
+  const Icon = key === undefined ? station.tools[index % station.tools.length] : itemIcons[key];
   return <span aria-hidden="true" className={styles.object} data-paint={index % 3}>
     <Icon focusable="false" />
     {selected && <span className={styles.tick}><Check focusable="false" /></span>}

@@ -347,6 +347,7 @@ function SimulationSession({ simulation }: { simulation: Simulation }) {
   const [page, setPage] = useState(-1);
   const [answers, setAnswers] = useState(() => simulation.steps.map(newSimAnswer));
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const resultRef = useRef<HTMLDivElement>(null);
   const moved = useRef(false);
   const layout = layouts[simulation.kind];
   const Icon = programIcons[simulation.id] ?? layout.icon;
@@ -366,7 +367,7 @@ function SimulationSession({ simulation }: { simulation: Simulation }) {
     if (enteringTool.current) {
       toolTitle.current?.focus();
       enteringTool.current = false;
-    } else if (moved.current) titleRef.current?.focus();
+    } else if (moved.current) (resultRef.current ?? titleRef.current)?.focus();
   }, [page]);
   function navigate(next: number) {
     moved.current = true;
@@ -408,7 +409,7 @@ function SimulationSession({ simulation }: { simulation: Simulation }) {
         <Missions simulation={simulation} page={page} answers={answers} />
       </div> : inField && entry ? <FieldLabPanel entry={entry} initialState={fieldState}
         onBack={state => { setFieldState(state); navigate(direct ? -1 : fieldPage - 1); }}
-        onComplete={state => { setFieldState(state); navigate(fieldPage + 1); }} /> : finished ? <div data-sim-result className="grid gap-[0.65rem] p-[0.75rem]">
+        onComplete={state => { setFieldState(state); navigate(fieldPage + 1); }} /> : finished ? <div data-sim-result ref={resultRef} tabIndex={-1} role="region" aria-label={entry?.lab.artifact ?? simulation.artifact} className="grid gap-[0.65rem] p-[0.75rem]">
         {entry && fieldState && <FieldLabResult entry={entry} state={fieldState} />}
         {!direct && <div data-basic-result className="grid gap-[0.65rem]">
         <SimulationWorkpiece simulation={simulation} answers={answers} page={page} />

@@ -208,7 +208,10 @@ export default function DevUiPage() {
 
         <Group title="집에서 먼저 체험하기 (준비 중 / 바깥 주소 / 영상 있음. 견본의 제목과 영상은 가짜다)">
           <TasteCard
-            taste={{ ready: false, title: null, body: null, action: { kind: "screen" }, videos: [] }}
+            taste={{
+              ready: false, title: null, body: null, action: { kind: "screen" },
+              activity: null, relatedActivity: null, videos: [],
+            }}
             href="/dev/ui"
           />
           <TasteCard
@@ -217,6 +220,8 @@ export default function DevUiPage() {
               title: "견본: 바깥 주소로 가는 체험",
               body: "단추를 누르면 새 창으로 열려요.",
               action: { kind: "link", url: "https://example.com" },
+              activity: null,
+              relatedActivity: null,
               videos: [],
             }}
             href="/dev/ui"
@@ -227,6 +232,8 @@ export default function DevUiPage() {
               title: "견본: 영상이 있는 체험",
               body: "아래 접힌 줄을 누르면 영상 목록이 나와요.",
               action: { kind: "screen" },
+              activity: null,
+              relatedActivity: null,
               videos: [
                 { title: "견본 영상 하나", url: "https://example.com/1", by: "견본 기관" },
                 { title: "제목이 길어서 두 줄로 넘어가는 견본 영상 둘", url: "https://example.com/2", by: "견본 정부 채널" },
