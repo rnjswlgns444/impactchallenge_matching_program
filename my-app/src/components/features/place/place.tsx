@@ -12,6 +12,8 @@ import { Notice } from "@/components/common/notice";
 import { Redirect } from "@/components/common/redirect";
 import { fill, koreanDate, text } from "@/content/text";
 import {
+  phoneLabel,
+  phones,
   placeFacts,
   placeLinks,
   placeName,
@@ -60,6 +62,9 @@ const FACT_TEXT: Record<Fact["kind"], string> = {
   contact: text.factContact,
 };
 
+// 노란 단추 하나
+type Main = { kind: PlaceLink["kind"]; url: string; label: string };
+
 function linkIcon(kind: PlaceLink["kind"]) {
   if (kind === "phone") return <PhoneIcon aria-hidden="true" />;
   if (kind === "route") return <MapPinIcon aria-hidden="true" />;
@@ -93,9 +98,17 @@ function PlaceBody({ programId, type, browse }: { programId: string; type: TypeI
   const reason = context.reasons[program.id];
   const taste = tasteOf(program);
 
-  // 가장 눈에 띄게 둘 단추 하나: 전화가 있으면 첫 전화, 없으면 첫 단추(공식 안내나 목록)
-  const main = links.find((link) => link.kind === "phone") ?? links[0];
-  const others = links.filter((link) => link !== main);
+  // 가장 눈에 띄게 둘 노란 단추: 전화가 있으면 전화(번호마다 하나), 없으면 첫 단추(공식 안내나 목록).
+  // 전화 단추에는 번호를 적지 않는다. 번호가 둘 이상이면 어느 곳인지(연락처의 괄호 글)만 붙인다.
+  const numbers = phones(program["공식연락처"]);
+  const calls: Main[] = numbers.map((phone) => {
+    const label = numbers.length > 1 ? phoneLabel(phone.shown) : "";
+    return { kind: "phone", url: `tel:${phone.number}`, label: text.phoneButton + (label ? ` (${label})` : "") };
+  });
+  const rest = links.filter((link) => link.kind !== "phone");
+  const mains: Main[] =
+    calls.length > 0 ? calls : rest.slice(0, 1).map((link) => ({ ...link, label: LINK_TEXT[link.kind] }));
+  const others = calls.length > 0 ? rest : rest.slice(1);
 
   return (
     <>
@@ -141,13 +154,14 @@ function PlaceBody({ programId, type, browse }: { programId: string; type: TypeI
       <p className="text-[1rem] leading-[1.6]">{program["한줄설명"]}</p>
       {program["종류"] === KIND_LIST ? <Notice kind="info">{text.listNote}</Notice> : null}
 
-      {main ? (
+      {mains.length > 0 ? (
         <div className="flex flex-col gap-[0.5rem]">
-          <LinkButton href={main.url} variant="cta" className="gap-[0.4rem]">
-            {linkIcon(main.kind)}
-            {LINK_TEXT[main.kind]}
-            {main.note}
-          </LinkButton>
+          {mains.map((main) => (
+            <LinkButton key={main.url} href={main.url} variant="cta" className="gap-[0.4rem]">
+              {linkIcon(main.kind)}
+              {main.label}
+            </LinkButton>
+          ))}
           {others.length > 0 ? (
             <div className="flex flex-wrap gap-[0.4rem]">
               {others.map((link) => (
@@ -156,7 +170,7 @@ function PlaceBody({ programId, type, browse }: { programId: string; type: TypeI
                   href={link.url}
                   variant="outline"
                   size="default"
-                  className="h-auto min-h-[2.6rem] flex-1 gap-[0.35rem] rounded-xl px-[0.75rem] py-[0.4rem] text-[0.85rem] leading-[1.4] font-bold whitespace-normal text-teal hover:text-teal [&_svg]:size-[1rem]"
+                  className="h-auto min-h-[2.6rem] grow basis-[calc(50%-0.2rem)] gap-[0.35rem] rounded-xl px-[0.75rem] py-[0.4rem] text-[0.85rem] leading-[1.4] font-bold whitespace-normal text-teal hover:text-teal [&_svg]:size-[1rem]"
                 >
                   {linkIcon(link.kind)}
                   {LINK_TEXT[link.kind]}

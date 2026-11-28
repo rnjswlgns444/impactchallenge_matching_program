@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { Program, TypeInfo } from "@/data/types";
 
 import { dayOnly } from "./clock";
-import { noPlace, noVisit, placeContext, placeName } from "./places";
+import { noPlace, noVisit, phoneLabel, placeContext, placeName } from "./places";
 
 const today = dayOnly("2026-11-27");
 
@@ -128,5 +128,20 @@ describe("기관 이름과 이용 방식", () => {
     expect(noVisit("전화 상담")).toBe(true);
     expect(noVisit("전화 안내. 평일 9~18시")).toBe(true);
     expect(noVisit("안산시청 1층")).toBe(false);
+  });
+});
+
+describe("전화 단추에 붙일 곳 이름", () => {
+  it("괄호 안의 글을 쓴다", () => {
+    expect(phoneLabel("031-481-5899 (상록수)")).toBe("상록수");
+  });
+
+  it("쉼표가 있으면 그 앞까지만 쓴다", () => {
+    expect(phoneLabel("1800-0096 (AI디지털배움터 콜센터, 평일 9~22시·주말 9~18시)")).toBe("AI디지털배움터 콜센터");
+  });
+
+  it("괄호가 없으면 빈 글이다", () => {
+    expect(phoneLabel("031-481-2919")).toBe("");
+    expect(phoneLabel("031-439-1619~21")).toBe("");
   });
 });
