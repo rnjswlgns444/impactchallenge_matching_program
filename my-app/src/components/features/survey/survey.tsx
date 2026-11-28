@@ -119,7 +119,9 @@ function QuestionView({
   // 딱 절반째 문항과 마지막 세 문항에서는 진행 글자 옆에 짧은 응원을 붙인다
   const cheer =
     position === Math.ceil(total / 2) ? text.cheerHalf : position > total - 3 ? text.cheerLast : "";
-  const help = question.help ?? (isScale ? text.scaleHelp : "");
+  // 유형 찾기 문항(보기에 점수가 붙은 문항)에는 공통 안내를 붙인다
+  const isChoice = (question.options ?? []).some((option) => option.scores);
+  const help = question.help ?? (isChoice ? text.choiceHelp : "");
 
   return (
     <form
@@ -131,7 +133,7 @@ function QuestionView({
       }}
     >
       {editing ? (
-        // 답 하나만 고치는 중: '질문 5 / 27'을 보여 주면 뒤의 문항을 다시 해야 하는 것으로 읽힌다
+        // 답 하나만 고치는 중: '질문 5 / 12'을 보여 주면 뒤의 문항을 다시 해야 하는 것으로 읽힌다
         <Notice kind="info">{text.editNotice}</Notice>
       ) : (
         <Progress
