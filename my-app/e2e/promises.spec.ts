@@ -27,7 +27,7 @@ test("AI에는 네 칸만 보내고, 개인정보 형태는 지워서 보낸다"
   expect(body.wish).not.toContain("1234");
   // 설문 답, 기본정보, 사는 동은 어디에도 없다
   const sent = JSON.stringify(body);
-  for (const secret of ["female", "1966", "not_working", "고잔동", "P_GENDER", "Q02"]) {
+  for (const secret of ["female", "1966", "not_working", "고잔동", "P_GENDER", "C01"]) {
     expect(sent).not.toContain(secret);
   }
 
@@ -111,7 +111,7 @@ test("'처음부터 다시 하기'는 되묻는 창을 거쳐야 답을 지운�
   await expect(page.getByText(text.restartAskBody)).toBeVisible();
   await page.getByRole("button", { name: text.restartKeep }).click();
   await expect(page.getByText(text.restartAskBody)).toHaveCount(0);
-  expect((await storedState(page)).answers.Q02).toBe(5);
+  expect((await storedState(page)).answers.C01).toBe("b");
 
   await seen(page.getByRole("button", { name: text.restartButton })).click();
   await page.getByRole("button", { name: text.restartGo }).click();
@@ -140,7 +140,7 @@ test("설문 중에도 띠의 ANTI로 처음 화면에 갈 수 있고, 먼저 �
   await page.getByRole("button", { name: text.restartKeepSurvey }).click();
   await expect(page.getByText(text.restartAskSurveyBody)).toHaveCount(0);
   await expect(page).toHaveURL(/\/survey\?q=3$/);
-  expect((await storedState(page)).answers.Q02).toBe(5);
+  expect((await storedState(page)).answers.C01).toBe("b");
 
   await anti.click();
   await page.getByRole("button", { name: text.restartGo }).click();

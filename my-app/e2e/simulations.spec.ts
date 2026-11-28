@@ -23,7 +23,7 @@ async function openSimulation(page: Page, id: string) {
   if (detail) {
     await page.addInitScript(({ type, detail }) => {
       sessionStorage.setItem("anti-survey", JSON.stringify({
-        state: { browseDetails: { [type]: detail } }, version: 4,
+        state: { browseDetails: { [type]: detail } }, version: 5,
       }));
     }, { type, detail });
   }

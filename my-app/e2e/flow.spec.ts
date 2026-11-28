@@ -1,17 +1,17 @@
 import { fill, text } from "../src/content/text";
 
-import { SURVEY_IDS, answersFor, expect, expectNoOverflow, seen, storedState, test, typeName } from "./fixtures";
+import { PICKS, SURVEY_IDS, answersFor, expect, expectNoOverflow, seen, storedState, test, typeName } from "./fixtures";
 
 // 큰 흐름: 처음 온 사람이 끝까지 가는 길과, 둘러보기 길.
 
-test("설문 27문항을 눌러 결과까지 간다", async ({ page, ai }) => {
+test("설문 12문항을 눌러 결과까지 간다", async ({ page, ai }) => {
   await page.goto("/");
   await seen(page.getByRole("link", { name: text.startButton })).click();
 
-  expect(SURVEY_IDS).toHaveLength(27);
+  expect(SURVEY_IDS).toHaveLength(12);
   for (const [index, id] of SURVEY_IDS.entries()) {
     await expect(page).toHaveURL(new RegExp(`/survey\\?q=${index + 1}$`));
-    await expect(seen(page.getByText(fill(text.progress, { number: index + 1, total: 27 })))).toBeVisible();
+    await expect(seen(page.getByText(fill(text.progress, { number: index + 1, total: 12 })))).toBeVisible();
     const next = seen(page.getByRole("button", { name: text.next }));
     if (id === "P_AGE") {
       // 빈칸으로는 넘어가지 않는다. '66'은 1966으로 받는다
@@ -21,9 +21,12 @@ test("설문 27문항을 눌러 결과까지 간다", async ({ page, ai }) => {
     } else {
       // 고르기 전에는 '다음'이 잠겨 있다
       await expect(next).toBeDisabled();
-      // 척도는 위에서부터 5점 → 1점이다. 취미발견형(Q02·Q16)만 5점, 나머지는 1점
-      const high = id === "Q02" || id === "Q16";
-      const pick = id.startsWith("P_") ? 0 : high ? 0 : 4;
+      // 유형 찾기 문항은 안내 글이 붙고, 취미발견형이 나오는 보기를 고른다(기본정보는 첫 선택지)
+      let pick = 0;
+      if (id.startsWith("C")) {
+        await expect(seen(page.getByText(text.choiceHelp))).toBeVisible();
+        pick = "abcd".indexOf(PICKS.T05[Number(id.slice(1)) - 1]);
+      }
       await seen(page.getByRole("radiogroup")).locator("label").nth(pick).click();
     }
     await next.click();
@@ -63,14 +66,14 @@ test("설문 중에 '이전으로'를 누르면 앞 문항으로 가고 답이 �
 });
 
 test("가장 높은 유형이 여럿이면 고른 뒤 '조금 더 맞춰 보기'로 간다", async ({ page, seed }) => {
-  await seed({ answers: answersFor("all"), tuned: false });
+  await seed({ answers: answersFor("tie"), tuned: false });
   await page.goto("/result");
   await expect(page).toHaveURL(/\/pick$/);
   await expect(seen(page.getByText(text.tieMany))).toBeVisible();
-  await expect(seen(page.getByRole("radio"))).toHaveCount(12);
+  await expect(seen(page.getByRole("radio"))).toHaveCount(3); // 일터찾기·보탬활동·내일사장
   const next = seen(page.getByRole("button", { name: text.next }));
   await expect(next).toBeDisabled();
-  await seen(page.getByRole("radiogroup")).locator("label").nth(4).click();
+  await seen(page.getByRole("radiogroup")).locator("label").nth(1).click();
   await next.click();
   // 고른 뒤에는 결과 화면을 거치지 않고 바로 맞춰 보기로 간다
   await expect(page).toHaveURL(/\/tune$/);

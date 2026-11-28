@@ -18,28 +18,27 @@ const data = JSON.parse(
 
 export const typeName = (id: string) => data.types.find((type) => type.id === id)!.name;
 
-// 설문 문항(걸림돌·우선순위·주관식을 뺀 27문항)의 순서
+// 설문 문항(기본정보 3 + 유형 찾기 C01~C09 = 12문항)의 순서
 export const SURVEY_IDS = data.questions
-  .filter((question) => ["single", "number", "scale"].includes(question.selection))
+  .filter((question) => ["single", "number"].includes(question.selection))
   .map((question) => question.id)
-  .filter((id) => id.startsWith("P_") || /^Q\d+$/.test(id));
+  .filter((id) => id.startsWith("P_") || /^C\d+$/.test(id));
 
-// 유형마다 두 문항. high에 든 유형의 문항만 5점, 나머지는 1점으로 답한 사람
-const TYPE_QUESTIONS: Record<string, [string, string]> = {
-  T05: ["Q02", "Q16"],
-  T07: ["Q03", "Q13"],
-};
+// 유형 찾기 9문항(C01~C09)에 고른 보기. 글자 하나가 문항 하나다(a = 첫 보기)
+// 점수는 app/data/choice_questions.yaml에서 셈했다. 문항이나 점수를 고치면 다시 맞춘다
+export const PICKS = {
+  T05: "bbbccabca", // 취미발견형 9.5점 단독 1위
+  T07: "bbbadbbca", // 동네친구형 9.5점 단독 1위
+  tie: "aaaaaabac", // 일터찾기·보탬활동·내일사장 6.5점 동점(같은 분야라 본인이 고름)
+} as const;
 
-export function answersFor(high: keyof typeof TYPE_QUESTIONS | "all"): Record<string, string | number> {
+export function answersFor(key: keyof typeof PICKS): Record<string, string | number> {
   const answers: Record<string, string | number> = {
     P_GENDER: "female",
     P_AGE: 1966,
     P_WORK: "not_working",
   };
-  for (let number = 1; number <= 24; number += 1) {
-    const id = `Q${String(number).padStart(2, "0")}`;
-    answers[id] = high === "all" || TYPE_QUESTIONS[high].includes(id) ? 5 : 1;
-  }
+  [...PICKS[key]].forEach((letter, i) => (answers[`C${String(i + 1).padStart(2, "0")}`] = letter));
   return answers;
 }
 
@@ -96,7 +95,7 @@ export const test = base.extend<Fixtures>({
       // 처음 열 때만 넣는다(새로고침하거나 다시 시작한 뒤의 값을 덮지 않게)
       await page.addInitScript((value) => {
         if (sessionStorage.getItem("anti-survey") === null) sessionStorage.setItem("anti-survey", value);
-      }, JSON.stringify({ state, version: 4 }));
+      }, JSON.stringify({ state, version: 5 }));
     });
   },
 });
