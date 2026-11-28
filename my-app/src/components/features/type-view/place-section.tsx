@@ -116,7 +116,8 @@ export function PlaceSection({
         ) : null}
       </div>
 
-      {/* AI에게 묻는 동안에도 아래의 기본 기관은 그대로 보인다 */}
+      {/* AI에게 묻는 동안에는 기다림 안내만 둔다. 지도와 기관은 답이 온 뒤에 한 번만 그린다
+          (먼저 그렸다가 답이 오면 바뀌어 헷갈린다. 11/28 사용자 결정, 예전 앱과 같은 방식) */}
       {asking ? (
         <Notice kind="info" live>
           <span className="flex items-start gap-[0.5rem]">
@@ -136,9 +137,11 @@ export function PlaceSection({
       ) : null}
 
       {/* 먼저 골라야 하는 세부 질문(돌봄: 누구의 돌봄인지). 고르면 그 아래에 곳이 나온다 */}
-      {detail?.require_choice ? <DetailQuestion typeId={type.id} detail={detail} browse={browse} /> : null}
+      {!asking && detail?.require_choice ? (
+        <DetailQuestion typeId={type.id} detail={detail} browse={browse} />
+      ) : null}
 
-      {result.needsChoice ? (
+      {asking ? null : result.needsChoice ? (
         <Notice kind="info">{browse ? text.detailFirstBrowse : text.detailFirst}</Notice>
       ) : places.length === 0 ? (
         <>

@@ -51,8 +51,11 @@ export type Stored = {
 
 type AiReply = { status: string; matches: { id: string; reason: string }[]; unmatched: string[] };
 
+// 가짜 답. 함수가 Promise를 돌려주면 그것이 풀릴 때까지 답을 미룬다(기다리는 화면을 볼 때)
+type AiAnswer = AiReply | ((body: { candidates: string[] }) => AiReply | Promise<AiReply>);
+
 type Fixtures = {
-  ai: { requests: unknown[]; reply: (answer: AiReply | ((body: { candidates: string[] }) => AiReply)) => void };
+  ai: { requests: unknown[]; reply: (answer: AiAnswer) => void };
   seed: (stored: Stored) => Promise<void>;
 };
 
@@ -60,7 +63,7 @@ export const test = base.extend<Fixtures>({
   ai: [
     async ({ page }, use) => {
       const requests: unknown[] = [];
-      let answer: AiReply | ((body: { candidates: string[] }) => AiReply) = {
+      let answer: AiAnswer = {
         status: "fail",
         matches: [],
         unmatched: [],
@@ -68,7 +71,7 @@ export const test = base.extend<Fixtures>({
       await page.route("**/api/recommend", async (route) => {
         const body = route.request().postDataJSON() as { candidates: string[] };
         requests.push(body);
-        await route.fulfill({ json: typeof answer === "function" ? answer(body) : answer });
+        await route.fulfill({ json: typeof answer === "function" ? await answer(body) : answer });
       });
       await use({
         requests,

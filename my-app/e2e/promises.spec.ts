@@ -42,6 +42,30 @@ test("AI에는 네 칸만 보내고, 개인정보 형태는 지워서 보낸다"
   expect(ai.requests).toHaveLength(1);
 });
 
+test("AI 답을 기다리는 동안에는 지도와 기관을 그리지 않고, 답이 오면 한 번에 나온다", async ({ page, seed, ai }) => {
+  let release = () => {};
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  ai.reply(async (body) => {
+    await gate;
+    return { status: "ok", matches: [{ id: body.candidates[0], reason: "그림을 배울 수 있는 곳이에요." }], unmatched: [] };
+  });
+  await seed({ answers: answersFor("T05"), tuned: false });
+  await page.goto("/tune");
+  await seen(page.getByRole("textbox")).fill("그림을 배우고 싶어요");
+  await seen(page.getByRole("button", { name: text.tuneDone })).click();
+
+  await expect(page).toHaveURL(/\/result$/);
+  await expect(seen(page.getByText(text.aiWait))).toBeVisible();
+  await expect(seen(page.locator('a[href^="/place/"]'))).toHaveCount(0);
+  await expect(seen(page.getByText(text.mapNote))).toHaveCount(0);
+
+  release();
+  await expect(seen(page.getByText(text.aiWait))).toHaveCount(0);
+  await expect(seen(page.getByText(text.aiStarNote))).toBeVisible();
+  await expect(seen(page.locator('a[href^="/place/"]')).first()).toBeVisible();
+  expect(ai.requests).toHaveLength(1);
+});
+
 test("AI가 지어낸 id는 서버가 걸러 주지 않아도 화면에 그려지지 않는다", async ({ page, seed, ai }) => {
   ai.reply({ status: "ok", matches: [{ id: "NOT_A_PLACE", reason: "지어낸 곳" }], unmatched: [] });
   await seed({ answers: answersFor("T05"), tuned: false });

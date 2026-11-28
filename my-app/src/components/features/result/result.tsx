@@ -83,7 +83,8 @@ function ResultBody({
     const oldest = shown.map((program) => program["확인날짜"]).sort()[0];
     notes.push(fill(text.placesChecked, { date: koreanDate(oldest) }));
   }
-  if (hasPlaceMap(context)) notes.push(text.mapNote);
+  // AI를 기다리는 동안에는 지도가 없으므로 지도 안내 글도 뺀다
+  if (!asking && hasPlaceMap(context)) notes.push(text.mapNote);
 
   return (
     <>
