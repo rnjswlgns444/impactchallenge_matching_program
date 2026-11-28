@@ -22,17 +22,14 @@ import type { Moment } from "../clock";
 import { buildPrompt, hasWish, parseAnswer, type AiMatch } from "../matcher";
 import { phones, placeFacts, placeLinks, placeName, worryLines, type Fact, type Phone, type PlaceLink } from "../places";
 import { scrub } from "../privacy";
-import { score } from "../scoring";
 import {
   agesFromBirthYear,
+  choiceQuestions,
   chosenDetailOptions,
   fullNumber,
-  nextQuestion,
   optionsOf,
   question,
-  scaleQuestions,
   toggle,
-  typeQuestions,
   type DetailAnswer,
 } from "../selection";
 import { AGE_Q, PRIORITY_Q } from "../table";
@@ -48,9 +45,6 @@ type TypeRow = {
 };
 type Cases = {
   fingerprint: string;
-  high: number;
-  scaleIds: string[];
-  scoring: { values: number[]; priority: string | null; expect: unknown }[];
   candidates: {
     when: Moment;
     profile: Profile;
@@ -63,8 +57,6 @@ type Cases = {
   unconfirmed: Record<string, Record<string, string[]>>;
   privacy: { text: string; expect: string }[];
   selection: {
-    typeQuestions: Record<string, string[]>;
-    surveyOrder: (string | null)[];
     fullNumber: { value: number; expect: number | null }[];
     ages: { born: number; year: number; expect: [number, number] }[];
     toggleOptions: Option[];
@@ -110,8 +102,11 @@ function canonical(value: unknown): string {
 
 describe("자료", () => {
   it("정답을 만들 때의 자료와 지금 자료가 같다", () => {
+    // 두 앱이 함께 쓰는 문항만 견준다. 유형 찾기 문항(C01~)은 새 앱에만 있다(11/28)
+    const choice = choiceQuestions(questions);
+    const shared = questions.filter((q) => !choice.includes(q));
     const fingerprint = createHash("sha256")
-      .update(canonical({ questions, scale: appData.scale, types, programs, high: settings.scoring.high }), "utf8")
+      .update(canonical({ questions: shared, types, programs }), "utf8")
       .digest("hex");
     expect(
       fingerprint,
@@ -120,25 +115,7 @@ describe("자료", () => {
   });
 });
 
-describe("파이썬과 같은 답: 채점", () => {
-  const pairs = typeQuestions(questions, types);
-
-  it("유형과 문항의 연결표가 같다", () => {
-    expect(pairs).toEqual(cases.selection.typeQuestions);
-    expect(Object.keys(pairs)).toEqual(Object.keys(cases.selection.typeQuestions));
-    expect(scaleQuestions(questions).map((q) => q.id)).toEqual(cases.scaleIds);
-  });
-
-  it(`${cases.scoring.length}건의 답에 같은 유형과 점수를 낸다`, () => {
-    for (const [index, one] of cases.scoring.entries()) {
-      const answers = Object.fromEntries(cases.scaleIds.map((qid, i) => [qid, one.values[i]]));
-      const result = score(answers, pairs, cases.high, one.priority);
-      expect(result, `채점 ${index}번 (우선 선택 ${one.priority})`).toEqual(one.expect);
-      // 점수표의 순서(유형 파일 순서)도 같아야 한다
-      expect(Object.keys(result.scores)).toEqual(Object.keys((one.expect as { scores: object }).scores));
-    }
-  });
-});
+// 채점은 견주지 않는다. 새 앱은 9문항 보기 고르기로 채점이 파이썬과 다르다(scoring.test.ts가 지킨다)
 
 describe("파이썬과 같은 답: 후보 거르기", () => {
   const total = cases.candidates.reduce(
@@ -196,17 +173,6 @@ describe("파이썬과 같은 답: 개인정보 지우기", () => {
 
 describe("파이썬과 같은 답: 문항과 선택지", () => {
   const selection = cases.selection;
-
-  it("설문에서 묻는 순서가 같다", () => {
-    const answered: Record<string, unknown> = {};
-    const order: (string | null)[] = [];
-    for (let i = 0; i < selection.surveyOrder.length; i += 1) {
-      const next = nextQuestion(answered, questions);
-      order.push(next ? next.id : null);
-      if (next) answered[next.id] = 1;
-    }
-    expect(order).toEqual(selection.surveyOrder);
-  });
 
   it("태어난 해 다듬기와 만 나이가 같다", () => {
     const age = question(questions, AGE_Q);

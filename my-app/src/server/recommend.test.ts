@@ -64,6 +64,7 @@ const mind: TypeInfo = {
 
 const data = {
   questions: [],
+  tiebreak: "C03",
   scale: [],
   areas: [],
   types: [work, mind],

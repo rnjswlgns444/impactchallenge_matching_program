@@ -115,7 +115,8 @@ export const useSurveyStore = create<SurveyState>()(
     }),
     {
       name: "anti-survey",
-      version: 4,
+      // 5: 설문을 9문항 보기 고르기로 바꿈(11/28). 예전 24문항 답(Q01~)은 버린다
+      version: 5,
       storage: createJSONStorage(() => safeStorage),
       partialize: (state) => ({
         answers: state.answers,

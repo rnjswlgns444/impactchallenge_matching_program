@@ -8,7 +8,8 @@
 
 다시 만들어야 할 때
   - app/data의 문항·유형·정보표를 고쳤을 때 (my-app에서 `npm run data`도 함께 돌린다)
-  - app/core의 scoring·selection·candidates·privacy·venues를 고쳤을 때
+  - app/core의 selection·candidates·privacy·venues를 고쳤을 때
+채점(scoring)은 견주지 않는다. 새 앱은 11/28부터 9문항 보기 고르기로 채점이 다르다(choice_questions.yaml).
 입력이 같으면 결과도 같다(난수 씨앗 고정). pytest는 이 파일을 테스트로 돌리지 않는다.
 """
 from __future__ import annotations
@@ -25,10 +26,8 @@ sys.path.insert(0, str(ROOT))
 
 from app.core import clock, loader, privacy, venues  # noqa: E402
 from app.core.candidates import ai_pool, eligible, first_consult, for_type, unconfirmed_columns  # noqa: E402
-from app.core.scoring import score  # noqa: E402
 from app.core.selection import (ages_from_birth_year, chosen_detail_options, detail_of, full_number,  # noqa: E402
-                                next_question, options_of, question, scale_questions, survey_questions, toggle,
-                                type_questions)
+                                options_of, question, toggle)
 
 OUT = ROOT / "my-app" / "src" / "core" / "parity" / "cases.json"
 SEED = 20261127
@@ -57,52 +56,19 @@ def main() -> None:
     data = loader.load_all()
     rng = random.Random(SEED)
     questions = [q for q in data.questions if q["id"] != BARRIER]
+    # 두 앱이 함께 쓰는 문항(기본정보·동점 고르기·직접 적기). 새 앱은 척도 문항 대신 9문항 보기 고르기를 쓴다(11/28)
+    shared_questions = [q for q in questions if q.get("selection") != "scale"]
     types_list = list(data.types.values())
     columns = loader.REQUIRED_COLUMNS + [loader.PIN_COLUMN]
     programs = [{c: r.get(c, "") for c in columns} for r in data.programs]
-    high = data.settings["scoring"]["high"]
-    pairs = type_questions(questions, data.types)
-    scale_ids = [q["id"] for q in scale_questions(questions)]
     type_ids = list(data.types)
 
     # 자료의 지문. 새 앱이 읽은 자료가 이것과 다르면, 정답을 다시 만들어야 한다는 뜻이다
     fingerprint = hashlib.sha256(canonical({
-        "questions": questions, "scale": data.scale, "types": types_list, "programs": programs, "high": high,
+        "questions": shared_questions, "types": types_list, "programs": programs,
     }).encode("utf-8")).hexdigest()
 
-    # ── 1. 채점 ──
-    def judged(answers: dict, priority):
-        r = score(answers, pairs, high, priority)
-        return {"state": r.state, "primary": r.primary, "secondary": r.secondary, "candidates": r.candidates,
-                "secondaryCandidates": r.secondary_candidates, "scores": r.scores}
-
-    scoring_cases = []
-
-    def add_score(values: list[int], priority=None):
-        answers = dict(zip(scale_ids, values))
-        scoring_cases.append({"values": values, "priority": priority, "expect": judged(answers, priority)})
-
-    for _ in range(300):
-        # 답의 폭을 사례마다 달리해 동점이 자주 나오게 한다
-        low, top = sorted((rng.randint(1, 5), rng.randint(1, 5)))
-        values = [rng.randint(low, top) for _ in scale_ids]
-        answers = dict(zip(scale_ids, values))
-        first = score(answers, pairs, high)
-        choice = rng.choice(["none", "candidate", "any", "none"])
-        priority = None if choice == "none" else rng.choice(first.candidates if choice == "candidate" else type_ids)
-        add_score(values, priority)
-    for base in (1, 2, 3, 4, 5):                       # 전부 같은 점수
-        add_score([base] * len(scale_ids))
-        add_score([base] * len(scale_ids), "T12")
-        add_score([base] * len(scale_ids), "T99")       # 없는 유형을 골랐다고 해도 무시한다
-    for tid in type_ids:                               # 유형 하나만 높음 / 둘이 동점 / 둘째가 기준(high) 언저리
-        for second, pair in (("T01" if tid != "T01" else "T02", (5, 5)), ("T06" if tid != "T06" else "T07", (4, 4)),
-                             ("T09" if tid != "T09" else "T10", (4, 3))):
-            values = {qid: 1 for qid in scale_ids}
-            values.update({qid: 5 for qid in pairs[tid]})
-            values.update(zip(pairs[second], pair))
-            for priority in (None, tid, second):
-                add_score([values[qid] for qid in scale_ids], priority)
+    # ── 1. 채점 ── 새 앱은 9문항 보기 고르기로 채점이 달라 견주지 않는다(11/28, my-app/src/core/scoring.test.ts가 지킨다)
 
     # ── 2. 후보 거르기 ──
     whens = [
@@ -186,22 +152,12 @@ def main() -> None:
     for selected in ([], ["a"], ["a", "b"], ["none"], ["b"]):
         for option in ("a", "b", "none"):
             toggle_cases.append({"selected": selected, "option": option, "expect": toggle(selected, option, toggle_options)})
-    survey = survey_questions(questions)
-    answered = {}
-    order = []
-    for _ in range(len(survey) + 1):
-        nxt = next_question(answered, questions)
-        order.append(nxt["id"] if nxt else None)
-        if nxt:
-            answered[nxt["id"]] = 1
     chosen_cases = []
     for tid, type_info in data.types.items():
         for answer in detail_answers(type_info):
             chosen_cases.append({"type": tid, "answer": answer,
                                  "expect": [opt["id"] for opt in chosen_detail_options(type_info, answer)]})
     selection_cases = {
-        "typeQuestions": pairs,
-        "surveyOrder": order,
         "fullNumber": [{"value": v, "expect": full_number(age_q, v)} for v in numbers],
         "ages": [{"born": born, "year": year, "expect": list(ages_from_birth_year(born, date(year, 6, 1)))}
                  for born in (1955, 1962, 1976, 1977) for year in (2026, 2027)],
@@ -335,9 +291,6 @@ def main() -> None:
     result = {
         "about": "app/tests/make_parity_cases.py가 만든 파일입니다. 손으로 고치지 마세요.",
         "fingerprint": fingerprint,
-        "high": high,
-        "scaleIds": scale_ids,
-        "scoring": scoring_cases,
         "candidates": candidate_cases,
         "unconfirmed": unconfirmed,
         "privacy": privacy_cases,
@@ -355,7 +308,7 @@ def main() -> None:
     OUT.write_text(json.dumps(result, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8", newline="\n")
     type_rows = sum(len(rows) for case in candidate_cases for rows in case["byType"].values())
     print(f"정답 파일을 만들었습니다: {OUT.relative_to(ROOT)}")
-    print(f"  채점 {len(scoring_cases)}건, 거르기 {len(candidate_cases)}묶음(유형별 {type_rows}건), "
+    print(f"  거르기 {len(candidate_cases)}묶음(유형별 {type_rows}건), "
           f"개인정보 {len(privacy_cases)}건, 길찾기 {len(routes)}건, 기관 {len(place_cases)}곳")
 
 

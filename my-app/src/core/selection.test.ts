@@ -9,83 +9,71 @@ import type { Option, TypeInfo } from "@/data/types";
 import { CHOOSE, RESULT, score } from "./scoring";
 import {
   agesFromBirthYear,
+  choiceQuestions,
   chosenDetailOptions,
   detailOf,
   fullNumber,
   nextQuestion,
   optionsOf,
   question,
-  scaleQuestions,
   surveyQuestions,
   toggle,
-  typeQuestions,
 } from "./selection";
 import { AGE_Q, GENDER_Q, PRIORITY_Q, WORK_Q } from "./table";
 
-const { questions, types, settings } = appData;
+const { questions, types } = appData;
 const typeOf = (id: string): TypeInfo => types.find((t) => t.id === id)!;
-const pairs = typeQuestions(questions, types);
+const choice = choiceQuestions(questions);
 
-// 실제 문항으로 만든 답. 적어 준 유형의 두 문항만 5점, 나머지는 base점
-function high(typeIds: string[], base = 1): Record<string, unknown> {
-  const answers: Record<string, unknown> = Object.fromEntries(scaleQuestions(questions).map((q) => [q.id, base]));
-  for (const typeId of typeIds) for (const qid of pairs[typeId]) answers[qid] = 5;
-  return answers;
-}
+// 실제 문항(C01~C09)에 고른 보기. 글자 하나가 문항 하나다
+const picks = (letters: string): Record<string, unknown> =>
+  Object.fromEntries(choice.map((q, i) => [q.id, letters[i]]));
+const T05_ONLY = picks("bbbccabca"); // 취미발견형이 단독 1위(9.5점, 다음 동네친구형 6.5점)
+const T05_T07_TIE = picks("bbbcabbca"); // 취미발견형·동네친구형 8.5점 동점(같은 분야라 본인이 고름)
 const judge = (answers: Record<string, unknown>, priority: string | null = null) =>
-  score(answers, pairs, settings.scoring.high, priority);
+  score(
+    answers,
+    choice,
+    types.map((t) => t.id),
+    appData.tiebreak,
+    priority
+  );
 
 describe("문항 구성과 유형 연결", () => {
-  it("every_type_has_two_scale_questions", () => {
-    expect(Object.keys(pairs)).toEqual(types.map((t) => t.id));
-    for (const [typeId, ids] of Object.entries(pairs)) expect(ids, typeId).toHaveLength(2);
-  });
-
-  it("two_questions_of_a_type_are_not_adjacent: 같은 유형의 두 문항은 붙어 있지 않다", () => {
-    const order = scaleQuestions(questions).map((q) => q.type);
-    order.slice(1).forEach((type, i) => expect(type, `${i + 1}번째와 ${i + 2}번째`).not.toBe(order[i]));
-  });
-
-  it("scale_has_five_labels", () => {
-    expect(appData.scale.map((opt) => opt.value)).toEqual([5, 4, 3, 2, 1]);
-    expect(appData.scale.every((opt) => opt.label)).toBe(true);
-  });
-
-  it("survey_asks_profile_then_scale: 기본정보 3문항 뒤에 척도 24문항, 걸림돌은 없다", () => {
+  it("survey_asks_profile_then_choice: 기본정보 3문항 뒤에 유형 찾기 9문항, 척도·걸림돌은 없다", () => {
     const survey = surveyQuestions(questions);
     expect(survey.slice(0, 3).map((q) => q.id)).toEqual([GENDER_Q, AGE_Q, WORK_Q]);
-    expect(survey.slice(3).every((q) => q.selection === "scale")).toBe(true);
-    expect(survey).toHaveLength(27);
+    expect(survey.slice(3)).toEqual(choice);
+    expect(survey).toHaveLength(12);
   });
 
   it("next_question: 답하지 않은 첫 문항을 주고, 다 답하면 null이다", () => {
     expect(nextQuestion({}, questions)?.id).toBe(GENDER_Q);
     expect(nextQuestion({ [GENDER_Q]: "female" }, questions)?.id).toBe(AGE_Q);
-    const all = Object.fromEntries(surveyQuestions(questions).map((q) => [q.id, 1]));
+    const all = Object.fromEntries(surveyQuestions(questions).map((q) => [q.id, "a"]));
     expect(nextQuestion(all, questions)).toBeNull();
   });
 
   it("real_questions_lead_to_one_type", () => {
-    const result = judge(high(["T05"]));
+    const result = judge(T05_ONLY);
     expect([result.state, result.primary]).toEqual([RESULT, "T05"]);
+    expect(result.scores.T05).toBe(9.5);
   });
 
   it("profile_does_not_change_type: 기본정보는 유형을 바꾸지 않는다", () => {
-    const base = judge(high(["T05"]));
-    const withProfile = judge({ ...high(["T05"]), [GENDER_Q]: "male", [AGE_Q]: 1950, [WORK_Q]: "employed" });
+    const base = judge(T05_ONLY);
+    const withProfile = judge({ ...T05_ONLY, [GENDER_Q]: "male", [AGE_Q]: 1950, [WORK_Q]: "employed" });
     expect(withProfile).toEqual(base);
   });
 
   it("tie_is_settled_by_the_user: 동점이면 본인이 후보 가운데서 고른다", () => {
-    const answers = high(["T05", "T07"]);
-    const tie = judge(answers);
+    const tie = judge(T05_T07_TIE);
     expect(tie.state).toBe(CHOOSE);
     const options = optionsOf(question(questions, PRIORITY_Q), types, tie.candidates);
     expect(options.map((opt) => opt.id)).toEqual(["T05", "T07"]);
     expect(options[0].label).toBe(typeOf("T05").statement);
-    const chosen = judge(answers, "T07");
-    expect([chosen.primary, chosen.secondary]).toEqual(["T07", "T05"]);
-    expect(judge(answers, "T01").state).toBe(CHOOSE); // 후보가 아닌 유형은 고른 것으로 치지 않는다
+    expect(judge(T05_T07_TIE, "T07").primary).toBe("T07");
+    expect(judge(T05_T07_TIE, "T01").state).toBe(CHOOSE); // 후보가 아닌 유형은 고른 것으로 치지 않는다
   });
 });
 
