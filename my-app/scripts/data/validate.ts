@@ -454,6 +454,82 @@ export function validatePrompt(prompt: string): string[] {
   );
 }
 
+// ── 새 앱의 유형 찾기 문항(choice_questions.yaml) ──
+// 파이썬에는 없는 검사다. Streamlit 앱은 이 파일을 읽지 않는다.
+export const CHOICE_FILE = "choice_questions.yaml";
+const CHOICE_ID = /^C\d+$/; // 예전 척도 문항(Q01~)과 섞이지 않게 C로 시작한다
+
+// 유형마다 얻을 수 있는 가장 높은 점수: 문항마다 그 유형에 가장 많이 주는 보기를 고른 합
+export function choiceMaxScores(questionsValue: unknown, typeIds: string[]): Record<string, number> {
+  const max: Record<string, number> = Object.fromEntries(typeIds.map((tid) => [tid, 0]));
+  for (const q of dicts(questionsValue)) {
+    for (const tid of typeIds) {
+      const best = Math.max(0, ...dicts(q.options).map((opt) => (isDict(opt.scores) ? Number(opt.scores[tid] ?? 0) : 0)));
+      max[tid] += best;
+    }
+  }
+  return max;
+}
+
+export function validateChoice(file: unknown, typesList: unknown): string[] {
+  const where0 = CHOICE_FILE;
+  const problems: string[] = [];
+  const doc = isDict(file) ? file : {};
+  const questions = dicts(doc.questions);
+  if (questions.length === 0) return [`${where0}: 문항이 하나도 없습니다.`];
+
+  const typeIds = dicts(typesList)
+    .map((t) => t.id)
+    .filter(truthy)
+    .map(String);
+  const seen = new Set<unknown>();
+  questions.forEach((q, index) => {
+    const qid = q.id;
+    if (!truthy(qid) || !truthy(q.text)) {
+      problems.push(`${where0}: ${index + 1}번째 문항에는 id와 text가 있어야 합니다.`);
+      return;
+    }
+    if (!CHOICE_ID.test(String(qid))) {
+      problems.push(`${where0}: 문항 id '${qid}'는 C01처럼 C와 숫자로 적습니다.`);
+    }
+    if (seen.has(qid)) problems.push(`${where0}: 문항 id '${qid}'가 두 번 나옵니다.`);
+    seen.add(qid);
+    const where = `${where0}: 문항 '${qid}'`;
+    const options = dicts(q.options);
+    if (options.length < 2) problems.push(`${where}에 보기가 2개 이상 있어야 합니다.`);
+    checkOptions(where, options, problems);
+    for (const opt of options) {
+      const scores = opt.scores;
+      if (!isDict(scores) || Object.keys(scores).length === 0) {
+        problems.push(`${where} 보기 '${opt.id}'에 scores가 없습니다. 예) scores: {T01: 2, T04: 1}`);
+        continue;
+      }
+      for (const [tid, value] of Object.entries(scores)) {
+        if (!typeIds.includes(tid)) problems.push(`${where} 보기 '${opt.id}'의 '${tid}'는 types.yaml에 없는 유형입니다.`);
+        if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+          problems.push(`${where} 보기 '${opt.id}'의 '${tid}' 점수는 0보다 큰 숫자여야 합니다.`);
+        }
+      }
+    }
+  });
+
+  if (!truthy(doc.tiebreak) || !seen.has(doc.tiebreak)) {
+    problems.push(`${where0}: tiebreak에는 동점일 때 볼 문항의 id(예: C03)를 적어야 합니다.`);
+  }
+  if (problems.length > 0) return problems;
+
+  // 점수 배분이 한 유형으로 기울지 않았는지 본다(설계의 약속: 유형마다 최대 점수가 같다)
+  const max = choiceMaxScores(questions, typeIds);
+  const zero = typeIds.filter((tid) => max[tid] === 0);
+  if (zero.length > 0) problems.push(`${where0}: 어느 보기에서도 점수를 받지 못하는 유형이 있습니다: ${zero.join(", ")}`);
+  const values = [...new Set(typeIds.map((tid) => max[tid]))];
+  if (zero.length === 0 && values.length > 1) {
+    const detail = typeIds.map((tid) => `${tid} ${max[tid]}`).join(", ");
+    problems.push(`${where0}: 유형마다 얻을 수 있는 가장 높은 점수가 같아야 합니다. (지금: ${detail})`);
+  }
+  return problems;
+}
+
 export type RawFiles = {
   areas: unknown;
   types: unknown;
@@ -462,9 +538,11 @@ export type RawFiles = {
   settings: unknown;
   programs: Record<string, string>[];
   prompt: string;
+  choice: unknown; // choice_questions.yaml 전체
 };
 
 // 모든 검사를 파이썬과 같은 순서로 돈다. 문제가 없으면 빈 목록이다.
+// questions.yaml의 척도 문항 검사는 Streamlit 앱을 위해 그대로 둔다. 새 앱의 문항 검사는 맨 뒤에 더한다.
 export function validateAll(raw: RawFiles): string[] {
   return [
     ...validateTypes(raw.areas, raw.types),
@@ -474,5 +552,6 @@ export function validateAll(raw: RawFiles): string[] {
     ...validateSettings(raw.settings),
     ...validatePrograms(raw.programs, raw.types),
     ...validatePrompt(raw.prompt),
+    ...validateChoice(raw.choice, raw.types),
   ];
 }

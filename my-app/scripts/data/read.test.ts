@@ -21,20 +21,24 @@ describe("실제 자료 파일", () => {
 
   it("검사를 통과하고 정해 둔 수만큼 있다", () => {
     expect(app.types).toHaveLength(12);
-    expect(app.scale.map((option) => option.value)).toEqual([5, 4, 3, 2, 1]);
-    // 설문 27문항 = 기본정보 3 + 척도 24
+    // 설문 12문항 = 기본정보 3 + 유형 찾기 9 (보기 고르기)
     const survey = app.questions.filter((q) => q.where !== "result");
-    expect(survey).toHaveLength(27);
-    expect(survey.filter((q) => q.selection === "scale")).toHaveLength(24);
+    expect(survey.map((q) => q.id)).toEqual([
+      "P_GENDER", "P_AGE", "P_WORK", "C01", "C02", "C03", "C04", "C05", "C06", "C07", "C08", "C09",
+    ]);
+    expect(app.questions.filter((q) => q.where === "result").map((q) => q.id)).toEqual(["Q_PRIORITY", "Q_FREE"]);
+    expect(app.tiebreak).toBe("C03");
   });
 
-  it("걸림돌 문항은 새 앱에 싣지 않는다", () => {
+  it("척도 문항과 걸림돌 문항은 새 앱에 싣지 않는다", () => {
     expect(app.questions.some((q) => q.id === BARRIER_Q)).toBe(false);
+    expect(app.questions.some((q) => q.selection === "scale")).toBe(false);
   });
 
-  it("유형마다 척도 문항이 두 개다", () => {
-    for (const type of app.types) {
-      expect(app.questions.filter((q) => q.type === type.id), type.id).toHaveLength(2);
+  it("유형 찾기 문항은 하나만 고르는 문항이고, 보기마다 점수가 있다", () => {
+    for (const q of app.questions.filter((q) => q.id.startsWith("C"))) {
+      expect(q.selection, q.id).toBe("single");
+      for (const option of q.options ?? []) expect(Object.keys(option.scores ?? {}).length, `${q.id}.${option.id}`).toBeGreaterThan(0);
     }
   });
 
@@ -98,6 +102,21 @@ describe("틀린 자료", () => {
     const problems = problemsOf(() => readAll(broken));
     expect(problems).toHaveLength(1);
     expect(problems[0]).toMatch(/척도 문항은 2개여야 합니다\. \(지금: 1개\)/);
+  });
+
+  it("보기 점수를 하나 바꿔 유형마다 최대 점수가 달라지면 알려 준다", () => {
+    const broken = brokenCopy("choice_questions.yaml", (text) =>
+      text.replace('scores: {T04: 2, T01: 1}', 'scores: {T04: 3, T01: 1}')
+    );
+    const problems = problemsOf(() => readAll(broken));
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(/가장 높은 점수가 같아야 합니다.*T04 10\.5/);
+  });
+
+  it("유형 찾기 문항 파일이 없으면 알려 준다", () => {
+    const broken = brokenCopy("choice_questions.yaml", (text) => text);
+    rmSync(path.join(broken.dataDir, "choice_questions.yaml"));
+    expect(problemsOf(() => readAll(broken))).toEqual(["choice_questions.yaml: 파일이 없습니다."]);
   });
 
   it("들여쓰기가 틀린 YAML은 파일 이름과 함께 알려 준다", () => {

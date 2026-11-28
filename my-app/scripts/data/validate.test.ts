@@ -5,8 +5,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   REQUIRED_COLUMNS,
+  choiceMaxScores,
   splitMulti,
   validateAll,
+  validateChoice,
   validatePrograms,
   validatePrompt,
   validateQuestions,
@@ -70,9 +72,24 @@ const settings = () => ({
   fallback_card: { name: "상담", org: "센터", description: "설명", phone: "031-000-0000", say: "안녕하세요." },
 });
 const prompt = () => "{type_name} {type_summary} {wish_examples} {wish_text} {candidates} {max_n}";
+// 유형 찾기 문항 견본: 유형 둘(T01, T02), 문항 둘. 두 유형 모두 최대 3점
+const choice = () => ({
+  tiebreak: "C01",
+  questions: [
+    { id: "C01", text: "분야", options: [{ id: "a", label: "가", scores: { T01: 1 } }, { id: "b", label: "나", scores: { T02: 1 } }] },
+    { id: "C02", text: "상황", options: [{ id: "a", label: "가", scores: { T01: 2, T02: 1 } }, { id: "b", label: "나", scores: { T02: 2 } }] },
+  ],
+});
+const twoTypes = () => [types()[0], { ...types()[0], id: "T02", detail: undefined }];
 const raw = (over: Partial<RawFiles> = {}): RawFiles => ({
   areas: areas(), types: types(), questions: questions(), scale: scale(),
-  settings: settings(), programs: [row()], prompt: prompt(), ...over,
+  settings: settings(), programs: [row()], prompt: prompt(),
+  // 견본의 유형은 T01 하나뿐이라, 여기서는 T01에만 점수를 준다
+  choice: {
+    tiebreak: "C01",
+    questions: [{ id: "C01", text: "분야", options: [{ id: "a", label: "가", scores: { T01: 1 } }, { id: "b", label: "나", scores: { T01: 2 } }] }],
+  },
+  ...over,
 });
 
 describe("견본 자료", () => {
@@ -156,6 +173,48 @@ describe("문항", () => {
     broken[3].type = "T99";
     const problems = validateQuestions(broken, types());
     expect(problems).toContain("questions.yaml: 척도 문항의 type 'T99'가 types.yaml에 없습니다.");
+  });
+});
+
+describe("유형 찾기 문항(choice_questions.yaml)", () => {
+  it("견본은 문제가 없고, 유형마다 최대 점수를 센다", () => {
+    expect(validateChoice(choice(), twoTypes())).toEqual([]);
+    expect(choiceMaxScores(choice().questions, ["T01", "T02"])).toEqual({ T01: 3, T02: 3 });
+  });
+
+  it("유형마다 최대 점수가 다르면 점수와 함께 알려 준다", () => {
+    const broken = choice();
+    broken.questions[1].options[1].scores = { T02: 3 };
+    expect(validateChoice(broken, twoTypes())).toEqual([
+      "choice_questions.yaml: 유형마다 얻을 수 있는 가장 높은 점수가 같아야 합니다. (지금: T01 3, T02 4)",
+    ]);
+  });
+
+  it("점수를 하나도 못 받는 유형이 있으면 알려 준다", () => {
+    const three = [...twoTypes(), { ...types()[0], id: "T03", detail: undefined }];
+    expect(validateChoice(choice(), three)).toEqual([
+      "choice_questions.yaml: 어느 보기에서도 점수를 받지 못하는 유형이 있습니다: T03",
+    ]);
+  });
+
+  it("없는 유형·0 이하 점수·빠진 scores·잘못된 id·없는 tiebreak를 알려 준다", () => {
+    const broken = choice() as { tiebreak: string; questions: Record<string, unknown>[] };
+    broken.tiebreak = "C09";
+    broken.questions[0] = {
+      id: "Q01", text: "분야",
+      options: [{ id: "a", label: "가", scores: { T99: 1 } }, { id: "b", label: "나", scores: { T02: 0 } }, { id: "c", label: "다" }],
+    };
+    expect(validateChoice(broken, twoTypes())).toEqual([
+      "choice_questions.yaml: 문항 id 'Q01'는 C01처럼 C와 숫자로 적습니다.",
+      "choice_questions.yaml: 문항 'Q01' 보기 'a'의 'T99'는 types.yaml에 없는 유형입니다.",
+      "choice_questions.yaml: 문항 'Q01' 보기 'b'의 'T02' 점수는 0보다 큰 숫자여야 합니다.",
+      "choice_questions.yaml: 문항 'Q01' 보기 'c'에 scores가 없습니다. 예) scores: {T01: 2, T04: 1}",
+      "choice_questions.yaml: tiebreak에는 동점일 때 볼 문항의 id(예: C03)를 적어야 합니다.",
+    ]);
+  });
+
+  it("문항이 없으면 그것만 알려 준다", () => {
+    expect(validateChoice({}, twoTypes())).toEqual(["choice_questions.yaml: 문항이 하나도 없습니다."]);
   });
 });
 

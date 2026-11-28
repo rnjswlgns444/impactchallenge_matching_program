@@ -11,6 +11,7 @@ export type Option = {
   exclusive?: boolean; // 다른 선택지와 함께 고를 수 없다
   exclude?: Rule; // 고르면 이 값인 프로그램을 뺀다
   first?: Rule; // 고르면 이 값인 프로그램을 앞으로 가져온다
+  scores?: Record<string, number>; // 유형 찾기 문항의 보기만: 고르면 더할 점수 { 유형 id: 점수 }
 };
 
 export type Selection = "single" | "multi" | "number" | "scale" | "text";
@@ -93,8 +94,11 @@ export type FallbackCard = {
 
 // 화면이 쓰는 자료 (공개 정보라 브라우저에 실어도 된다)
 export type AppData = {
-  questions: Question[]; // 걸림돌 문항(Q_BARRIER)은 빠져 있다
-  scale: ScaleOption[]; // 척도 문항의 공통 선택지(5 → 1 순서)
+  // 기본정보 3 → 유형 찾기 문항(C01~, choice_questions.yaml) → 결과 쪽 문항(Q_PRIORITY, Q_FREE).
+  // questions.yaml의 척도 문항(Q01~Q24)과 걸림돌 문항(Q_BARRIER)은 빠져 있다(Streamlit 앱만 쓴다)
+  questions: Question[];
+  tiebreak: string; // 가장 높은 점수가 여럿일 때 먼저 볼 문항(그 문항에서 고른 보기가 점수를 준 유형을 남긴다)
+  scale: ScaleOption[]; // 척도 선택지(5 → 1 순서). 새 앱의 설문에는 척도 문항이 없다
   areas: Area[];
   types: TypeInfo[]; // 파일에 적힌 순서(T01~T12)
   programs: Program[];

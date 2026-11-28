@@ -9,7 +9,7 @@ import { parse as parseYaml } from "yaml";
 
 import type { AppData, Dong, MapData, Program, ServerData, Venue } from "../../src/data/types";
 import { readMap, type MapSources } from "./read-map";
-import { BARRIER_Q, PIN_COLUMN, REQUIRED_COLUMNS, validateAll, type RawFiles } from "./validate";
+import { BARRIER_Q, CHOICE_FILE, PIN_COLUMN, REQUIRED_COLUMNS, validateAll, type RawFiles } from "./validate";
 
 // 형식이 틀렸을 때 던진다. problems에 고칠 곳 목록이 들어 있다.
 export class DataError extends Error {
@@ -176,6 +176,7 @@ export function readAll(sources: Sources): {
 } {
   const problems: string[] = [];
   const questionsFile = readYaml(path.join(sources.dataDir, "questions.yaml"), problems);
+  const choiceFile = readYaml(path.join(sources.dataDir, CHOICE_FILE), problems);
   const typesFile = readYaml(path.join(sources.dataDir, "types.yaml"), problems);
   const settings = readYaml(path.join(sources.dataDir, "settings.yaml"), problems);
   const programs = readPrograms(path.join(sources.dataDir, "programs.csv"), problems);
@@ -197,6 +198,7 @@ export function readAll(sources: Sources): {
     settings,
     programs,
     prompt,
+    choice: choiceFile,
   };
   // 읽지 못한 파일이 있으면 그것부터 알린다(파이썬 쪽과 같다)
   const found = problems.length > 0 ? problems : validateAll(raw);
@@ -205,9 +207,17 @@ export function readAll(sources: Sources): {
   // 여기부터는 검사를 통과한 값이라 모양을 믿고 옮긴다
   const columns = [...REQUIRED_COLUMNS, PIN_COLUMN];
   const s = settings as AppData["settings"] & { llm?: Partial<ServerData["llm"]> };
+  // 새 앱의 설문: questions.yaml의 기본정보 → choice_questions.yaml의 유형 찾기 문항 → 결과 쪽 문항.
+  // 척도 문항(Q01~Q24)과 걸림돌 문항은 새 앱에서 묻지 않는다(파일에는 남겨 둔다. Streamlit 앱이 쓴다)
+  const kept = (raw.questions as AppData["questions"]).filter(
+    (q) => q.id !== BARRIER_Q && q.selection !== "scale"
+  );
+  const choice = (choiceFile.questions as AppData["questions"]).map(
+    (q): AppData["questions"][number] => ({ ...q, selection: "single" })
+  );
   const app: AppData = {
-    // 걸림돌 문항은 새 앱에서 묻지 않는다(파일에는 남겨 둔다. 지우면 Streamlit 앱이 켜지지 않는다)
-    questions: (raw.questions as AppData["questions"]).filter((q) => q.id !== BARRIER_Q),
+    questions: [...kept.filter((q) => q.where !== "result"), ...choice, ...kept.filter((q) => q.where === "result")],
+    tiebreak: String(choiceFile.tiebreak),
     scale: raw.scale as AppData["scale"],
     areas: raw.areas as AppData["areas"],
     types: raw.types as AppData["types"],
